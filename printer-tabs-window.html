@@ -467,7 +467,7 @@
                     this.focusTab(tabId);
                     return;
                 }
-
+                
                 // Создаем вкладку
                 const tabElement = document.createElement('div');
                 tabElement.className = 'tab';
@@ -493,9 +493,11 @@
                 iframeContainer.className = 'iframe-container';
                 iframeContainer.dataset.tabId = tabId;
                 
-                const webPort = printerData.webPort || '80';
+                // Проверяем webPort - если пустая строка или null/undefined, используем '80'
+                const webPortRaw = printerData.webPort;
+                const webPort = (webPortRaw && String(webPortRaw).trim() !== '') ? String(webPortRaw).trim() : '80';
                 const printerUrl = `http://${printerData.ip}:${webPort}`;
-                console.log('Loading URL in iframe:', printerUrl);
+                console.log('Loading printer interface:', printerData.name, '-', printerUrl);
                 
                 iframeContainer.innerHTML = `
                     <iframe 
@@ -642,20 +644,17 @@
             }
         }
 
-        // Инициализация менеджера вкладок при загрузке страницы
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('DOM loaded, initializing tabs manager');
+        // Инициализация менеджера вкладок
+        function initTabsManager() {
             window.tabsManager = new PrinterTabsManager();
-        });
+        }
 
-        // Fallback на случай если DOM уже загружен
+        // Инициализация при загрузке страницы
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', init);
+            document.addEventListener('DOMContentLoaded', initTabsManager);
         } else {
-            setTimeout(() => {
-                console.log('DOM already loaded, initializing tabs manager');
-                window.tabsManager = new PrinterTabsManager();
-            }, 100);
+            // DOM уже загружен
+            initTabsManager();
         }
     </script>
 </body>

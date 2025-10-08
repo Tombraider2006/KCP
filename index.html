@@ -287,6 +287,53 @@
         </div>
     </div>
 
+    <!-- Inefficiency Comment Modal -->
+    <div id="inefficiencyCommentModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 id="ineffCommentModalTitle">📝 Add Comment</h3>
+                <span class="close" onclick="closeInefficiencyCommentModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 15px;">
+                    <h4 id="ineffCommentPrinterName" style="color: #00d4ff; margin-bottom: 5px;">Printer Name</h4>
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap; font-size: 14px; color: #888;">
+                        <span><strong id="ineffCommentTypeLabel">Type:</strong> <span id="ineffCommentType">Gap</span></span>
+                        <span><strong id="ineffCommentDurationLabel">Duration:</strong> <span id="ineffCommentDuration">15m</span></span>
+                    </div>
+                    <div style="margin-top: 8px; font-size: 13px; color: #666;">
+                        <span id="ineffCommentPeriod">Period: 2024-01-01 10:00 - 10:15</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="ineffCommentTextarea" id="ineffCommentLabel">Comment / Reason:</label>
+                    <textarea 
+                        id="ineffCommentTextarea" 
+                        rows="5" 
+                        placeholder="Enter the reason for this inefficiency period..."
+                        style="width: 100%; padding: 10px; border: 1px solid #444; background: #2a2a2a; color: #fff; border-radius: 5px; font-family: inherit; resize: vertical;"
+                    ></textarea>
+                    <small id="ineffCommentHint" style="color: #888; display: block; margin-top: 5px;">
+                        💡 Example: Material change, maintenance, waiting for parts, operator break, etc.
+                    </small>
+                </div>
+                
+                <div class="modal-footer" style="margin-top: 20px; gap: 10px;">
+                    <button class="btn btn-primary" onclick="saveInefficiencyComment()">
+                        <span id="ineffCommentSaveBtn">💾 Save Comment</span>
+                    </button>
+                    <button class="btn btn-danger" onclick="deleteInefficiencyComment()" id="ineffCommentDeleteBtn" style="display: none;">
+                        <span id="ineffCommentDeleteText">🗑️ Delete</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="closeInefficiencyCommentModal()">
+                        <span id="ineffCommentCancelBtn">Cancel</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Clear Analytics Confirmation Modal -->
     <div id="clearAnalyticsModal" class="modal">
         <div class="modal-content" style="max-width: 500px;">

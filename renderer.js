@@ -315,6 +315,9 @@ function updateModalTranslations() {
     
     // Обновляем модальное окно Clear Analytics
     updateClearAnalyticsModalTranslations();
+    
+    // Обновляем модальное окно Inefficiency Comment
+    updateInefficiencyCommentModalTranslations();
 }
 
 // ===== ФУНКЦИИ ДЛЯ РАБОТЫ С ПРИНТЕРАМИ =====
@@ -943,36 +946,210 @@ function renderInefficiencyTab(printerId, custom) {
         const from = new Date(p.from).toLocaleString();
         const to = new Date(p.to).toLocaleString();
         const dur = formatDuration(p.duration);
-        const val = (p.reason || '');
+        const reason = (p.reason || '');
+        const hasComment = reason.trim().length > 0;
         const printer = printers.find(pr => pr.id === p.printerId);
         const printerName = printer ? printer.name : t('unknown_printer');
+        
+        // Статус и цвета
+        const statusBg = hasComment ? '#2ecc71' : '#f39c12';
+        const statusText = hasComment ? t('ineff_status_has_comment') : t('ineff_status_no_comment');
+        const statusIcon = hasComment ? '✅' : '📝';
+        
+        // Превью комментария
+        const commentPreview = hasComment ? (reason.length > 80 ? reason.substring(0, 80) + '...' : reason) : '';
+        
+        // Тип события
+        const typeText = p.type === 'gap' ? t('ineff_type_gap') : t('ineff_type_pause');
+        const typeIcon = p.type === 'gap' ? '⏸️' : '⏯️';
+        
         return `
-            <div class="analytics-card">
-                <h4 style="margin-bottom: 10px; color: #00d4ff; font-size: 16px;">🖨️ ${printerName}</h4>
-                <div class="info-item"><span>${p.type === 'gap' ? 'Gap' : 'Pause'}</span><span>${dur}</span></div>
-                <div class="info-item"><span>${from}</span><span>${to}</span></div>
-                <div class="form-group">
-                    <label>${t('reason')}</label>
-                    <input type="text" data-from="${p.from}" data-to="${p.to}" class="ineff-reason" placeholder="${t('enter_reason')}" value="${val}">
-                    <button class="btn btn-primary btn-small ineff-save" data-from="${p.from}" data-to="${p.to}">${t('save_reason')}</button>
+            <div class="analytics-card" style="position: relative; cursor: pointer; transition: all 0.3s ease; border-left: 4px solid ${statusBg};" 
+                 onclick="openInefficiencyCommentModal(${p.from}, ${p.to}, '${p.printerId}', '${p.type}')"
+                 onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,212,255,0.3)';"
+                 onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='';">
+                
+                <!-- Статус бейдж -->
+                <div style="position: absolute; top: 15px; right: 15px; background: ${statusBg}; color: #fff; padding: 5px 12px; border-radius: 15px; font-size: 12px; font-weight: bold;">
+                    ${statusIcon} ${statusText}
                 </div>
+                
+                <!-- Заголовок -->
+                <h4 style="margin-bottom: 15px; color: #00d4ff; font-size: 16px; padding-right: 140px;">
+                    🖨️ ${printerName}
+                </h4>
+                
+                <!-- Информация -->
+                <div style="display: grid; grid-template-columns: auto 1fr; gap: 10px 20px; margin-bottom: 15px; font-size: 14px;">
+                    <div style="color: #888; font-weight: 500;">${t('ineff_comment_type_label')}</div>
+                    <div style="color: #fff;">${typeIcon} ${typeText}</div>
+                    
+                    <div style="color: #888; font-weight: 500;">${t('ineff_comment_duration_label')}</div>
+                    <div style="color: #fff; font-weight: bold;">${dur}</div>
+                    
+                    <div style="color: #888; font-weight: 500;">${t('ineff_comment_period')}</div>
+                    <div style="color: #aaa; font-size: 13px;">${from} — ${to}</div>
+                </div>
+                
+                <!-- Превью комментария или кнопка -->
+                ${hasComment ? `
+                    <div style="background: #2a2a2a; padding: 12px; border-radius: 6px; border-left: 3px solid #2ecc71; margin-top: 15px;">
+                        <div style="color: #888; font-size: 12px; margin-bottom: 5px; font-weight: 500;">📝 ${t('reason')}:</div>
+                        <div style="color: #ddd; line-height: 1.5; font-size: 14px;">${commentPreview}</div>
+                    </div>
+                    <div style="margin-top: 10px; text-align: right; font-size: 12px; color: #00d4ff;">
+                        👁️ ${t('ineff_btn_view_comment')} / ${t('ineff_btn_edit_comment')} →
+                    </div>
+                ` : `
+                    <div style="text-align: center; margin-top: 15px; padding: 12px; background: rgba(243, 156, 18, 0.1); border-radius: 6px;">
+                        <div style="color: #f39c12; font-size: 14px; margin-bottom: 8px;">
+                            📝 ${t('ineff_status_no_comment')}
+                        </div>
+                        <div style="color: #888; font-size: 12px;">
+                            ${t('ineff_btn_add_comment')} →
+                        </div>
+                    </div>
+                `}
             </div>`;
     }).join('');
     return `<div>${rows}</div>`;
 }
 
+// Переменная для хранения текущего периода неэффективности в модальном окне
+let currentIneffPeriod = null;
+
+function openInefficiencyCommentModal(from, to, printerId, type) {
+    const modal = document.getElementById('inefficiencyCommentModal');
+    if (!modal) return;
+    
+    // Сохраняем данные текущего периода
+    currentIneffPeriod = { from, to, printerId, type };
+    
+    // Получаем данные
+    const printer = printers.find(p => p.id === printerId);
+    const printerName = printer ? printer.name : t('unknown_printer');
+    const fromDate = new Date(from).toLocaleString();
+    const toDate = new Date(to).toLocaleString();
+    const duration = formatDuration(to - from);
+    const typeText = type === 'gap' ? t('ineff_type_gap') : t('ineff_type_pause');
+    const existingReason = getSavedReason(from, to) || '';
+    const hasComment = existingReason.trim().length > 0;
+    
+    // Обновляем заголовок
+    const title = document.getElementById('ineffCommentModalTitle');
+    if (title) {
+        title.textContent = hasComment ? t('ineff_comment_modal_title_edit') : t('ineff_comment_modal_title_add');
+    }
+    
+    // Заполняем данные
+    const printerNameEl = document.getElementById('ineffCommentPrinterName');
+    const typeEl = document.getElementById('ineffCommentType');
+    const durationEl = document.getElementById('ineffCommentDuration');
+    const periodEl = document.getElementById('ineffCommentPeriod');
+    const textarea = document.getElementById('ineffCommentTextarea');
+    const deleteBtn = document.getElementById('ineffCommentDeleteBtn');
+    
+    if (printerNameEl) printerNameEl.textContent = printerName;
+    if (typeEl) typeEl.textContent = typeText;
+    if (durationEl) durationEl.textContent = duration;
+    if (periodEl) periodEl.textContent = `${fromDate} — ${toDate}`;
+    if (textarea) textarea.value = existingReason;
+    
+    // Показываем/скрываем кнопку удаления
+    if (deleteBtn) {
+        deleteBtn.style.display = hasComment ? 'inline-block' : 'none';
+    }
+    
+    // Применяем переводы
+    updateInefficiencyCommentModalTranslations();
+    
+    // Показываем модальное окно
+    modal.style.display = 'block';
+    
+    // Фокусируемся на textarea
+    if (textarea) {
+        setTimeout(() => textarea.focus(), 100);
+    }
+}
+
+function closeInefficiencyCommentModal() {
+    const modal = document.getElementById('inefficiencyCommentModal');
+    if (modal) {
+        modal.style.display = 'none';
+        currentIneffPeriod = null;
+    }
+}
+
+async function saveInefficiencyComment() {
+    if (!currentIneffPeriod) return;
+    
+    const textarea = document.getElementById('ineffCommentTextarea');
+    const text = textarea ? textarea.value.trim() : '';
+    
+    const { from, to } = currentIneffPeriod;
+    
+    // Сохраняем причину
+    saveReason(from, to, text);
+    
+    // Показываем сообщение
+    addConsoleMessage(`📈 ${t('ineff_comment_saved')}`, 'info');
+    
+    // Закрываем модальное окно
+    closeInefficiencyCommentModal();
+    
+    // Обновляем вкладку неэффективности
+    const printerId = document.getElementById('analyticsPrinter')?.value || 'all';
+    const period = document.getElementById('analyticsPeriod')?.value;
+    const custom = getCustomRangeIfAny();
+    renderInefficiency(printerId, custom);
+    bindInefficiencyHandlers();
+}
+
+async function deleteInefficiencyComment() {
+    if (!currentIneffPeriod) return;
+    
+    const { from, to } = currentIneffPeriod;
+    
+    // Удаляем причину (сохраняем пустую строку)
+    saveReason(from, to, '');
+    
+    // Показываем сообщение
+    addConsoleMessage(`📈 ${t('ineff_comment_deleted')}`, 'warning');
+    
+    // Закрываем модальное окно
+    closeInefficiencyCommentModal();
+    
+    // Обновляем вкладку неэффективности
+    const printerId = document.getElementById('analyticsPrinter')?.value || 'all';
+    const period = document.getElementById('analyticsPeriod')?.value;
+    const custom = getCustomRangeIfAny();
+    renderInefficiency(printerId, custom);
+    bindInefficiencyHandlers();
+}
+
+function updateInefficiencyCommentModalTranslations() {
+    const typeLabel = document.getElementById('ineffCommentTypeLabel');
+    const durationLabel = document.getElementById('ineffCommentDurationLabel');
+    const label = document.getElementById('ineffCommentLabel');
+    const textarea = document.getElementById('ineffCommentTextarea');
+    const hint = document.getElementById('ineffCommentHint');
+    const saveBtn = document.getElementById('ineffCommentSaveBtn');
+    const deleteText = document.getElementById('ineffCommentDeleteText');
+    const cancelBtn = document.getElementById('ineffCommentCancelBtn');
+    
+    if (typeLabel) typeLabel.textContent = t('ineff_comment_type_label');
+    if (durationLabel) durationLabel.textContent = t('ineff_comment_duration_label');
+    if (label) label.textContent = t('ineff_comment_label');
+    if (textarea) textarea.placeholder = t('ineff_comment_placeholder');
+    if (hint) hint.innerHTML = t('ineff_comment_hint');
+    if (saveBtn) saveBtn.textContent = t('ineff_comment_save');
+    if (deleteText) deleteText.textContent = t('ineff_comment_delete');
+    if (cancelBtn) cancelBtn.textContent = t('ineff_comment_cancel');
+}
+
 function bindInefficiencyHandlers() {
-    const buttons = Array.from(document.querySelectorAll('.ineff-save'));
-    buttons.forEach(btn => {
-        btn.onclick = () => {
-            const from = parseInt(btn.getAttribute('data-from'));
-            const to = parseInt(btn.getAttribute('data-to'));
-            const input = document.querySelector(`input.ineff-reason[data-from="${from}"][data-to="${to}"]`);
-            const text = input ? input.value.trim() : '';
-            saveReason(from, to, text);
-            addConsoleMessage(`📈 ${t('save_reason')}`, 'info');
-        };
-    });
+    // Эта функция теперь пустая, т.к. обработчики теперь в onclick карточек
+    // Оставляем её для совместимости
 }
 
 function renderInefficiency(printerId, custom) {
@@ -2500,12 +2677,14 @@ window.onclick = function(event) {
     const telegramModal = document.getElementById('telegramSettingsModal');
     const bambuInfoModal = document.getElementById('bambuInfoModal');
     const clearAnalyticsModal = document.getElementById('clearAnalyticsModal');
+    const ineffCommentModal = document.getElementById('inefficiencyCommentModal');
     
     if (event.target === addModal) closeAddPrinterModal();
     if (event.target === editModal) closeEditPrinterModal();
     if (event.target === telegramModal) closeTelegramSettingsModal();
     if (event.target === bambuInfoModal) closeBambuInfoModal();
     if (event.target === clearAnalyticsModal) closeClearAnalyticsModal();
+    if (event.target === ineffCommentModal) closeInefficiencyCommentModal();
 }
 
 document.addEventListener('keypress', function(event) {

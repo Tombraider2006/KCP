@@ -765,7 +765,7 @@ function createTabsWindow() {
       webSecurity: false,
       allowRunningInsecureContent: true
     },
-    title: '3D Printer Interfaces - v1.3.0',
+    title: '3D Printer Interfaces - v1.3.1',
     icon: getIconPath(),
     show: false
   });
@@ -789,17 +789,31 @@ function createTabsWindow() {
 }
 
 function addPrinterTab(printerData) {
-  const tabsWindow = createTabsWindow();
+  // Проверяем было ли окно создано заново (ПЕРЕД добавлением в Map)
+  const wasWindowNull = !tabsWindow || tabsWindow.isDestroyed();
+  
+  const window = createTabsWindow();
+  const isNewWindow = wasWindowNull; // Новое окно если раньше его не было
   
   // Сохраняем данные принтера
   printerTabs.set(printerData.id, printerData);
   
   // Отправляем данные в окно вкладок
-  setTimeout(() => {
-    if (tabsWindow && !tabsWindow.isDestroyed()) {
-      tabsWindow.webContents.send('add-printer-tab', printerData);
+  const sendData = () => {
+    if (window && !window.isDestroyed()) {
+      window.webContents.send('add-printer-tab', printerData);
     }
-  }, 100);
+  };
+  
+  // Если это новое окно (первый принтер) - ждем dom-ready
+  if (isNewWindow) {
+    window.webContents.once('dom-ready', () => {
+      setTimeout(sendData, 100); // Даем время на инициализацию табов менеджера
+    });
+  } else {
+    // Окно уже существует - отправляем сразу
+    setTimeout(sendData, 10);
+  }
 }
 
 function focusPrinterTab(printerId) {
