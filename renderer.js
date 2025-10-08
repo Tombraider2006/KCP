@@ -312,6 +312,9 @@ function updateModalTranslations() {
         if (message) message.innerHTML = `ℹ️ ${t('bambu_info_message')}`;
         if (noWeb) noWeb.textContent = t('bambu_info_no_web');
     }
+    
+    // Обновляем модальное окно Clear Analytics
+    updateClearAnalyticsModalTranslations();
 }
 
 // ===== ФУНКЦИИ ДЛЯ РАБОТЫ С ПРИНТЕРАМИ =====
@@ -544,6 +547,58 @@ function openBambuInfoModal(printerName) {
 function closeBambuInfoModal() {
     const modal = document.getElementById('bambuInfoModal');
     if (modal) modal.style.display = 'none';
+}
+
+function openClearAnalyticsModal() {
+    const modal = document.getElementById('clearAnalyticsModal');
+    if (modal) {
+        // Применяем переводы
+        updateClearAnalyticsModalTranslations();
+        modal.style.display = 'block';
+    }
+}
+
+function closeClearAnalyticsModal() {
+    const modal = document.getElementById('clearAnalyticsModal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function confirmClearAnalytics() {
+    analytics.events = [];
+    await saveAnalytics();
+    addConsoleMessage('📈 ' + t('analytics_cleared'), 'warning');
+    closeClearAnalyticsModal();
+    // Обновляем вкладку аналитики если она открыта
+    const currentTab = document.querySelector('.analytics-card');
+    if (currentTab) {
+        setAnalyticsTab('energy');
+    }
+}
+
+function updateClearAnalyticsModalTranslations() {
+    const title = document.getElementById('clearAnalyticsModalTitle');
+    const warning1 = document.getElementById('clearAnalyticsWarning1');
+    const warning2 = document.getElementById('clearAnalyticsWarning2');
+    const item1 = document.getElementById('clearAnalyticsItem1');
+    const item2 = document.getElementById('clearAnalyticsItem2');
+    const item3 = document.getElementById('clearAnalyticsItem3');
+    const item4 = document.getElementById('clearAnalyticsItem4');
+    const warning3 = document.getElementById('clearAnalyticsWarning3');
+    const confirm = document.getElementById('clearAnalyticsConfirm');
+    const yesBtn = document.getElementById('clearAnalyticsYesBtn');
+    const noBtn = document.getElementById('clearAnalyticsNoBtn');
+    
+    if (title) title.innerHTML = t('clear_analytics_title');
+    if (warning1) warning1.textContent = t('clear_analytics_warning1');
+    if (warning2) warning2.textContent = t('clear_analytics_warning2');
+    if (item1) item1.textContent = t('clear_analytics_item1');
+    if (item2) item2.textContent = t('clear_analytics_item2');
+    if (item3) item3.textContent = t('clear_analytics_item3');
+    if (item4) item4.textContent = t('clear_analytics_item4');
+    if (warning3) warning3.textContent = t('clear_analytics_warning3');
+    if (confirm) confirm.textContent = t('clear_analytics_confirm');
+    if (yesBtn) yesBtn.textContent = t('clear_analytics_yes');
+    if (noBtn) noBtn.textContent = t('clear_analytics_no');
 }
 
 function removePrinter(printerId, event) {
@@ -1700,10 +1755,8 @@ function bindAnalyticsSettingsHandlers() {
         };
     }
     if (clearBtn) {
-        clearBtn.onclick = async () => {
-            analytics.events = [];
-            await saveAnalytics();
-            addConsoleMessage('📈 ' + t('analytics_cleared'), 'warning');
+        clearBtn.onclick = () => {
+            openClearAnalyticsModal();
         };
     }
 }
@@ -2446,11 +2499,13 @@ window.onclick = function(event) {
     const editModal = document.getElementById('editPrinterModal');
     const telegramModal = document.getElementById('telegramSettingsModal');
     const bambuInfoModal = document.getElementById('bambuInfoModal');
+    const clearAnalyticsModal = document.getElementById('clearAnalyticsModal');
     
     if (event.target === addModal) closeAddPrinterModal();
     if (event.target === editModal) closeEditPrinterModal();
     if (event.target === telegramModal) closeTelegramSettingsModal();
     if (event.target === bambuInfoModal) closeBambuInfoModal();
+    if (event.target === clearAnalyticsModal) closeClearAnalyticsModal();
 }
 
 document.addEventListener('keypress', function(event) {

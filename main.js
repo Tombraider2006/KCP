@@ -220,7 +220,7 @@ function createApplicationMenu() {
 function showTelegramHelp(isRussian) {
   const helpWindow = new BrowserWindow({
     width: 700,
-    height: 800,
+    height: 900,
     parent: mainWindow,
     modal: true,
     resizable: true,
@@ -329,10 +329,51 @@ function showTelegramHelp(isRussian) {
                 <p><span class="icon">4.</span> Найдите объект "chat" и скопируйте значение "id"</p>
             </div>
 
-            <h2>⚙️ Шаг 3: Настройка в программе</h2>
+            <h2>📢 Шаг 3: Добавление бота в канал (опционально)</h2>
+            <div class="step">
+                <p><strong>Если вы хотите получать уведомления в канал Telegram:</strong></p>
+                
+                <p><strong>Создание и настройка канала:</strong></p>
+                <p><span class="icon">1.</span> Создайте канал в Telegram (через меню → Новый канал)</p>
+                <p><span class="icon">2.</span> Назовите канал (например, "3D Printer Notifications")</p>
+                <p><span class="icon">3.</span> Выберите тип канала: <strong>Приватный</strong> или <strong>Публичный</strong></p>
+                
+                <p><strong>Добавление бота администратором:</strong></p>
+                <p><span class="icon">1.</span> Откройте настройки канала (⋮ → Управление каналом)</p>
+                <p><span class="icon">2.</span> Перейдите в <strong>Администраторы</strong> → Добавить администратора</p>
+                <p><span class="icon">3.</span> Найдите и выберите вашего бота (по username)</p>
+                <p><span class="icon">4.</span> Выдайте права: минимум нужно <strong>"Публикация сообщений"</strong></p>
+                <p><span class="icon">5.</span> Сохраните изменения</p>
+                
+                <p><strong>Получение Chat ID канала:</strong></p>
+                <p><span class="icon">1.</span> Опубликуйте любое сообщение в канале</p>
+                <p><span class="icon">2.</span> Перешлите это сообщение боту <strong>@userinfobot</strong></p>
+                <p><span class="icon">3.</span> Он покажет Chat ID канала (начинается с <code>-100</code>)</p>
+                <div class="note">
+                    💡 <strong>Пример Chat ID канала:</strong> <code>-1001234567890</code> (отрицательное число для каналов и групп)
+                </div>
+                
+                <p><strong>Альтернативный способ через API:</strong></p>
+                <p><span class="icon">1.</span> Добавьте бота администратором канала</p>
+                <p><span class="icon">2.</span> Отправьте любое сообщение в канал</p>
+                <p><span class="icon">3.</span> Откройте в браузере:</p>
+                <code>https://api.telegram.org/botYOUR_BOT_TOKEN/getUpdates</code>
+                <p><span class="icon">4.</span> Найдите в JSON объект "chat" с типом "channel" и скопируйте "id"</p>
+                
+                <div class="warning">
+                    ⚠️ <strong>Важно для каналов:</strong>
+                    <ul>
+                        <li>Chat ID канала всегда отрицательный и начинается с <code>-100</code></li>
+                        <li>Бот должен быть администратором канала с правами на публикацию</li>
+                        <li>Используйте Chat ID канала вместо личного ID в настройках</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h2>⚙️ Шаг 4: Настройка в программе</h2>
             <div class="step">
                 <p><span class="icon">1.</span> Нажмите кнопку "🤖 Telegram" в главном окне</p>
-                <p><span class="icon">2.</span> Введите ваш Токен бота и Chat ID</p>
+                <p><span class="icon">2.</span> Введите ваш Токен бота и Chat ID (личный или канала)</p>
                 <p><span class="icon">3.</span> Выберите какие уведомления вы хотите получать</p>
                 <p><span class="icon">4.</span> Нажмите "Проверить соединение" для проверки</p>
                 <p><span class="icon">5.</span> Сохраните настройки</p>
@@ -481,10 +522,51 @@ function showTelegramHelp(isRussian) {
                 <p><span class="icon">4.</span> Look for the "chat" object and copy the "id" value</p>
             </div>
 
-            <h2>⚙️ Step 3: Configure in the App</h2>
+            <h2>📢 Step 3: Add Bot to Channel (Optional)</h2>
+            <div class="step">
+                <p><strong>If you want to receive notifications in a Telegram channel:</strong></p>
+                
+                <p><strong>Create and configure channel:</strong></p>
+                <p><span class="icon">1.</span> Create a channel in Telegram (menu → New Channel)</p>
+                <p><span class="icon">2.</span> Name your channel (e.g., "3D Printer Notifications")</p>
+                <p><span class="icon">3.</span> Choose channel type: <strong>Private</strong> or <strong>Public</strong></p>
+                
+                <p><strong>Add bot as administrator:</strong></p>
+                <p><span class="icon">1.</span> Open channel settings (⋮ → Manage Channel)</p>
+                <p><span class="icon">2.</span> Go to <strong>Administrators</strong> → Add Administrator</p>
+                <p><span class="icon">3.</span> Find and select your bot (by username)</p>
+                <p><span class="icon">4.</span> Grant permissions: minimum required is <strong>"Post Messages"</strong></p>
+                <p><span class="icon">5.</span> Save changes</p>
+                
+                <p><strong>Get channel Chat ID:</strong></p>
+                <p><span class="icon">1.</span> Post any message in the channel</p>
+                <p><span class="icon">2.</span> Forward this message to <strong>@userinfobot</strong></p>
+                <p><span class="icon">3.</span> It will show the channel Chat ID (starts with <code>-100</code>)</p>
+                <div class="note">
+                    💡 <strong>Channel Chat ID example:</strong> <code>-1001234567890</code> (negative number for channels and groups)
+                </div>
+                
+                <p><strong>Alternative method via API:</strong></p>
+                <p><span class="icon">1.</span> Add bot as channel administrator</p>
+                <p><span class="icon">2.</span> Post any message to the channel</p>
+                <p><span class="icon">3.</span> Open in browser:</p>
+                <code>https://api.telegram.org/botYOUR_BOT_TOKEN/getUpdates</code>
+                <p><span class="icon">4.</span> Find the "chat" object with type "channel" and copy the "id"</p>
+                
+                <div class="warning">
+                    ⚠️ <strong>Important for channels:</strong>
+                    <ul>
+                        <li>Channel Chat ID is always negative and starts with <code>-100</code></li>
+                        <li>Bot must be channel administrator with posting permissions</li>
+                        <li>Use channel Chat ID instead of personal ID in settings</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h2>⚙️ Step 4: Configure in the App</h2>
             <div class="step">
                 <p><span class="icon">1.</span> Click the "🤖 Telegram" button in the main window</p>
-                <p><span class="icon">2.</span> Enter your Bot Token and Chat ID</p>
+                <p><span class="icon">2.</span> Enter your Bot Token and Chat ID (personal or channel)</p>
                 <p><span class="icon">3.</span> Choose which notifications you want to receive</p>
                 <p><span class="icon">4.</span> Click "Test Connection" to verify everything works</p>
                 <p><span class="icon">5.</span> Save the settings</p>

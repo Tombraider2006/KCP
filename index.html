@@ -287,6 +287,44 @@
         </div>
     </div>
 
+    <!-- Clear Analytics Confirmation Modal -->
+    <div id="clearAnalyticsModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 id="clearAnalyticsModalTitle">⚠️ Clear Analytics Data</h3>
+                <span class="close" onclick="closeClearAnalyticsModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p id="clearAnalyticsWarning1" style="font-size: 16px; line-height: 1.6; color: #e74c3c; font-weight: bold;">
+                    ⚠️ Warning! This action is irreversible!
+                </p>
+                <p id="clearAnalyticsWarning2" style="font-size: 14px; line-height: 1.6; margin-top: 15px;">
+                    All analytics data will be permanently deleted, including:
+                </p>
+                <ul style="margin-top: 10px; line-height: 1.8;">
+                    <li id="clearAnalyticsItem1">Print and idle time history</li>
+                    <li id="clearAnalyticsItem2">All status transition events</li>
+                    <li id="clearAnalyticsItem3">Inefficiency periods and operator reports</li>
+                    <li id="clearAnalyticsItem4">Energy consumption statistics</li>
+                </ul>
+                <p id="clearAnalyticsWarning3" style="font-size: 14px; line-height: 1.6; margin-top: 15px; color: #888;">
+                    Power settings (wattage, cost per kWh) will be preserved.
+                </p>
+                <p id="clearAnalyticsConfirm" style="font-size: 14px; line-height: 1.6; margin-top: 15px; font-weight: bold;">
+                    Are you sure you want to continue?
+                </p>
+                <div class="modal-footer" style="margin-top: 20px; gap: 10px;">
+                    <button class="btn btn-danger" onclick="confirmClearAnalytics()">
+                        <span id="clearAnalyticsYesBtn">Yes, Clear All Data</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="closeClearAnalyticsModal()">
+                        <span id="clearAnalyticsNoBtn">Cancel</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bambu Lab Info Modal -->
     <div id="bambuInfoModal" class="modal">
         <div class="modal-content" style="max-width: 500px;">

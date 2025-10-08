@@ -183,6 +183,19 @@ const TRANSLATIONS = {
         'bambu_info_message': 'Принтеры Bambu Lab используют мобильное приложение <strong>Bambu Handy</strong> или <strong>Bambu Studio</strong> для управления.',
         'bambu_info_no_web': 'Локальный веб-интерфейс недоступен для данного типа принтера.',
         
+        // Clear Analytics Modal
+        'clear_analytics_title': '⚠️ Очистить данные аналитики',
+        'clear_analytics_warning1': '⚠️ Внимание! Это действие необратимо!',
+        'clear_analytics_warning2': 'Все данные аналитики будут безвозвратно удалены, включая:',
+        'clear_analytics_item1': 'История времени печати и простоя',
+        'clear_analytics_item2': 'Все события изменения статуса',
+        'clear_analytics_item3': 'Периоды неэффективности и отчёты операторов',
+        'clear_analytics_item4': 'Статистика энергопотребления',
+        'clear_analytics_warning3': 'Настройки мощности (ватты, стоимость кВт⋅ч) будут сохранены.',
+        'clear_analytics_confirm': 'Вы уверены, что хотите продолжить?',
+        'clear_analytics_yes': 'Да, очистить все данные',
+        'clear_analytics_no': 'Отмена',
+        
         // Analytics Help
         'analytics_help': '❓ Помощь',
         'analytics_help_title': 'Справка по разделу Аналитика',
@@ -477,6 +490,19 @@ const TRANSLATIONS = {
         'bambu_info_modal_title': '🎋 Bambu Lab',
         'bambu_info_message': 'Bambu Lab printers use mobile app <strong>Bambu Handy</strong> or <strong>Bambu Studio</strong> for control.',
         'bambu_info_no_web': 'There is no local web interface available for this printer type.',
+        
+        // Clear Analytics Modal
+        'clear_analytics_title': '⚠️ Clear Analytics Data',
+        'clear_analytics_warning1': '⚠️ Warning! This action is irreversible!',
+        'clear_analytics_warning2': 'All analytics data will be permanently deleted, including:',
+        'clear_analytics_item1': 'Print and idle time history',
+        'clear_analytics_item2': 'All status transition events',
+        'clear_analytics_item3': 'Inefficiency periods and operator reports',
+        'clear_analytics_item4': 'Energy consumption statistics',
+        'clear_analytics_warning3': 'Power settings (wattage, cost per kWh) will be preserved.',
+        'clear_analytics_confirm': 'Are you sure you want to continue?',
+        'clear_analytics_yes': 'Yes, Clear All Data',
+        'clear_analytics_no': 'Cancel',
         
         // Analytics Help
         'analytics_help': '❓ Help',
