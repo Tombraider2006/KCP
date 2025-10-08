@@ -3468,6 +3468,10 @@ async function savePrintersToStorage() {
         if (p.type === 'klipper' || !p.type) {
             data.port = p.port;
             data.webPort = p.webPort;
+            // Сохраняем настройки температурных датчиков
+            if (p.customTempSensors) {
+                data.customTempSensors = p.customTempSensors;
+            }
         }
         
         // Bambu Lab-specific fields
