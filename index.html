@@ -287,6 +287,30 @@
         </div>
     </div>
 
+    <!-- Bambu Lab Info Modal -->
+    <div id="bambuInfoModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 id="bambuInfoModalTitle">🎋 Bambu Lab</h3>
+                <span class="close" onclick="closeBambuInfoModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 16px; line-height: 1.6;">
+                    <strong id="bambuPrinterName"></strong>
+                </p>
+                <p id="bambuInfoMessage" style="font-size: 14px; line-height: 1.6; margin-top: 15px;">
+                    ℹ️ Bambu Lab printers use mobile app <strong>Bambu Handy</strong> or <strong>Bambu Studio</strong> for control.
+                </p>
+                <p id="bambuInfoNoWeb" style="font-size: 14px; line-height: 1.6; margin-top: 10px; color: #888;">
+                    There is no local web interface available for this printer type.
+                </p>
+                <div class="modal-footer" style="margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="closeBambuInfoModal()">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Audio element for completion sound -->
     <audio id="completionSound" preload="auto">
         <source src="windows-xp-print-complete.mp3" type="audio/mpeg">

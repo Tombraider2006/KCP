@@ -178,6 +178,11 @@ const TRANSLATIONS = {
         'confirm_delete_printer': 'Вы уверены что хотите удалить принтер',
         'unknown_printer': 'Неизвестный принтер',
         
+        // Bambu Lab Info Modal
+        'bambu_info_modal_title': '🎋 Bambu Lab',
+        'bambu_info_message': 'Принтеры Bambu Lab используют мобильное приложение <strong>Bambu Handy</strong> или <strong>Bambu Studio</strong> для управления.',
+        'bambu_info_no_web': 'Локальный веб-интерфейс недоступен для данного типа принтера.',
+        
         // Analytics Help
         'analytics_help': '❓ Помощь',
         'analytics_help_title': 'Справка по разделу Аналитика',
@@ -239,6 +244,54 @@ const TRANSLATIONS = {
             <div class="help-section">
                 <h4>💾 Экспорт данных</h4>
                 <p>Используйте кнопку "Экспорт CSV" для сохранения детальной статистики в формате CSV для дальнейшего анализа в Excel или других программах.</p>
+            </div>
+            
+            <div class="help-section" style="background: #2a2a2a; padding: 15px; border-radius: 8px; border-left: 4px solid #00d4ff;">
+                <h4>⚡ Как рассчитать мощность 3D принтера</h4>
+                <p>Для точного расчёта энергопотребления необходимо знать мощность вашего принтера:</p>
+                
+                <h5 style="color: #00d4ff; margin-top: 15px;">📋 Способ 1: Спецификация производителя</h5>
+                <ul>
+                    <li>Проверьте техническую документацию принтера</li>
+                    <li>Посмотрите на наклейку на блоке питания (Voltage × Amperage = Watts)</li>
+                    <li>Пример: 24V × 15A = 360W (номинальная мощность)</li>
+                </ul>
+                
+                <h5 style="color: #00d4ff; margin-top: 15px;">📊 Способ 2: Измерение ваттметром</h5>
+                <ul>
+                    <li><strong>Рекомендуется!</strong> Используйте бытовой ваттметр (умную розетку с измерением мощности)</li>
+                    <li>Подключите принтер через ваттметр</li>
+                    <li>Измерьте реальное потребление во время печати (обычно 50-70% от номинала)</li>
+                    <li>Измерьте потребление в режиме ожидания (обычно 5-15W)</li>
+                </ul>
+                
+                <h5 style="color: #00d4ff; margin-top: 15px;">🔢 Способ 3: Расчёт по компонентам</h5>
+                <p>Суммируйте мощность основных компонентов:</p>
+                <ul>
+                    <li><strong>Нагревательный стол:</strong> обычно 150-300W (зависит от размера)</li>
+                    <li><strong>Хотенд:</strong> обычно 40-60W</li>
+                    <li><strong>Шаговые моторы:</strong> 4-6 моторов × 10-20W = 40-120W</li>
+                    <li><strong>Электроника:</strong> платы, дисплей ≈ 10-20W</li>
+                    <li><strong>Вентиляторы:</strong> 2-5W каждый</li>
+                    <li><strong>Освещение/камера:</strong> 5-10W (если есть)</li>
+                </ul>
+                <p><em>Пример расчёта: 200W (стол) + 50W (хотенд) + 80W (моторы) + 15W (электроника) + 10W (вентиляторы) = 355W</em></p>
+                
+                <h5 style="color: #00d4ff; margin-top: 15px;">💡 Типичные значения для разных принтеров</h5>
+                <ul>
+                    <li><strong>Малые принтеры</strong> (Ender 3, Prusa Mini): 120-200W печать, 5-10W простой</li>
+                    <li><strong>Средние принтеры</strong> (Prusa i3, Ender 5): 200-350W печать, 8-15W простой</li>
+                    <li><strong>Большие принтеры</strong> (CR-10, Voron): 350-600W печать, 10-20W простой</li>
+                    <li><strong>Bambu Lab</strong> (X1, P1): 250-400W печать, 10-15W простой</li>
+                </ul>
+                
+                <h5 style="color: #00d4ff; margin-top: 15px;">⚙️ Где вносить данные</h5>
+                <p>Перейдите в <strong>Аналитика → Настройки</strong> и укажите:</p>
+                <ul>
+                    <li><strong>Номинальная мощность (печать, Вт)</strong> — средняя мощность во время активной печати</li>
+                    <li><strong>Мощность простоя (Вт)</strong> — мощность когда принтер включен, но не печатает</li>
+                </ul>
+                <p style="margin-top: 10px; color: #888;"><em>💡 Совет: Лучше указать реальные измеренные значения для более точного расчёта стоимости энергии!</em></p>
             </div>
         `
     },
@@ -420,6 +473,11 @@ const TRANSLATIONS = {
         'confirm_delete_printer': 'Are you sure you want to delete printer',
         'unknown_printer': 'Unknown printer',
         
+        // Bambu Lab Info Modal
+        'bambu_info_modal_title': '🎋 Bambu Lab',
+        'bambu_info_message': 'Bambu Lab printers use mobile app <strong>Bambu Handy</strong> or <strong>Bambu Studio</strong> for control.',
+        'bambu_info_no_web': 'There is no local web interface available for this printer type.',
+        
         // Analytics Help
         'analytics_help': '❓ Help',
         'analytics_help_title': 'Analytics Section Help',
@@ -481,6 +539,54 @@ const TRANSLATIONS = {
             <div class="help-section">
                 <h4>💾 Data Export</h4>
                 <p>Use the "Export CSV" button to save detailed statistics in CSV format for further analysis in Excel or other programs.</p>
+            </div>
+            
+            <div class="help-section" style="background: #2a2a2a; padding: 15px; border-radius: 8px; border-left: 4px solid #00d4ff;">
+                <h4>⚡ How to Calculate 3D Printer Power Consumption</h4>
+                <p>For accurate energy consumption calculations, you need to know your printer's power consumption:</p>
+                
+                <h5 style="color: #00d4ff; margin-top: 15px;">📋 Method 1: Manufacturer Specifications</h5>
+                <ul>
+                    <li>Check the printer's technical documentation</li>
+                    <li>Look at the power supply label (Voltage × Amperage = Watts)</li>
+                    <li>Example: 24V × 15A = 360W (nominal power)</li>
+                </ul>
+                
+                <h5 style="color: #00d4ff; margin-top: 15px;">📊 Method 2: Measurement with Power Meter</h5>
+                <ul>
+                    <li><strong>Recommended!</strong> Use a household wattmeter (smart plug with power measurement)</li>
+                    <li>Connect the printer through the power meter</li>
+                    <li>Measure actual consumption during printing (usually 50-70% of nominal)</li>
+                    <li>Measure consumption in standby mode (usually 5-15W)</li>
+                </ul>
+                
+                <h5 style="color: #00d4ff; margin-top: 15px;">🔢 Method 3: Component Calculation</h5>
+                <p>Sum the power of main components:</p>
+                <ul>
+                    <li><strong>Heated bed:</strong> usually 150-300W (depends on size)</li>
+                    <li><strong>Hotend:</strong> usually 40-60W</li>
+                    <li><strong>Stepper motors:</strong> 4-6 motors × 10-20W = 40-120W</li>
+                    <li><strong>Electronics:</strong> boards, display ≈ 10-20W</li>
+                    <li><strong>Fans:</strong> 2-5W each</li>
+                    <li><strong>Lighting/camera:</strong> 5-10W (if present)</li>
+                </ul>
+                <p><em>Example calculation: 200W (bed) + 50W (hotend) + 80W (motors) + 15W (electronics) + 10W (fans) = 355W</em></p>
+                
+                <h5 style="color: #00d4ff; margin-top: 15px;">💡 Typical Values for Different Printers</h5>
+                <ul>
+                    <li><strong>Small printers</strong> (Ender 3, Prusa Mini): 120-200W printing, 5-10W idle</li>
+                    <li><strong>Medium printers</strong> (Prusa i3, Ender 5): 200-350W printing, 8-15W idle</li>
+                    <li><strong>Large printers</strong> (CR-10, Voron): 350-600W printing, 10-20W idle</li>
+                    <li><strong>Bambu Lab</strong> (X1, P1): 250-400W printing, 10-15W idle</li>
+                </ul>
+                
+                <h5 style="color: #00d4ff; margin-top: 15px;">⚙️ Where to Enter Data</h5>
+                <p>Go to <strong>Analytics → Settings</strong> and specify:</p>
+                <ul>
+                    <li><strong>Nominal printing power (W)</strong> — average power during active printing</li>
+                    <li><strong>Idle power (W)</strong> — power when printer is on but not printing</li>
+                </ul>
+                <p style="margin-top: 10px; color: #888;"><em>💡 Tip: It's better to specify real measured values for more accurate energy cost calculations!</em></p>
             </div>
         `
     }

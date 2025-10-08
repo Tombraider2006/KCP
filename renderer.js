@@ -300,6 +300,18 @@ function updateModalTranslations() {
         if (botTokenHelp) botTokenHelp.textContent = t('get_bot_token_from_botfather');
         if (chatIdHelp) chatIdHelp.textContent = t('send_start_to_bot');
     }
+    
+    // Обновляем модальное окно Bambu Lab Info
+    const bambuInfoModal = document.getElementById('bambuInfoModal');
+    if (bambuInfoModal) {
+        const title = bambuInfoModal.querySelector('#bambuInfoModalTitle');
+        const message = bambuInfoModal.querySelector('#bambuInfoMessage');
+        const noWeb = bambuInfoModal.querySelector('#bambuInfoNoWeb');
+        
+        if (title) title.innerHTML = t('bambu_info_modal_title');
+        if (message) message.innerHTML = `ℹ️ ${t('bambu_info_message')}`;
+        if (noWeb) noWeb.textContent = t('bambu_info_no_web');
+    }
 }
 
 // ===== ФУНКЦИИ ДЛЯ РАБОТЫ С ПРИНТЕРАМИ =====
@@ -509,6 +521,31 @@ function closeEditPrinterModal() {
     if (modal) modal.style.display = 'none';
 }
 
+function openBambuInfoModal(printerName) {
+    const modal = document.getElementById('bambuInfoModal');
+    const nameElement = document.getElementById('bambuPrinterName');
+    const title = document.getElementById('bambuInfoModalTitle');
+    const message = document.getElementById('bambuInfoMessage');
+    const noWeb = document.getElementById('bambuInfoNoWeb');
+    
+    if (modal && nameElement) {
+        // Устанавливаем имя принтера
+        nameElement.textContent = printerName;
+        
+        // Применяем переводы
+        if (title) title.innerHTML = t('bambu_info_modal_title');
+        if (message) message.innerHTML = `ℹ️ ${t('bambu_info_message')}`;
+        if (noWeb) noWeb.textContent = t('bambu_info_no_web');
+        
+        modal.style.display = 'block';
+    }
+}
+
+function closeBambuInfoModal() {
+    const modal = document.getElementById('bambuInfoModal');
+    if (modal) modal.style.display = 'none';
+}
+
 function removePrinter(printerId, event) {
     if (event) event.stopPropagation();
     
@@ -544,7 +581,7 @@ async function openPrinterWebInterface(printerId) {
     try {
         // Bambu Lab принтеры не имеют локального веб-интерфейса
         if (printer.type === 'bambu') {
-            addConsoleMessage(`ℹ️ ${printer.name} - Bambu Lab printers use mobile app (Bambu Handy) or Bambu Studio`, 'info');
+            openBambuInfoModal(printer.name);
             return;
         }
         
@@ -2408,10 +2445,12 @@ window.onclick = function(event) {
     const addModal = document.getElementById('addPrinterModal');
     const editModal = document.getElementById('editPrinterModal');
     const telegramModal = document.getElementById('telegramSettingsModal');
+    const bambuInfoModal = document.getElementById('bambuInfoModal');
     
     if (event.target === addModal) closeAddPrinterModal();
     if (event.target === editModal) closeEditPrinterModal();
     if (event.target === telegramModal) closeTelegramSettingsModal();
+    if (event.target === bambuInfoModal) closeBambuInfoModal();
 }
 
 document.addEventListener('keypress', function(event) {
