@@ -422,6 +422,12 @@ function showTelegramHelp(isRussian) {
                 <strong>Совет:</strong> Для тестирования вы можете временно включить все типы уведомлений, 
                 а после настройки оставить только нужные.
             </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <button onclick="window.close()" class="close-btn">
+                    ✅ Закрыть
+                </button>
+            </div>
         </div>
     </body>
     </html>
@@ -490,6 +496,27 @@ function showTelegramHelp(isRussian) {
             ul { padding-left: 20px; }
             li { margin: 8px 0; }
             .icon { font-size: 18px; margin-right: 8px; }
+            .close-btn {
+                background: #0088cc;
+                color: white;
+                border: none;
+                padding: 12px 30px;
+                border-radius: 6px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                box-shadow: 0 2px 8px rgba(0,136,204,0.3);
+                transition: all 0.3s ease;
+            }
+            .close-btn:hover {
+                background: #0099dd;
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0,136,204,0.5);
+            }
+            .close-btn:active {
+                transform: translateY(0);
+                box-shadow: 0 2px 6px rgba(0,136,204,0.4);
+            }
         </style>
     </head>
     <body>
@@ -614,6 +641,12 @@ function showTelegramHelp(isRussian) {
             <div class="note">
                 <strong>Tip:</strong> For testing, you can temporarily enable all notification types, 
                 and after setup leave only the ones you need.
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <button onclick="window.close()" class="close-btn">
+                    ✅ Close
+                </button>
             </div>
         </div>
     </body>

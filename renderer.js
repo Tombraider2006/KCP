@@ -1872,6 +1872,7 @@ function renderAnalyticsSettings() {
                     <option value="RUB" ${curr==='RUB'?'selected':''}>₽ RUB</option>
                     <option value="USD" ${curr==='USD'?'selected':''}>$ USD</option>
                     <option value="EUR" ${curr==='EUR'?'selected':''}>€ EUR</option>
+                    <option value="KZT" ${curr==='KZT'?'selected':''}>₸ KZT</option>
                 </select>
             </div>
             <div class="form-group">
@@ -1943,6 +1944,7 @@ function getCurrencySymbol(code) {
         case 'RUB': return '₽';
         case 'USD': return '$';
         case 'EUR': return '€';
+        case 'KZT': return '₸';
         default: return '';
     }
 }
