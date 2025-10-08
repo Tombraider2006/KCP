@@ -59,8 +59,26 @@ class KlipperAdapter extends PrinterAdapter {
     async getPrinterData() {
         try {
             const { ip, port } = this.printer;
+            
+            // Сначала получаем список всех доступных объектов
+            if (!this.availableObjects) {
+                await this.discoverObjects();
+            }
+            
+            // Формируем список объектов для запроса
+            let queryObjects = ['webhooks', 'print_stats', 'display_status', 'virtual_sdcard', 'extruder', 'heater_bed'];
+            
+            // Добавляем все найденные temperature_sensor объекты
+            if (this.availableObjects) {
+                const tempSensors = this.availableObjects.filter(obj => obj.startsWith('temperature_sensor '));
+                const tempFans = this.availableObjects.filter(obj => obj.startsWith('temperature_fan '));
+                const heaterGeneric = this.availableObjects.filter(obj => obj.startsWith('heater_generic '));
+                queryObjects = [...queryObjects, ...tempSensors, ...tempFans, ...heaterGeneric];
+            }
+            
+            const queryString = queryObjects.join('&');
             const response = await fetch(
-                `http://${ip}:${port}/printer/objects/query?webhooks&print_stats&display_status&virtual_sdcard&extruder&heater_bed&temperature_sensor&temperature_fan&heater_generic`,
+                `http://${ip}:${port}/printer/objects/query?${queryString}`,
                 { signal: AbortSignal.timeout(this.CONNECTION_TIMEOUT) }
             );
 
@@ -72,6 +90,10 @@ class KlipperAdapter extends PrinterAdapter {
                 }
 
                 this.updatePrinterStatus();
+                
+                // Отладка температурных сенсоров (можно убрать после диагностики)
+                this.debugTemperatureSensors();
+                
                 return this.printer.data;
             } else {
                 throw new Error(`HTTP ${response.status}`);
@@ -79,6 +101,30 @@ class KlipperAdapter extends PrinterAdapter {
         } catch (error) {
             console.error('Failed to get printer objects:', error);
             throw error;
+        }
+    }
+    
+    /**
+     * Получение списка доступных объектов принтера
+     */
+    async discoverObjects() {
+        try {
+            const { ip, port } = this.printer;
+            const response = await fetch(
+                `http://${ip}:${port}/printer/objects/list`,
+                { signal: AbortSignal.timeout(this.CONNECTION_TIMEOUT) }
+            );
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.result && data.result.objects) {
+                    this.availableObjects = data.result.objects;
+                    console.log('📋 Available printer objects:', this.availableObjects);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to discover printer objects:', error);
+            this.availableObjects = null;
         }
     }
 
@@ -102,31 +148,48 @@ class KlipperAdapter extends PrinterAdapter {
                     reject(new Error('WebSocket connection timeout'));
                 }, this.CONNECTION_TIMEOUT);
 
-                this.websocket.onopen = () => {
+                this.websocket.onopen = async () => {
                     clearTimeout(timeout);
                     this.printer.connectionType = 'WebSocket';
                     this.isConnected = true;
+
+                    // Получаем список доступных объектов, если еще не получили
+                    if (!this.availableObjects) {
+                        await this.discoverObjects();
+                    }
+
+                    // Формируем объекты для подписки
+                    const subscribeObjects = {
+                        "webhooks": null,
+                        "print_stats": ["state", "filename", "print_duration", "message", "total_duration"],
+                        "display_status": ["progress", "message"],
+                        "virtual_sdcard": ["progress", "is_active", "file_position", "file_path"],
+                        "extruder": ["temperature", "target"],
+                        "heater_bed": ["temperature", "target"]
+                    };
+                    
+                    // Добавляем все temperature_sensor объекты
+                    if (this.availableObjects) {
+                        this.availableObjects.forEach(obj => {
+                            if (obj.startsWith('temperature_sensor ') || 
+                                obj.startsWith('temperature_fan ') || 
+                                obj.startsWith('heater_generic ')) {
+                                subscribeObjects[obj] = null;
+                            }
+                        });
+                    }
 
                     // Подписка на обновления
                     const subscribeMessage = {
                         jsonrpc: "2.0",
                         method: "printer.objects.subscribe",
                         params: {
-                            objects: {
-                                "webhooks": null,
-                                "print_stats": ["state", "filename", "print_duration", "message", "total_duration"],
-                                "display_status": ["progress", "message"],
-                                "virtual_sdcard": ["progress", "is_active", "file_position", "file_path"],
-                                "extruder": ["temperature", "target"],
-                                "heater_bed": ["temperature", "target"],
-                                "temperature_sensor": null,
-                                "temperature_fan": null,
-                                "heater_generic": null
-                            }
+                            objects: subscribeObjects
                         },
                         id: Date.now()
                     };
 
+                    console.log('🔌 WebSocket subscription:', subscribeObjects);
                     this.websocket.send(JSON.stringify(subscribeMessage));
                     resolve(this.websocket);
                 };
@@ -313,50 +376,65 @@ class KlipperAdapter extends PrinterAdapter {
 
         return temps;
     }
+    
+    /**
+     * Отладка: показать все доступные температурные сенсоры
+     */
+    debugTemperatureSensors() {
+        console.log('🔍 === DEBUG: Temperature Sensors ===');
+        console.log('Available objects:', this.availableObjects);
+        console.log('');
+        
+        for (const [key, value] of Object.entries(this.printer.data)) {
+            if (key.startsWith('temperature_sensor ') || 
+                key.startsWith('temperature_fan ') || 
+                key.startsWith('heater_generic ')) {
+                
+                const temp = value && (value.temperature ?? value.temp ?? value.value);
+                console.log(`📊 ${key}:`, {
+                    temperature: temp,
+                    fullData: value
+                });
+            }
+        }
+        console.log('🔍 === END DEBUG ===');
+    }
 
     /**
      * Получение температуры камеры
      */
     getChamberTemperature() {
-        const tempSensors = this.printer.data.temperature_sensor || {};
-        const tempFans = this.printer.data.temperature_fan || {};
-        const heaterGeneric = this.printer.data.heater_generic || {};
-
         const matchName = (name) => {
             const n = (name || '').toLowerCase();
             return n.includes('chamber') || n.includes('enclosure') || n.includes('case');
         };
 
-        // Проверка temperature_sensor
-        for (const [sensorName, sensorData] of Object.entries(tempSensors)) {
+        // Проходим по всем ключам в printer.data
+        for (const [key, value] of Object.entries(this.printer.data)) {
+            // Ищем объекты temperature_sensor, temperature_fan, heater_generic
+            if (key.startsWith('temperature_sensor ') || 
+                key.startsWith('temperature_fan ') || 
+                key.startsWith('heater_generic ')) {
+                
+                const temp = value && (value.temperature ?? value.temp ?? value.value);
+                
+                // Если имя подходит и температура валидна
+                if (matchName(key) && temp !== undefined && temp !== null && temp > 0) {
+                    console.log(`🌡️ Chamber temperature found in ${key}: ${temp}°C`);
+                    return temp;
+                }
+            }
+        }
+
+        // Fallback: если есть только один temperature_sensor, используем его
+        const allTempSensors = Object.entries(this.printer.data)
+            .filter(([key]) => key.startsWith('temperature_sensor '));
+        
+        if (allTempSensors.length === 1) {
+            const [sensorKey, sensorData] = allTempSensors[0];
             const temp = sensorData && (sensorData.temperature ?? sensorData.temp ?? sensorData.value);
-            if (matchName(sensorName) && temp !== undefined && temp !== null && temp > 0) {
-                return temp;
-            }
-        }
-
-        // Проверка temperature_fan
-        for (const [fanName, fanData] of Object.entries(tempFans)) {
-            const temp = fanData && (fanData.temperature ?? fanData.temp ?? fanData.value);
-            if (matchName(fanName) && temp !== undefined && temp !== null && temp > 0) {
-                return temp;
-            }
-        }
-
-        // Проверка heater_generic
-        for (const [heaterName, heaterData] of Object.entries(heaterGeneric)) {
-            const temp = heaterData && (heaterData.temperature ?? heaterData.temp ?? heaterData.value);
-            if (matchName(heaterName) && temp !== undefined && temp !== null && temp > 0) {
-                return temp;
-            }
-        }
-
-        // Fallback: один сенсор
-        const sensorEntries = Object.entries(tempSensors);
-        if (sensorEntries.length === 1) {
-            const only = sensorEntries[0][1];
-            const temp = only && (only.temperature ?? only.temp ?? only.value);
             if (temp !== undefined && temp !== null && temp > 0) {
+                console.log(`🌡️ Using single temperature sensor ${sensorKey}: ${temp}°C`);
                 return temp;
             }
         }

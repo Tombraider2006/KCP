@@ -183,6 +183,9 @@ const TRANSLATIONS = {
         'clear_analytics': 'Очистить все данные аналитики',
         'analytics_saved': 'Стоимость энергии сохранена',
         'analytics_cleared': 'Данные аналитики очищены',
+        'export_analytics': '📥 Экспортировать статистику',
+        'export_analytics_hint': 'Экспорт всех данных аналитики в JSON файл для диагностики проблем',
+        'analytics_exported': 'Статистика экспортирована',
         'export_csv': 'Экспорт CSV',
         'wattage_title': 'Мощность принтера (Вт)',
         'wattage_print': 'Номинальная мощность (печать, Вт)',
@@ -372,7 +375,22 @@ const TRANSLATIONS = {
                 </ul>
                 <p style="margin-top: 10px; color: #888;"><em>💡 Совет: Лучше указать реальные измеренные значения для более точного расчёта стоимости энергии!</em></p>
             </div>
-        `
+        `,
+        
+        // Temperature Sensors Modal
+        'temp_sensors_modal_title': 'Расширенные настройки температуры',
+        'temp_sensors_for_advanced': 'Для продвинутых пользователей:',
+        'temp_sensors_description': 'Настройте, какие датчики температуры отображать.',
+        'temp_sensors_auto_recommended': 'Оставьте невыбранным для использования автоопределения (рекомендуется для большинства).',
+        'temp_sensors_tip': 'Совет:',
+        'temp_sensors_tip_text': 'Выберите только те датчики, которые хотите видеть. Если ничего не выбрано, приложение автоматически определит температуру камеры по имени. Большинству пользователей ничего здесь менять не нужно.',
+        'temp_sensors_save_custom': 'Сохранить выбор',
+        'temp_sensors_use_auto': 'Использовать автоопределение',
+        'temp_sensors_chamber_hint': '🏠 Температура камеры',
+        'temp_sensors_mcu_hint': '🔧 Температура платы',
+        'temp_sensors_rpi_hint': '💻 Компьютер хоста',
+        'temp_sensors_room_hint': '🌡️ Температура окружения',
+        'temp_sensors_generic_hint': '📊 Датчик температуры'
     },
     en: {
         // Statuses
@@ -557,6 +575,9 @@ const TRANSLATIONS = {
         'clear_analytics': 'Clear all analytics data',
         'analytics_saved': 'Energy cost saved',
         'analytics_cleared': 'Analytics data cleared',
+        'export_analytics': '📥 Export Statistics',
+        'export_analytics_hint': 'Export all analytics data to JSON file for diagnostics',
+        'analytics_exported': 'Statistics exported',
         'export_csv': 'Export CSV',
         'wattage_title': 'Printer wattage (W)',
         'wattage_print': 'Nominal printing power (W)',
@@ -746,7 +767,22 @@ const TRANSLATIONS = {
                 </ul>
                 <p style="margin-top: 10px; color: #888;"><em>💡 Tip: It's better to specify real measured values for more accurate energy cost calculations!</em></p>
             </div>
-        `
+        `,
+        
+        // Temperature Sensors Modal
+        'temp_sensors_modal_title': 'Advanced Temperature Settings',
+        'temp_sensors_for_advanced': 'For advanced users:',
+        'temp_sensors_description': 'Customize which temperature sensors to display.',
+        'temp_sensors_auto_recommended': 'Leave unchecked to use automatic detection (recommended for most users).',
+        'temp_sensors_tip': 'Tip:',
+        'temp_sensors_tip_text': 'Select only the sensors you want to display. If you don\'t select any, the app will automatically detect chamber temperature by name. Most users don\'t need to change anything here.',
+        'temp_sensors_save_custom': 'Save Custom Selection',
+        'temp_sensors_use_auto': 'Use Auto Detection',
+        'temp_sensors_chamber_hint': '🏠 Chamber temperature',
+        'temp_sensors_mcu_hint': '🔧 Board temperature',
+        'temp_sensors_rpi_hint': '💻 Host computer',
+        'temp_sensors_room_hint': '🌡️ Ambient temperature',
+        'temp_sensors_generic_hint': '📊 Temperature sensor'
     }
 };
 

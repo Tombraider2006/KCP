@@ -66,22 +66,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 async function initApp() {
-    // Загружаем язык из хранилища
-    if (window.electronAPI && window.electronAPI.storeGet) {
-        const savedLang = await window.electronAPI.storeGet('appLanguage', null);
-        if (savedLang && typeof updateLanguage === 'function') {
-            await updateLanguage(savedLang);
-        }
-    }
-    
-    // Получаем версию приложения
+    // ОПТИМИЗАЦИЯ: Сначала настраиваем обработчики (не требует await)
     if (window.electronAPI) {
-        const version = await window.electronAPI.getAppVersion();
-        const appVersionElement = document.getElementById('appVersion');
-        if (appVersionElement) {
-            appVersionElement.textContent = `v${version}`;
-        }
-        
         // Настраиваем обработчики меню
         window.electronAPI.onMenuAddPrinter(() => {
             openAddPrinterModal();
@@ -114,21 +100,49 @@ async function initApp() {
         }
     }
     
-    updateInterfaceLanguage();
-    await loadPrintersFromStorage();
-    updatePrintersDisplay();
-    startPeriodicUpdates();
+    // ОПТИМИЗАЦИЯ: Загружаем язык и данные параллельно
+    const loadLanguagePromise = (async () => {
+        if (window.electronAPI && window.electronAPI.storeGet) {
+            const savedLang = await window.electronAPI.storeGet('appLanguage', null);
+            if (savedLang && typeof updateLanguage === 'function') {
+                await updateLanguage(savedLang);
+            }
+        }
+    })();
     
-    // Загружаем настройки Telegram
-    await loadTelegramSettings();
-    // Загружаем аналитику
-    await loadAnalytics();
+    const loadDataPromise = Promise.all([
+        loadPrintersFromStorage(),
+        loadTelegramSettings(),
+        loadAnalytics()
+    ]);
+    
+    // Пока данные грузятся, показываем версию
+    if (window.electronAPI) {
+        window.electronAPI.getAppVersion().then(version => {
+            const appVersionElement = document.getElementById('appVersion');
+            if (appVersionElement) {
+                appVersionElement.textContent = `v${version}`;
+            }
+        });
+    }
+    
+    // Ждем завершения загрузки языка и данных параллельно
+    await Promise.all([loadLanguagePromise, loadDataPromise]);
+    
+    // Обновляем интерфейс один раз
+    updateInterfaceLanguage();
+    updatePrintersDisplay();
     
     addConsoleMessage(t('panel_started'), 'info');
     addConsoleMessage(t('add_printers_hint'), 'info');
     
-    // Отправляем уведомление о старте программы в Telegram
-    sendProgramStartNotification();
+    // Запускаем периодические обновления
+    startPeriodicUpdates();
+    
+    // ОПТИМИЗАЦИЯ: Отправляем уведомление в фоне, не блокируя загрузку
+    setTimeout(() => {
+        sendProgramStartNotification();
+    }, 1000);
 }
 
 // ===== ANALYTICS PERSISTENCE =====
@@ -178,6 +192,23 @@ function debugPrinterData(printer, source) {
     console.log('Virtual SD:', printer.data.virtual_sdcard || 'N/A');
     console.log('Display Status:', printer.data.display_status || 'N/A');
     console.log('Filename from getFileName:', getFileName(printer));
+    
+    // Показываем все температурные сенсоры
+    console.log('🌡️ Temperature Sensors:');
+    let foundSensors = false;
+    for (const [key, value] of Object.entries(printer.data)) {
+        if (key.startsWith('temperature_sensor ') || 
+            key.startsWith('temperature_fan ') || 
+            key.startsWith('heater_generic ')) {
+            const temp = value && (value.temperature ?? value.temp ?? value.value);
+            console.log(`  📊 ${key}: ${temp}°C`, value);
+            foundSensors = true;
+        }
+    }
+    if (!foundSensors) {
+        console.log('  ❌ No temperature sensors found');
+    }
+    
     console.log('================================');
 }
 
@@ -336,6 +367,24 @@ function updateModalTranslations() {
     
     // Обновляем модальное окно Inefficiency Comment
     updateInefficiencyCommentModalTranslations();
+    
+    // Обновляем модальное окно Temperature Sensors
+    const tempSensorsModal = document.getElementById('tempSensorsModal');
+    if (tempSensorsModal) {
+        const modalTitle = document.getElementById('tempSensorsModalTitle');
+        const forAdvanced = document.getElementById('tempSensorsForAdvanced');
+        const descText = document.getElementById('tempSensorsDescText');
+        const autoRecommended = document.getElementById('tempSensorsAutoRecommended');
+        const saveBtn = document.getElementById('tempSensorsSaveBtn');
+        const skipBtn = document.getElementById('tempSensorsSkipBtn');
+        
+        if (modalTitle) modalTitle.textContent = t('temp_sensors_modal_title');
+        if (forAdvanced) forAdvanced.textContent = t('temp_sensors_for_advanced');
+        if (descText) descText.textContent = t('temp_sensors_description');
+        if (autoRecommended) autoRecommended.textContent = t('temp_sensors_auto_recommended');
+        if (saveBtn) saveBtn.textContent = t('temp_sensors_save_custom');
+        if (skipBtn) skipBtn.textContent = t('temp_sensors_use_auto');
+    }
 }
 
 // ===== ФУНКЦИИ ДЛЯ РАБОТЫ С ПРИНТЕРАМИ =====
@@ -1537,11 +1586,52 @@ async function testKlipperConnection(printer, isManualCheck = false) {
     updatePrintersCounter();
     
     debugPrinterData(printer, 'test connection');
+    
+    // НЕ показываем модальное окно автоматически - пусть работает автоопределение
+    // Пользователь может открыть настройки вручную через кнопку 🌡️
+}
+
+async function discoverPrinterObjects(printer) {
+    try {
+        const response = await fetch(`http://${printer.ip}:${printer.port}/printer/objects/list`, {
+            signal: AbortSignal.timeout(CONFIG.CONNECTION_TIMEOUT)
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.result && data.result.objects) {
+                printer.availableObjects = data.result.objects;
+                console.log(`📋 ${printer.name} - Available objects:`, printer.availableObjects);
+            }
+        }
+    } catch (error) {
+        console.log(`Failed to discover objects for ${printer.name}:`, error);
+        printer.availableObjects = null;
+    }
 }
 
 async function getPrinterObjects(printer) {
     try {
-        const response = await fetch(`http://${printer.ip}:${printer.port}/printer/objects/query?webhooks&print_stats&display_status&virtual_sdcard&extruder&heater_bed&temperature_sensor&temperature_fan&heater_generic`, {
+        // Сначала получаем список всех доступных объектов
+        if (!printer.availableObjects) {
+            await discoverPrinterObjects(printer);
+        }
+        
+        // Формируем список объектов для запроса
+        let queryObjects = ['webhooks', 'print_stats', 'display_status', 'virtual_sdcard', 'extruder', 'heater_bed'];
+        
+        // Добавляем все найденные temperature_sensor объекты
+        if (printer.availableObjects) {
+            const tempSensors = printer.availableObjects.filter(obj => obj.startsWith('temperature_sensor '));
+            const tempFans = printer.availableObjects.filter(obj => obj.startsWith('temperature_fan '));
+            const heaterGeneric = printer.availableObjects.filter(obj => obj.startsWith('heater_generic '));
+            queryObjects = [...queryObjects, ...tempSensors, ...tempFans, ...heaterGeneric];
+            
+            console.log(`🌡️ ${printer.name} - Temperature sensors found:`, [...tempSensors, ...tempFans, ...heaterGeneric]);
+        }
+        
+        const queryString = queryObjects.join('&');
+        const response = await fetch(`http://${printer.ip}:${printer.port}/printer/objects/query?${queryString}`, {
             signal: AbortSignal.timeout(CONFIG.CONNECTION_TIMEOUT)
         });
         
@@ -1580,28 +1670,47 @@ function setupWebSocketConnection(printer) {
                 reject(new Error('WebSocket connection timeout'));
             }, CONFIG.CONNECTION_TIMEOUT);
             
-            websocket.onopen = function(event) {
+            websocket.onopen = async function(event) {
                 clearTimeout(timeout);
                 addConsoleMessage(`🔗 ${printer.name} - ${t('websocket_connected')}`, 'info');
                 printer.connectionType = 'WebSocket';
+                
+                // Получаем список доступных объектов, если еще не получили
+                if (!printer.availableObjects) {
+                    await discoverPrinterObjects(printer);
+                }
+                
+                // Формируем объекты для подписки
+                const subscribeObjects = {
+                    "webhooks": null,
+                    "print_stats": ["state", "filename", "print_duration", "message", "total_duration"],
+                    "display_status": ["progress", "message"],
+                    "virtual_sdcard": ["progress", "is_active", "file_position", "file_path"],
+                    "extruder": ["temperature", "target"],
+                    "heater_bed": ["temperature", "target"]
+                };
+                
+                // Добавляем все temperature_sensor объекты
+                if (printer.availableObjects) {
+                    printer.availableObjects.forEach(obj => {
+                        if (obj.startsWith('temperature_sensor ') || 
+                            obj.startsWith('temperature_fan ') || 
+                            obj.startsWith('heater_generic ')) {
+                            subscribeObjects[obj] = null;
+                        }
+                    });
+                }
                 
                 const subscribeMessage = {
                     jsonrpc: "2.0",
                     method: "printer.objects.subscribe",
                     params: {
-                        objects: {
-                            "webhooks": null,
-                            "print_stats": ["state", "filename", "print_duration", "message", "total_duration"],
-                            "display_status": ["progress", "message"],
-                            "virtual_sdcard": ["progress", "is_active", "file_position", "file_path"],
-                            "extruder": ["temperature", "target"],
-                            "heater_bed": ["temperature", "target"],
-                            "temperature_sensor": null
-                        }
+                        objects: subscribeObjects
                     },
                     id: Date.now()
                 };
                 
+                console.log(`🔌 ${printer.name} - WebSocket subscription:`, Object.keys(subscribeObjects));
                 websocket.send(JSON.stringify(subscribeMessage));
                 resolve(websocket);
             };
@@ -1885,6 +1994,11 @@ function updatePrintersDisplay() {
                 <button class="btn btn-warning btn-small" onclick="testPrinterConnection(printers.find(p => p.id === '${printer.id}'), true)">
                     ${t('test')}
                 </button>
+                ${printer.type === 'klipper' ? `
+                <button class="btn btn-info btn-small" onclick="openTempSensorsEditor('${printer.id}', event)" title="Advanced: Configure temperature sensors">
+                    🌡️
+                </button>
+                ` : ''}
                 <button class="btn btn-danger btn-small" onclick="removePrinter('${printer.id}', event)">
                     ${t('remove')}
                 </button>
@@ -2265,6 +2379,11 @@ function renderAnalyticsSettings() {
             <div class="form-group">
                 <button class="btn btn-danger" id="clearAnalyticsBtn">🧹 Очистить все данные аналитики</button>
             </div>
+            <div class="form-group" style="margin-top: 25px; padding: 15px; background: rgba(46, 204, 113, 0.1); border: 1px solid rgba(46, 204, 113, 0.3); border-radius: 5px;">
+                <h5 style="color: #2ecc71; margin-bottom: 10px;">📥 Экспорт данных</h5>
+                <p style="font-size: 13px; color: #aaa; margin-bottom: 10px;">${t('export_analytics_hint')}</p>
+                <button class="btn btn-primary" id="exportAnalyticsBtn">${t('export_analytics')}</button>
+            </div>
         </div>
     `;
 }
@@ -2300,6 +2419,12 @@ function bindAnalyticsSettingsHandlers() {
     if (clearBtn) {
         clearBtn.onclick = () => {
             openClearAnalyticsModal();
+        };
+    }
+    const exportBtn = document.getElementById('exportAnalyticsBtn');
+    if (exportBtn) {
+        exportBtn.onclick = () => {
+            exportAnalytics();
         };
     }
 }
@@ -2944,7 +3069,7 @@ function updatePrinterDisplay(printer) {
         progressElement.classList.toggle('progress-100-animation', getProgress(printer) === '100%');
     }
     if (fileElement) fileElement.textContent = getFileName(printer);
-    if (tempElement) tempElement.textContent = getTemperatures(printer);
+    if (tempElement) tempElement.innerHTML = getTemperatures(printer); // Используем innerHTML для поддержки HTML-форматирования
     if (updatedElement && printer.lastUpdate) {
         updatedElement.textContent = formatTime(printer.lastUpdate);
     }
@@ -3046,17 +3171,25 @@ function getTemperatures(printer) {
     const extruder = printer.data.extruder || {};
     const bed = printer.data.heater_bed || {};
     
-    const extruderTemp = extruder.temperature?.toFixed(1) || '0';
+    const extruderTemp = parseFloat(extruder.temperature) || 0;
     const extruderTarget = extruder.target > 0 ? extruder.target : '';
-    const bedTemp = bed.temperature?.toFixed(1) || '0';
+    const bedTemp = parseFloat(bed.temperature) || 0;
     const bedTarget = bed.target > 0 ? bed.target : '';
     
-    let result = `${t('nozzle')} ${extruderTemp}°C`;
+    // Форматируем температуру сопла (красный если > 170°C)
+    let extruderHtml = `${t('nozzle')} `;
+    if (extruderTemp > 170) {
+        extruderHtml += `<span style="color: #ff4444; font-weight: bold;">${extruderTemp.toFixed(1)}°C</span>`;
+    } else {
+        extruderHtml += `${extruderTemp.toFixed(1)}°C`;
+    }
     if (extruderTarget) {
-        result += ` / ${extruderTarget}°C`;
+        extruderHtml += ` / ${extruderTarget}°C`;
     }
     
-    result += ` | ${t('bed')} ${bedTemp}°C`;
+    let result = extruderHtml;
+    
+    result += ` | ${t('bed')} ${bedTemp.toFixed(1)}°C`;
     if (bedTarget) {
         result += ` / ${bedTarget}°C`;
     }
@@ -3070,45 +3203,80 @@ function getTemperatures(printer) {
 }
 
 function getChamberTemperature(printer) {
-    const tempSensors = printer.data.temperature_sensor || {};
-    const tempFans = printer.data.temperature_fan || {};
-    const heaterGeneric = printer.data.heater_generic || {};
-
+    // Функция для проверки, является ли датчик MCU
+    function isMCUSensor(sensorKey, label) {
+        const key = (sensorKey || '').toLowerCase();
+        const lbl = (label || '').toLowerCase();
+        return key.includes('mcu') || key.includes('mainboard') || key.includes('board') ||
+               lbl.includes('mcu') || lbl.includes('mainboard') || lbl.includes('board');
+    }
+    
+    // Функция для форматирования температуры с предупреждениями
+    function formatTemperature(temp, label, sensorKey, target) {
+        const tempValue = Number(temp).toFixed(1);
+        const isMCU = isMCUSensor(sensorKey, label);
+        
+        // MCU > 60°C: красный + шрифт x2
+        if (isMCU && temp > 60) {
+            const tempHtml = `<span style="color: #ff4444; font-size: 2em; font-weight: bold;">${tempValue}°C</span>`;
+            if (target && target > 0) {
+                return `${label}: ${tempHtml} / ${Number(target).toFixed(1)}°C`;
+            }
+            return `${label}: ${tempHtml}`;
+        }
+        
+        // Обычное отображение
+        if (target && target > 0) {
+            return `${label}: ${tempValue}°C / ${Number(target).toFixed(1)}°C`;
+        }
+        return `${label}: ${tempValue}°C`;
+    }
+    
+    // Если пользователь выбрал custom сенсоры, используем их
+    if (printer.customTempSensors && printer.customTempSensors.length > 0) {
+        const results = [];
+        
+        for (const sensor of printer.customTempSensors) {
+            const sensorData = printer.data[sensor.key];
+            if (sensorData) {
+                const temp = sensorData.temperature ?? sensorData.temp ?? sensorData.value;
+                if (temp !== undefined && temp !== null) {
+                    const target = sensorData.target;
+                    results.push(formatTemperature(temp, sensor.label, sensor.key, target));
+                }
+            }
+        }
+        
+        return results.length > 0 ? results.join(' | ') : null;
+    }
+    
+    // Fallback: старый метод автоматического поиска (для совместимости со старыми принтерами)
     function matchName(name) {
         const n = (name || '').toLowerCase();
         return n.includes('chamber') || n.includes('enclosure') || n.includes('case') || n.includes('chamber_temp') || name === 'Chamber Temp';
     }
 
-    // 1) Try explicit matches in temperature_sensor
-    for (const [sensorName, sensorData] of Object.entries(tempSensors)) {
-        const temp = sensorData && (sensorData.temperature ?? sensorData.temp ?? sensorData.value);
-        if (matchName(sensorName) && temp !== undefined && temp !== null && temp > 0) {
-            return `${t('chamber')}: ${Number(temp).toFixed(1)}°C`;
-        }
-    }
-    // 2) Try explicit matches in temperature_fan
-    for (const [fanName, fanData] of Object.entries(tempFans)) {
-        const temp = fanData && (fanData.temperature ?? fanData.temp ?? fanData.value);
-        if (matchName(fanName) && temp !== undefined && temp !== null && temp > 0) {
-            return `${t('chamber')}: ${Number(temp).toFixed(1)}°C`;
-        }
-    }
-    // 3) Try explicit matches in heater_generic
-    for (const [heaterName, heaterData] of Object.entries(heaterGeneric)) {
-        const temp = heaterData && (heaterData.temperature ?? heaterData.temp ?? heaterData.value);
-        if (matchName(heaterName) && temp !== undefined && temp !== null && temp > 0) {
-            const target = heaterData.target > 0 ? heaterData.target : '';
-            return target ? `${t('chamber')}: ${Number(temp).toFixed(1)}°C / ${target}°C` : `${t('chamber')}: ${Number(temp).toFixed(1)}°C`;
-        }
-    }
-
-    // 4) Fallback: if there is exactly one temperature_sensor and it's valid, treat as chamber
-    const sensorEntries = Object.entries(tempSensors);
-    if (sensorEntries.length === 1) {
-        const only = sensorEntries[0][1];
-        const temp = only && (only.temperature ?? only.temp ?? only.value);
-        if (temp !== undefined && temp !== null && temp > 0) {
-            return `${t('chamber')}: ${Number(temp).toFixed(1)}°C`;
+    // Проходим по всем ключам в printer.data
+    for (const [key, value] of Object.entries(printer.data)) {
+        // Ищем объекты temperature_sensor, temperature_fan, heater_generic
+        if (key.startsWith('temperature_sensor ') || 
+            key.startsWith('temperature_fan ') || 
+            key.startsWith('heater_generic ')) {
+            
+            const temp = value && (value.temperature ?? value.temp ?? value.value);
+            
+            // Если имя подходит и температура валидна
+            if (matchName(key) && temp !== undefined && temp !== null && temp > 0) {
+                console.log(`🌡️ ${printer.name} - Chamber temperature found in "${key}": ${temp}°C`);
+                
+                // Если есть target (для heater_generic)
+                const target = value.target;
+                if (target && target > 0) {
+                    return `${t('chamber')}: ${Number(temp).toFixed(1)}°C / ${Number(target).toFixed(1)}°C`;
+                }
+                
+                return `${t('chamber')}: ${Number(temp).toFixed(1)}°C`;
+            }
         }
     }
 
@@ -3152,6 +3320,122 @@ function exportLogs() {
     a.download = `3d-printer-logs-${new Date().toISOString().slice(0, 19)}.txt`;
     a.click();
     URL.revokeObjectURL(url);
+}
+
+function exportAnalytics() {
+    try {
+        // Получаем текущие фильтры из UI
+        const period = document.getElementById('analyticsPeriod')?.value || '7d';
+        const printerId = document.getElementById('analyticsPrinter')?.value || 'all';
+        
+        // Получаем custom range если установлен
+        let customRange = null;
+        if (period === 'custom') {
+            const fromStr = document.getElementById('analyticsFrom')?.value;
+            const toStr = document.getElementById('analyticsTo')?.value;
+            if (fromStr && toStr) {
+                customRange = {
+                    from: new Date(fromStr).getTime(),
+                    to: new Date(toStr + 'T23:59:59').getTime()
+                };
+            }
+        }
+        
+        // Вычисляем статистику для текущих фильтров
+        const stats = computeAnalytics(period, printerId, customRange);
+        
+        // Получаем информацию о принтерах
+        const printersInfo = printers.map(p => ({
+            id: p.id,
+            name: p.name,
+            type: p.type,
+            ip: p.ip,
+            wattage: analytics.wattageByPrinter[p.id] || { print: 120, idle: 8 }
+        }));
+        
+        // Получаем комментарии к неэффективности
+        const inefficiencyComments = {};
+        Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('ineff-comment-')) {
+                inefficiencyComments[key] = getInefficiencyReason(key);
+            }
+        });
+        
+        // Формируем полный экспорт
+        const exportData = {
+            exportInfo: {
+                version: '1.0',
+                appVersion: APP_VERSION,
+                exportDate: new Date().toISOString(),
+                exportTimestamp: Date.now(),
+                language: currentLanguage
+            },
+            filters: {
+                period: period,
+                printerId: printerId,
+                printerName: printerId === 'all' ? 'All Printers' : (printers.find(p => String(p.id) === String(printerId))?.name || 'Unknown'),
+                customRange: customRange ? {
+                    from: new Date(customRange.from).toISOString(),
+                    to: new Date(customRange.to).toISOString()
+                } : null
+            },
+            statistics: {
+                totalPrintTime: stats.printTime,
+                totalIdleTime: stats.idleTime,
+                efficiency: stats.efficiency,
+                energyConsumption: stats.energyKwh,
+                energyCost: stats.energyCost,
+                totalEvents: stats.totalEvents,
+                printingEvents: stats.printingEvents,
+                completeEvents: stats.completeEvents,
+                errorEvents: stats.errorEvents,
+                pauseEvents: stats.pauseEvents
+            },
+            printers: printersInfo,
+            analyticsSettings: {
+                energyCostPerKwh: analytics.energyCostPerKwh,
+                currency: analytics.currency,
+                wattageByPrinter: analytics.wattageByPrinter
+            },
+            rawEvents: analytics.events.map(e => ({
+                printerId: e.printerId,
+                printerName: printers.find(p => String(p.id) === String(e.printerId))?.name || `Printer ${e.printerId}`,
+                timestamp: new Date(e.ts).toISOString(),
+                timestampMs: e.ts,
+                fromStatus: e.from,
+                toStatus: e.to
+            })),
+            inefficiencyComments: inefficiencyComments,
+            systemInfo: {
+                totalPrinters: printers.length,
+                totalAnalyticsEvents: analytics.events.length,
+                dataRetentionDays: 90
+            }
+        };
+        
+        // Создаем JSON строку с форматированием для читаемости
+        const jsonStr = JSON.stringify(exportData, null, 2);
+        
+        // Создаем blob и скачиваем файл
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        
+        // Формируем имя файла с датой и временем
+        const now = new Date();
+        const dateStr = now.toISOString().slice(0, 19).replace(/:/g, '-');
+        a.download = `3DC-analytics-export-${dateStr}.json`;
+        
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        addConsoleMessage('📥 ' + t('analytics_exported'), 'success');
+        
+    } catch (error) {
+        console.error('Error exporting analytics:', error);
+        addConsoleMessage('❌ Error exporting analytics: ' + error.message, 'error');
+    }
 }
 
 async function testAllConnections() {
@@ -3230,9 +3514,13 @@ async function loadPrintersFromStorage() {
     }));
     
     sortPrinters();
-    for (const printer of printers) {
-        testPrinterConnection(printer);
-    }
+    
+    // ОПТИМИЗАЦИЯ: Тестируем подключения асинхронно, не блокируя запуск
+    setTimeout(() => {
+        printers.forEach(printer => {
+            testPrinterConnection(printer);
+        });
+    }, 500);
 }
 
 function startPeriodicUpdates() {
@@ -3566,6 +3854,198 @@ function sendPrinterDataToBambuInterface(printerId) {
     }
 }
 
+// ===== TEMPERATURE SENSORS SELECTION =====
+
+let currentPrinterForTempSelection = null;
+
+function openTempSensorsEditor(printerId, event) {
+    if (event) event.stopPropagation();
+    const printer = printers.find(p => p.id === printerId);
+    if (!printer) return;
+    
+    // Убедимся что у принтера есть availableObjects
+    if (!printer.availableObjects) {
+        addConsoleMessage(`⚠️ ${printer.name} - Discovering sensors...`, 'warning');
+        discoverPrinterObjects(printer).then(() => {
+            if (printer.availableObjects) {
+                showTempSensorsModal(printer, true);
+            } else {
+                addConsoleMessage(`❌ ${printer.name} - Failed to discover sensors`, 'error');
+            }
+        });
+    } else {
+        showTempSensorsModal(printer, true);
+    }
+}
+
+function showTempSensorsModal(printer, isEdit = false) {
+    currentPrinterForTempSelection = printer;
+    
+    const modal = document.getElementById('tempSensorsModal');
+    const content = document.getElementById('tempSensorsContent');
+    
+    if (!modal || !content) return;
+    
+    // Получаем все температурные сенсоры
+    const tempSensors = [];
+    if (printer.availableObjects) {
+        printer.availableObjects.forEach(obj => {
+            if (obj.startsWith('temperature_sensor ') || 
+                obj.startsWith('temperature_fan ') || 
+                obj.startsWith('heater_generic ')) {
+                tempSensors.push(obj);
+            }
+        });
+    }
+    
+    if (tempSensors.length === 0) {
+        content.innerHTML = '<p style="color: #888;">⚠️ No additional temperature sensors found on this printer.</p>';
+        return;
+    }
+    
+    // Функция для автоматического определения названия и описания
+    function getSensorSuggestion(sensorKey) {
+        const name = sensorKey.toLowerCase();
+        
+        if (name.includes('chamber') || name.includes('enclosure') || name.includes('case')) {
+            return { label: 'Chamber', hint: t('temp_sensors_chamber_hint'), shouldCheck: true };
+        }
+        if (name.includes('mcu') || name.includes('mainboard') || name.includes('board')) {
+            return { label: 'MCU', hint: t('temp_sensors_mcu_hint'), shouldCheck: false };
+        }
+        if (name.includes('raspberry') || name.includes('pi') || name.includes('host')) {
+            return { label: 'RPi', hint: t('temp_sensors_rpi_hint'), shouldCheck: false };
+        }
+        if (name.includes('ambient') || name.includes('room')) {
+            return { label: 'Room', hint: t('temp_sensors_room_hint'), shouldCheck: false };
+        }
+        
+        // По умолчанию - берём короткое имя
+        const shortName = sensorKey.replace('temperature_sensor ', '')
+                                   .replace('temperature_fan ', '')
+                                   .replace('heater_generic ', '');
+        return { label: shortName, hint: t('temp_sensors_generic_hint'), shouldCheck: false };
+    }
+    
+    // Генерируем HTML для списка сенсоров
+    let html = `
+        <div style="background: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 2px solid #4CAF50;">
+            <div style="font-size: 14px; color: #4CAF50; margin-bottom: 5px;">💡 <strong>${t('temp_sensors_tip')}</strong></div>
+            <div style="font-size: 13px; color: #ccc; line-height: 1.5;">
+                ${t('temp_sensors_tip_text')}
+            </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+    `;
+    
+    tempSensors.forEach((sensor, index) => {
+        // Получаем текущие данные сенсора если они есть
+        const sensorData = printer.data[sensor];
+        const currentTemp = sensorData ? (sensorData.temperature ?? sensorData.temp ?? sensorData.value ?? '—') : '—';
+        const tempDisplay = currentTemp !== '—' ? `${Number(currentTemp).toFixed(1)}°C` : '—';
+        
+        // Получаем умное предложение для этого сенсора
+        const suggestion = getSensorSuggestion(sensor);
+        
+        // Красивое имя (убираем префикс)
+        const displayName = sensor.replace('temperature_sensor ', '')
+                                  .replace('temperature_fan ', '')
+                                  .replace('heater_generic ', '');
+        
+        // Проверяем, выбран ли этот сенсор уже (проверяем customTempSensors независимо от isEdit)
+        const existingSensor = printer.customTempSensors && Array.isArray(printer.customTempSensors)
+            ? printer.customTempSensors.find(s => s.key === sensor)
+            : null;
+        
+        // Если уже выбран - используем существующие настройки, иначе - умное предложение
+        const isChecked = existingSensor ? 'checked' : (isEdit ? '' : (suggestion.shouldCheck ? 'checked' : ''));
+        const labelValue = existingSensor ? existingSensor.label : suggestion.label;
+        
+        html += `
+            <div style="border: 1px solid #444; padding: 12px; border-radius: 8px; background: #2a2a2a;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1;">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" 
+                                   id="tempSensor_${index}" 
+                                   value="${sensor}" 
+                                   ${isChecked}
+                                   style="margin-right: 10px; width: 18px; height: 18px; cursor: pointer;">
+                            <div>
+                                <div style="font-weight: bold; font-size: 14px;">${displayName}</div>
+                                <div style="font-size: 11px; color: #888; margin-top: 2px;">${suggestion.hint}</div>
+                            </div>
+                        </label>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="font-size: 20px; font-weight: bold; color: #4CAF50;">${tempDisplay}</div>
+                        <input type="text" 
+                               id="tempSensorLabel_${index}" 
+                               placeholder="${suggestion.label}" 
+                               value="${labelValue}"
+                               style="width: 150px; padding: 6px 10px; background: #1a1a1a; border: 1px solid #555; border-radius: 4px; color: #fff;">
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    content.innerHTML = html;
+    
+    modal.style.display = 'block';
+    
+    addConsoleMessage(`🌡️ ${printer.name} - Found ${tempSensors.length} temperature sensor(s). Advanced settings opened.`, 'info');
+}
+
+function closeTempSensorsModal() {
+    const modal = document.getElementById('tempSensorsModal');
+    if (modal) modal.style.display = 'none';
+    currentPrinterForTempSelection = null;
+}
+
+function saveTempSensorsSelection() {
+    if (!currentPrinterForTempSelection) return;
+    
+    const printer = currentPrinterForTempSelection;
+    const content = document.getElementById('tempSensorsContent');
+    if (!content) return;
+    
+    // Собираем выбранные сенсоры
+    const selectedSensors = [];
+    const checkboxes = content.querySelectorAll('input[type="checkbox"]:checked');
+    
+    checkboxes.forEach((checkbox, idx) => {
+        const sensorKey = checkbox.value;
+        const labelInput = document.getElementById(`tempSensorLabel_${checkbox.id.split('_')[1]}`);
+        const label = labelInput ? labelInput.value.trim() : '';
+        
+        selectedSensors.push({
+            key: sensorKey,
+            label: label || sensorKey.replace('temperature_sensor ', '')
+                                      .replace('temperature_fan ', '')
+                                      .replace('heater_generic ', '')
+        });
+    });
+    
+    // Сохраняем выбор
+    printer.customTempSensors = selectedSensors;
+    savePrintersToStorage();
+    
+    if (selectedSensors.length > 0) {
+        const labels = selectedSensors.map(s => s.label).join(', ');
+        addConsoleMessage(`✅ ${printer.name} - Custom temperature sensors: ${labels}`, 'info');
+    } else {
+        // Очищаем customTempSensors чтобы использовалось автоопределение
+        printer.customTempSensors = undefined;
+        savePrintersToStorage();
+        addConsoleMessage(`✅ ${printer.name} - Using automatic temperature detection`, 'info');
+    }
+    
+    closeTempSensorsModal();
+    updatePrinterDisplay(printer);
+}
+
 // ===== ОБРАБОТЧИКИ СОБЫТИЙ =====
 
 window.onclick = function(event) {
@@ -3575,6 +4055,7 @@ window.onclick = function(event) {
     const bambuInfoModal = document.getElementById('bambuInfoModal');
     const clearAnalyticsModal = document.getElementById('clearAnalyticsModal');
     const ineffCommentModal = document.getElementById('inefficiencyCommentModal');
+    const tempSensorsModal = document.getElementById('tempSensorsModal');
     
     if (event.target === addModal) closeAddPrinterModal();
     if (event.target === editModal) closeEditPrinterModal();
@@ -3582,6 +4063,7 @@ window.onclick = function(event) {
     if (event.target === bambuInfoModal) closeBambuInfoModal();
     if (event.target === clearAnalyticsModal) closeClearAnalyticsModal();
     if (event.target === ineffCommentModal) closeInefficiencyCommentModal();
+    if (event.target === tempSensorsModal) closeTempSensorsModal();
 }
 
 document.addEventListener('keypress', function(event) {

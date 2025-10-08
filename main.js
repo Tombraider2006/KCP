@@ -1291,7 +1291,8 @@ function createTabsWindow() {
     },
     title: `3D Printer Interfaces - v${APP_VERSION}`,
     icon: getIconPath(),
-    show: false
+    show: false,
+    autoHideMenuBar: true
   });
 
   tabsWindow.loadFile('printer-tabs-window.html');

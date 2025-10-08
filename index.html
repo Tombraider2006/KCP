@@ -404,6 +404,29 @@
         Your browser does not support the audio element.
     </audio>
 
+    <!-- Temperature Sensors Selection Modal -->
+    <div id="tempSensorsModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3>🌡️ <span id="tempSensorsModalTitle"></span></h3>
+                <span class="close" onclick="closeTempSensorsModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p id="tempSensorsDescription" style="color: #ccc; margin-bottom: 15px;">
+                    <strong id="tempSensorsForAdvanced"></strong> <span id="tempSensorsDescText"></span><br>
+                    <span id="tempSensorsAutoRecommended"></span>
+                </p>
+                <div id="tempSensorsContent" style="margin: 20px 0;">
+                    <!-- Dynamically filled -->
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" onclick="saveTempSensorsSelection()"><span id="tempSensorsSaveBtn"></span></button>
+                    <button class="btn" onclick="closeTempSensorsModal()"><span id="tempSensorsSkipBtn"></span></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="node_modules/chart.js/dist/chart.umd.js"></script>
     <script src="translations.js"></script>
     <script src="renderer.js"></script>

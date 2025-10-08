@@ -493,6 +493,17 @@ header {
     border-color: rgba(255, 193, 7, 0.7);
 }
 
+.btn-info {
+    background: rgba(23, 162, 184, 0.2);
+    color: #5dbaff;
+    border-color: rgba(23, 162, 184, 0.5);
+}
+
+.btn-info:hover {
+    background: rgba(23, 162, 184, 0.3);
+    border-color: rgba(23, 162, 184, 0.7);
+}
+
 .btn-success {
     background: rgba(40, 167, 69, 0.2);
     color: #5dff8f;
