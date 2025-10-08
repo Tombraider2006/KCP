@@ -40,6 +40,7 @@ let telegramConfig = {
     chatId: '',
     notifications: {
         printComplete: true,
+        printStart: true,
         printError: true,
         printPaused: true,
         printerOffline: false,
@@ -102,6 +103,13 @@ async function initApp() {
                     lang === 'ru' ? '🌐 Язык изменен на русский' : '🌐 Language changed to English', 
                     'info'
                 );
+            });
+        }
+        
+        // Обработчик запроса данных принтера для Bambu Lab интерфейса
+        if (window.electronAPI.onGetPrinterData) {
+            window.electronAPI.onGetPrinterData((event, printerId) => {
+                sendPrinterDataToBambuInterface(printerId);
             });
         }
     }
@@ -272,6 +280,7 @@ function updateModalTranslations() {
         const enableSpan = document.getElementById('labelEnableTelegram');
         const notifyTitle = document.getElementById('telegramNotifyTitle');
         const completeSpan = document.getElementById('labelPrintComplete');
+        const startSpan = document.getElementById('labelPrintStart');
         const errorSpan = document.getElementById('labelPrintError');
         const pausedSpan = document.getElementById('labelPrintPaused');
         const offlineSpan = document.getElementById('labelPrinterOffline');
@@ -289,6 +298,7 @@ function updateModalTranslations() {
         if (enableSpan) enableSpan.textContent = t('enable_notifications');
         if (notifyTitle) notifyTitle.textContent = t('notify_on');
         if (completeSpan) completeSpan.textContent = t('print_complete');
+        if (startSpan) startSpan.textContent = t('print_start');
         if (errorSpan) errorSpan.textContent = t('print_error');
         if (pausedSpan) pausedSpan.textContent = t('print_paused');
         if (offlineSpan) offlineSpan.textContent = t('printer_offline');
@@ -313,10 +323,12 @@ function updateModalTranslations() {
         const title = bambuInfoModal.querySelector('#bambuInfoModalTitle');
         const message = bambuInfoModal.querySelector('#bambuInfoMessage');
         const noWeb = bambuInfoModal.querySelector('#bambuInfoNoWeb');
+        const helpBtn = bambuInfoModal.querySelector('#bambuInfoHelpBtn');
         
         if (title) title.innerHTML = t('bambu_info_modal_title');
         if (message) message.innerHTML = `ℹ️ ${t('bambu_info_message')}`;
         if (noWeb) noWeb.textContent = t('bambu_info_no_web');
+        if (helpBtn) helpBtn.textContent = t('bambu_info_help');
     }
     
     // Обновляем модальное окно Clear Analytics
@@ -539,6 +551,7 @@ function openBambuInfoModal(printerName) {
     const title = document.getElementById('bambuInfoModalTitle');
     const message = document.getElementById('bambuInfoMessage');
     const noWeb = document.getElementById('bambuInfoNoWeb');
+    const helpBtn = document.getElementById('bambuInfoHelpBtn');
     
     if (modal && nameElement) {
         // Устанавливаем имя принтера
@@ -548,6 +561,7 @@ function openBambuInfoModal(printerName) {
         if (title) title.innerHTML = t('bambu_info_modal_title');
         if (message) message.innerHTML = `ℹ️ ${t('bambu_info_message')}`;
         if (noWeb) noWeb.textContent = t('bambu_info_no_web');
+        if (helpBtn) helpBtn.textContent = t('bambu_info_help');
         
         modal.style.display = 'block';
     }
@@ -556,6 +570,13 @@ function openBambuInfoModal(printerName) {
 function closeBambuInfoModal() {
     const modal = document.getElementById('bambuInfoModal');
     if (modal) modal.style.display = 'none';
+}
+
+function openBambuLabHelpFromModal() {
+    // Вызываем IPC событие для открытия справки из main.js
+    if (window.electronAPI && window.electronAPI.send) {
+        window.electronAPI.send('show-bambu-help');
+    }
 }
 
 function openClearAnalyticsModal() {
@@ -722,18 +743,13 @@ async function openPrinterWebInterface(printerId) {
     ensurePrinterType(printer);
     
     try {
-        // Bambu Lab принтеры не имеют локального веб-интерфейса
-        if (printer.type === 'bambu') {
-            openBambuInfoModal(printer.name);
-            return;
-        }
-        
-        // Klipper принтеры
+        // Открываем окно вкладок для всех типов принтеров (Klipper и Bambu Lab)
         if (window.electronAPI) {
             const windowExists = await window.electronAPI.focusPrinterWindow(printerId);
             if (!windowExists) {
                 await window.electronAPI.openPrinterWindow(printer);
-                addConsoleMessage(`🌐 ${t('web_interface_opening')} ${printer.name}`, 'info');
+                const printerType = printer.type === 'bambu' ? 'Bambu Lab' : 'Klipper';
+                addConsoleMessage(`🌐 ${t('web_interface_opening')} ${printer.name} (${printerType})`, 'info');
             } else {
                 addConsoleMessage(`🔍 ${t('web_interface_opening')} ${printer.name}`, 'info');
             }
@@ -3294,6 +3310,7 @@ async function loadTelegramSettings() {
     const chatIdInput = document.getElementById('telegramChatId');
     const enabledInput = document.getElementById('telegramEnabled');
     const completeInput = document.getElementById('notifyPrintComplete');
+    const startInput = document.getElementById('notifyPrintStart');
     const errorInput = document.getElementById('notifyPrintError');
     const pausedInput = document.getElementById('notifyPrintPaused');
     const offlineInput = document.getElementById('notifyPrinterOffline');
@@ -3306,6 +3323,7 @@ async function loadTelegramSettings() {
     if (chatIdInput) chatIdInput.value = telegramConfig.chatId || '';
     if (enabledInput) enabledInput.checked = telegramConfig.enabled;
     if (completeInput) completeInput.checked = telegramConfig.notifications.printComplete;
+    if (startInput) startInput.checked = telegramConfig.notifications.printStart !== false;
     if (errorInput) errorInput.checked = telegramConfig.notifications.printError;
     if (pausedInput) pausedInput.checked = telegramConfig.notifications.printPaused;
     if (offlineInput) offlineInput.checked = telegramConfig.notifications.printerOffline;
@@ -3322,6 +3340,7 @@ async function saveTelegramSettings() {
     const chatIdInput = document.getElementById('telegramChatId');
     const enabledInput = document.getElementById('telegramEnabled');
     const completeInput = document.getElementById('notifyPrintComplete');
+    const startInput = document.getElementById('notifyPrintStart');
     const errorInput = document.getElementById('notifyPrintError');
     const pausedInput = document.getElementById('notifyPrintPaused');
     const offlineInput = document.getElementById('notifyPrinterOffline');
@@ -3334,6 +3353,7 @@ async function saveTelegramSettings() {
     if (chatIdInput) telegramConfig.chatId = chatIdInput.value.trim();
     if (enabledInput) telegramConfig.enabled = enabledInput.checked;
     if (completeInput) telegramConfig.notifications.printComplete = completeInput.checked;
+    if (startInput) telegramConfig.notifications.printStart = startInput.checked;
     if (errorInput) telegramConfig.notifications.printError = errorInput.checked;
     if (pausedInput) telegramConfig.notifications.printPaused = pausedInput.checked;
     if (offlineInput) telegramConfig.notifications.printerOffline = offlineInput.checked;
@@ -3449,8 +3469,7 @@ function sendEventNotification(printer, event, message) {
     if (event === t('event_print_complete')) {
         shouldSend = telegramConfig.notifications.printComplete;
     } else if (event === t('event_print_start')) {
-        // always send start if enabled globally
-        shouldSend = true;
+        shouldSend = telegramConfig.notifications.printStart;
     } else if (event === t('event_print_error')) {
         shouldSend = telegramConfig.notifications.printError;
     } else if (event === t('event_print_paused')) {
@@ -3483,6 +3502,68 @@ function sendProgramStartNotification() {
     };
     
     sendTelegramNotification(notification);
+}
+
+// ===== BAMBU LAB DATA TRANSMISSION =====
+
+function sendPrinterDataToBambuInterface(printerId) {
+    const printer = printers.find(p => p.id === printerId);
+    if (!printer || printer.type !== 'bambu') {
+        return;
+    }
+
+    // Подготавливаем данные для интерфейса
+    const interfaceData = {
+        id: printer.id,
+        name: printer.name,
+        ip: printer.ip,
+        serialNumber: printer.serialNumber,
+        status: printer.status || 'offline',
+        progress: 0,
+        fileName: 'No file',
+        temps: {
+            nozzle: 0,
+            nozzle_target: 0,
+            bed: 0,
+            bed_target: 0,
+            chamber: null
+        }
+    };
+
+    // Если есть данные от адаптера, используем их
+    if (printer.data) {
+        const data = printer.data;
+        
+        // Прогресс
+        if (data.print && data.print.progress !== undefined) {
+            interfaceData.progress = Math.round(data.print.progress);
+        }
+        
+        // Имя файла
+        if (data.print && data.print.filename) {
+            interfaceData.fileName = data.print.filename;
+        } else if (data.print && data.print.subtask_name) {
+            interfaceData.fileName = data.print.subtask_name;
+        }
+        
+        // Температуры
+        if (data.temps) {
+            interfaceData.temps = {
+                nozzle: Math.round(data.temps.nozzle || 0),
+                nozzle_target: Math.round(data.temps.nozzle_target || 0),
+                bed: Math.round(data.temps.bed || 0),
+                bed_target: Math.round(data.temps.bed_target || 0),
+                chamber: data.temps.chamber !== null && data.temps.chamber !== undefined 
+                    ? Math.round(data.temps.chamber) 
+                    : null
+            };
+        }
+    }
+
+    // Отправляем данные через IPC в окно вкладок
+    if (window.electronAPI && window.electronAPI.sendBambuData) {
+        window.electronAPI.sendBambuData(printerId, interfaceData);
+    }
 }
 
 // ===== ОБРАБОТЧИКИ СОБЫТИЙ =====

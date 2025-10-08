@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onMenuAddPrinter: (callback) => ipcRenderer.on('menu-add-printer', callback),
   onMenuTestAll: (callback) => ipcRenderer.on('menu-test-all', callback),
   onLanguageChanged: (callback) => ipcRenderer.on('language-changed', callback),
+  onGetPrinterData: (callback) => ipcRenderer.on('get-printer-data', callback),
   
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
 
@@ -15,9 +16,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   storeGet: (key, defaultValue) => ipcRenderer.invoke('store-get', key, defaultValue),
   storeSet: (key, value) => ipcRenderer.invoke('store-set', key, value),
   
+  // Bambu Lab data transmission
+  sendBambuData: (printerId, data) => ipcRenderer.send('send-bambu-data', printerId, data),
+  
   // Send IPC messages
   send: (channel, ...args) => {
-    const validChannels = ['show-telegram-help'];
+    const validChannels = ['show-telegram-help', 'show-bambu-help'];
     if (validChannels.includes(channel)) {
       ipcRenderer.send(channel, ...args);
     }

@@ -196,6 +196,12 @@ function createApplicationMenu() {
             showTelegramHelp(isRussian);
           }
         },
+        {
+          label: isRussian ? 'Настройка принтеров Bambu Lab' : 'Bambu Lab Printer Setup',
+          click: () => {
+            showBambuLabHelp(isRussian);
+          }
+        },
         { type: 'separator' },
         {
           label: isRussian ? 'Проверить обновления' : 'Check for Updates',
@@ -657,6 +663,490 @@ function showTelegramHelp(isRussian) {
   helpWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(helpContent)}`);
 }
 
+function showBambuLabHelp(isRussian) {
+  const helpWindow = new BrowserWindow({
+    width: 800,
+    height: 900,
+    parent: mainWindow,
+    modal: true,
+    resizable: true,
+    autoHideMenuBar: true,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true
+    },
+    title: isRussian ? 'Настройка принтеров Bambu Lab' : 'Bambu Lab Printer Setup'
+  });
+
+  const helpContent = isRussian ? `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Настройка принтеров Bambu Lab</title>
+        <style>
+            body { 
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                padding: 25px; 
+                line-height: 1.6;
+                color: #333;
+                background: #f5f5f5;
+            }
+            .container {
+                max-width: 750px;
+                margin: 0 auto;
+                background: white;
+                padding: 30px;
+                border-radius: 10px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+            h1 { color: #00b894; text-align: center; margin-bottom: 30px; }
+            h2 { color: #555; margin-top: 25px; padding-bottom: 8px; border-bottom: 2px solid #00b894; }
+            h3 { color: #666; margin-top: 20px; }
+            .step { 
+                background: #f8f9fa; 
+                padding: 20px; 
+                margin: 15px 0; 
+                border-radius: 8px;
+                border-left: 4px solid #00b894;
+            }
+            code { 
+                background: #2d2d2d; 
+                color: #fff; 
+                padding: 3px 8px; 
+                border-radius: 4px;
+                font-family: 'Courier New', monospace;
+                font-size: 13px;
+            }
+            pre {
+                background: #2d2d2d; 
+                color: #fff; 
+                padding: 15px; 
+                border-radius: 6px;
+                overflow-x: auto;
+                margin: 12px 0;
+            }
+            .note { 
+                background: #e3f2fd; 
+                border: 1px solid #bbdefb; 
+                padding: 12px; 
+                border-radius: 6px;
+                margin: 15px 0;
+            }
+            .warning { 
+                background: #fff3cd; 
+                border: 1px solid #ffeaa7; 
+                padding: 12px; 
+                border-radius: 6px;
+                margin: 15px 0;
+            }
+            .success { 
+                background: #d4edda; 
+                border: 1px solid #c3e6cb; 
+                padding: 12px; 
+                border-radius: 6px;
+                margin: 15px 0;
+            }
+            ul { padding-left: 20px; }
+            li { margin: 8px 0; }
+            .icon { font-size: 18px; margin-right: 8px; }
+            .checklist { list-style: none; padding-left: 0; }
+            .checklist li:before { content: "✅ "; margin-right: 8px; }
+            strong { color: #2d3436; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🎋 Руководство по настройке Bambu Lab</h1>
+            
+            <div class="success">
+                <strong>Отличные новости!</strong> Приложение теперь поддерживает принтеры <strong>Bambu Lab</strong> в дополнение к принтерам на базе Klipper!
+            </div>
+
+            <h2>📋 Требования</h2>
+            <div class="step">
+                <p><strong>Для принтеров Bambu Lab:</strong></p>
+                <ul>
+                    <li><strong>Режим разработчика</strong> должен быть включен на принтере</li>
+                    <li><strong>Access Code</strong> из настроек принтера (8-значный код)</li>
+                    <li><strong>Серийный номер</strong> вашего принтера</li>
+                    <li>Подключение к <strong>локальной сети</strong> (принтер и ПК в одной сети)</li>
+                </ul>
+                <div class="note">
+                    💡 Необходимая библиотека <strong>MQTT</strong> уже включена в программу.
+                </div>
+            </div>
+
+            <h2>🔧 Подготовка к работе</h2>
+            
+            <h3>Шаг 1: Проверьте зависимости</h3>
+            <div class="step">
+                <p>Библиотека <code>mqtt@^5.3.5</code> уже включена в зависимости проекта. Если вы только что клонировали проект или обновили код, убедитесь что все зависимости установлены:</p>
+                <pre>npm install</pre>
+                <div class="note">
+                    💡 <strong>Примечание:</strong> Если вы установили программу через готовый установщик, все зависимости уже включены и этот шаг не требуется.
+                </div>
+            </div>
+
+            <h3>Шаг 2: Включите режим разработчика на принтере</h3>
+            <div class="step">
+                <p><span class="icon">1.</span> Зайдите в настройки принтера на сенсорном экране</p>
+                <p><span class="icon">2.</span> Перейдите в <strong>Настройки → Сеть → Режим разработчика</strong></p>
+                <p><span class="icon">3.</span> Включите режим разработчика</p>
+                <p><span class="icon">4.</span> Запишите отображаемый <strong>Access Code</strong></p>
+                
+                <div class="warning">
+                    ⚠️ <strong>Важно:</strong> Без включенного режима разработчика принтер не будет принимать подключения от стороннего ПО.
+                </div>
+            </div>
+
+            <h3>Шаг 3: Получите информацию о принтере</h3>
+            <div class="step">
+                <p>Вам понадобится:</p>
+                <ul>
+                    <li><strong>IP адрес:</strong> Найдите в сетевых настройках принтера</li>
+                    <li><strong>Access Code:</strong> 8-значный код из настроек режима разработчика</li>
+                    <li><strong>Серийный номер:</strong> Находится на наклейке принтера или в настройках (формат: <code>01P00A123456789</code>)</li>
+                </ul>
+            </div>
+
+            <h2>📱 Добавление принтера Bambu Lab</h2>
+            <div class="step">
+                <p><span class="icon">1.</span> Нажмите кнопку <strong>"➕ Добавить принтер"</strong></p>
+                <p><span class="icon">2.</span> Выберите <strong>"Bambu Lab"</strong> из выпадающего списка типов принтеров</p>
+                <p><span class="icon">3.</span> Заполните необходимую информацию:</p>
+                <ul>
+                    <li><strong>Название принтера:</strong> Любое имя на ваш выбор</li>
+                    <li><strong>IP адрес:</strong> Локальный IP вашего принтера (например, <code>192.168.1.100</code>)</li>
+                    <li><strong>Access Code:</strong> 8-значный код из режима разработчика</li>
+                    <li><strong>Серийный номер:</strong> Серийный номер вашего принтера</li>
+                </ul>
+                <p><span class="icon">4.</span> Убедитесь что галочка <strong>"Режим разработчика включен на принтере"</strong> установлена</p>
+                <p><span class="icon">5.</span> Нажмите <strong>"Добавить"</strong></p>
+            </div>
+
+            <h2>🔌 Протокол подключения</h2>
+            <div class="note">
+                <ul>
+                    <li>Принтеры <strong>Bambu Lab</strong> используют протокол <strong>MQTT</strong> (порт 8883)</li>
+                    <li>Принтеры <strong>Klipper</strong> используют <strong>HTTP/WebSocket</strong> (порт 7125)</li>
+                </ul>
+            </div>
+
+            <h2>🎯 Поддерживаемые функции</h2>
+            
+            <h3>Текущая поддержка:</h3>
+            <ul class="checklist">
+                <li>Добавление/Редактирование/Удаление принтеров Bambu Lab</li>
+                <li>Сохранение конфигурации принтера</li>
+                <li>Отображение типа принтера в интерфейсе</li>
+                <li>Двуязычная поддержка (Русский/Английский)</li>
+            </ul>
+
+            <h3>В разработке:</h3>
+            <ul>
+                <li>🔄 MQTT подключение в реальном времени</li>
+                <li>🔄 Мониторинг статуса печати</li>
+                <li>🔄 Мониторинг температуры</li>
+                <li>🔄 Отслеживание прогресса</li>
+                <li>🔄 Информация о файле</li>
+            </ul>
+
+            <h2>⚠️ Известные ограничения</h2>
+            <div class="warning">
+                <ol>
+                    <li><strong>Веб-интерфейс:</strong> У принтеров Bambu Lab нет локального веб-интерфейса как у Klipper (используйте приложение Bambu Handy или Bambu Studio)</li>
+                    <li><strong>Прошивка января 2025:</strong> Последняя прошивка Bambu Lab требует режим разработчика для любого стороннего ПО</li>
+                    <li><strong>Функциональность:</strong> Некоторые функции (мониторинг в реальном времени, управление печатью) находятся в разработке</li>
+                </ol>
+            </div>
+
+            <h2>🔍 Решение проблем</h2>
+            
+            <h3>Проблемы с подключением MQTT</h3>
+            <div class="step">
+                <p><strong>Если вы видите ошибку связанную с MQTT:</strong></p>
+                <p>Это может произойти, если вы запускаете программу из исходного кода и не установили зависимости.</p>
+                <p><strong>Решение:</strong></p>
+                <pre>cd путь/к/3DC
+npm install
+# Затем перезапустите приложение</pre>
+                <div class="note">
+                    💡 Если вы используете установленную версию программы, эта проблема возникнуть не должна.
+                </div>
+            </div>
+
+            <h3>"Developer mode must be enabled in printer settings"</h3>
+            <div class="step">
+                <p><strong>Решение:</strong></p>
+                <p><span class="icon">1.</span> На сенсорном экране принтера: Настройки → Сеть → Режим разработчика</p>
+                <p><span class="icon">2.</span> Включите его и запишите Access Code</p>
+                <p><span class="icon">3.</span> При необходимости перезагрузите принтер</p>
+            </div>
+
+            <h3>Ошибка подключения</h3>
+            <div class="step">
+                <p><strong>Контрольный список:</strong></p>
+                <ul class="checklist">
+                    <li>Принтер и ПК в одной сети</li>
+                    <li>Режим разработчика включен на принтере</li>
+                    <li>Правильно введен Access Code (8 цифр)</li>
+                    <li>Правильно введен серийный номер</li>
+                    <li>Брандмауэр не блокирует порт 8883</li>
+                    <li>IP адрес принтера актуален (не изменился)</li>
+                </ul>
+            </div>
+
+            <h2>📚 Полезные ресурсы</h2>
+            <ul>
+                <li><a href="https://bambulab.com" target="_blank">Официальный сайт Bambu Lab</a></li>
+                <li><a href="https://bambulab.com/download" target="_blank">Скачать Bambu Studio</a></li>
+                <li><a href="https://bambulab.com/download" target="_blank">Приложение Bambu Handy</a></li>
+                <li><a href="https://bambulab.com/community" target="_blank">Сообщество Bambu Lab</a></li>
+            </ul>
+
+            <div class="success">
+                <strong>Успешной печати! 🖨️</strong>
+            </div>
+        </div>
+    </body>
+    </html>
+  ` : `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Bambu Lab Printer Setup</title>
+        <style>
+            body { 
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                padding: 25px; 
+                line-height: 1.6;
+                color: #333;
+                background: #f5f5f5;
+            }
+            .container {
+                max-width: 750px;
+                margin: 0 auto;
+                background: white;
+                padding: 30px;
+                border-radius: 10px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+            h1 { color: #00b894; text-align: center; margin-bottom: 30px; }
+            h2 { color: #555; margin-top: 25px; padding-bottom: 8px; border-bottom: 2px solid #00b894; }
+            h3 { color: #666; margin-top: 20px; }
+            .step { 
+                background: #f8f9fa; 
+                padding: 20px; 
+                margin: 15px 0; 
+                border-radius: 8px;
+                border-left: 4px solid #00b894;
+            }
+            code { 
+                background: #2d2d2d; 
+                color: #fff; 
+                padding: 3px 8px; 
+                border-radius: 4px;
+                font-family: 'Courier New', monospace;
+                font-size: 13px;
+            }
+            pre {
+                background: #2d2d2d; 
+                color: #fff; 
+                padding: 15px; 
+                border-radius: 6px;
+                overflow-x: auto;
+                margin: 12px 0;
+            }
+            .note { 
+                background: #e3f2fd; 
+                border: 1px solid #bbdefb; 
+                padding: 12px; 
+                border-radius: 6px;
+                margin: 15px 0;
+            }
+            .warning { 
+                background: #fff3cd; 
+                border: 1px solid #ffeaa7; 
+                padding: 12px; 
+                border-radius: 6px;
+                margin: 15px 0;
+            }
+            .success { 
+                background: #d4edda; 
+                border: 1px solid #c3e6cb; 
+                padding: 12px; 
+                border-radius: 6px;
+                margin: 15px 0;
+            }
+            ul { padding-left: 20px; }
+            li { margin: 8px 0; }
+            .icon { font-size: 18px; margin-right: 8px; }
+            .checklist { list-style: none; padding-left: 0; }
+            .checklist li:before { content: "✅ "; margin-right: 8px; }
+            strong { color: #2d3436; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🎋 Bambu Lab Integration Setup Guide</h1>
+            
+            <div class="success">
+                <strong>Great news!</strong> This application now supports <strong>Bambu Lab</strong> 3D printers in addition to Klipper-based printers!
+            </div>
+
+            <h2>📋 Requirements</h2>
+            <div class="step">
+                <p><strong>For Bambu Lab Printers:</strong></p>
+                <ul>
+                    <li><strong>Developer Mode</strong> must be enabled on your printer</li>
+                    <li><strong>Access Code</strong> from printer settings (8-digit code)</li>
+                    <li><strong>Serial Number</strong> of your printer</li>
+                    <li><strong>Local Network</strong> connection (printer and PC on same network)</li>
+                </ul>
+                <div class="note">
+                    💡 The required <strong>MQTT</strong> library is already included in the program.
+                </div>
+            </div>
+
+            <h2>🔧 Getting Started</h2>
+            
+            <h3>Step 1: Check Dependencies</h3>
+            <div class="step">
+                <p>The <code>mqtt@^5.3.5</code> library is already included in the project dependencies. If you just cloned the project or updated the code, make sure all dependencies are installed:</p>
+                <pre>npm install</pre>
+                <div class="note">
+                    💡 <strong>Note:</strong> If you installed the program via the installer, all dependencies are already included and this step is not required.
+                </div>
+            </div>
+
+            <h3>Step 2: Enable Developer Mode on Printer</h3>
+            <div class="step">
+                <p><span class="icon">1.</span> Go to printer settings on the printer's touchscreen</p>
+                <p><span class="icon">2.</span> Navigate to <strong>Settings → Network → Developer Mode</strong></p>
+                <p><span class="icon">3.</span> Enable Developer Mode</p>
+                <p><span class="icon">4.</span> Note the <strong>Access Code</strong> displayed</p>
+                
+                <div class="warning">
+                    ⚠️ <strong>Important:</strong> Without Developer Mode enabled, the printer will not accept connections from third-party software.
+                </div>
+            </div>
+
+            <h3>Step 3: Get Printer Information</h3>
+            <div class="step">
+                <p>You'll need:</p>
+                <ul>
+                    <li><strong>IP Address:</strong> Find in printer's network settings</li>
+                    <li><strong>Access Code:</strong> 8-digit code from developer mode settings</li>
+                    <li><strong>Serial Number:</strong> Found on printer label or in settings (format: <code>01P00A123456789</code>)</li>
+                </ul>
+            </div>
+
+            <h2>📱 Adding a Bambu Lab Printer</h2>
+            <div class="step">
+                <p><span class="icon">1.</span> Click <strong>"➕ Add Printer"</strong> button</p>
+                <p><span class="icon">2.</span> Select <strong>"Bambu Lab"</strong> from the printer type dropdown</p>
+                <p><span class="icon">3.</span> Fill in the required information:</p>
+                <ul>
+                    <li><strong>Printer Name:</strong> Any name you choose</li>
+                    <li><strong>IP Address:</strong> Your printer's local IP (e.g., <code>192.168.1.100</code>)</li>
+                    <li><strong>Access Code:</strong> 8-digit code from developer mode</li>
+                    <li><strong>Serial Number:</strong> Your printer's serial number</li>
+                </ul>
+                <p><span class="icon">4.</span> Ensure <strong>"Developer Mode enabled on printer"</strong> checkbox is checked</p>
+                <p><span class="icon">5.</span> Click <strong>"Add"</strong></p>
+            </div>
+
+            <h2>🔌 Connection Protocol</h2>
+            <div class="note">
+                <ul>
+                    <li><strong>Bambu Lab</strong> printers use <strong>MQTT</strong> protocol (port 8883)</li>
+                    <li><strong>Klipper</strong> printers use <strong>HTTP/WebSocket</strong> (port 7125)</li>
+                </ul>
+            </div>
+
+            <h2>🎯 Supported Features</h2>
+            
+            <h3>Currently Supported:</h3>
+            <ul class="checklist">
+                <li>Add/Edit/Remove Bambu Lab printers</li>
+                <li>Store printer configuration</li>
+                <li>Display printer type in UI</li>
+                <li>Bilingual support (Russian/English)</li>
+            </ul>
+
+            <h3>In Development:</h3>
+            <ul>
+                <li>🔄 Real-time MQTT connection</li>
+                <li>🔄 Print status monitoring</li>
+                <li>🔄 Temperature monitoring</li>
+                <li>🔄 Progress tracking</li>
+                <li>🔄 File information</li>
+            </ul>
+
+            <h2>⚠️ Known Limitations</h2>
+            <div class="warning">
+                <ol>
+                    <li><strong>Web Interface:</strong> Bambu Lab printers don't have a local web interface like Klipper (use Bambu Handy app or Bambu Studio instead)</li>
+                    <li><strong>January 2025 Firmware:</strong> Latest Bambu Lab firmware requires Developer Mode for any third-party software</li>
+                    <li><strong>Functionality:</strong> Some features (real-time monitoring, print control) are currently in development</li>
+                </ol>
+            </div>
+
+            <h2>🔍 Troubleshooting</h2>
+            
+            <h3>MQTT Connection Issues</h3>
+            <div class="step">
+                <p><strong>If you see an MQTT-related error:</strong></p>
+                <p>This can happen if you're running the program from source code and haven't installed dependencies.</p>
+                <p><strong>Solution:</strong></p>
+                <pre>cd path/to/3DC
+npm install
+# Then restart the application</pre>
+                <div class="note">
+                    💡 If you're using the installed version of the program, this issue should not occur.
+                </div>
+            </div>
+
+            <h3>"Developer mode must be enabled in printer settings"</h3>
+            <div class="step">
+                <p><strong>Solution:</strong></p>
+                <p><span class="icon">1.</span> On printer touchscreen: Settings → Network → Developer Mode</p>
+                <p><span class="icon">2.</span> Enable it and note the Access Code</p>
+                <p><span class="icon">3.</span> Restart the printer if needed</p>
+            </div>
+
+            <h3>Connection Failed</h3>
+            <div class="step">
+                <p><strong>Checklist:</strong></p>
+                <ul class="checklist">
+                    <li>Printer and PC on same network</li>
+                    <li>Developer Mode enabled on printer</li>
+                    <li>Correct Access Code entered (8 digits)</li>
+                    <li>Correct Serial Number entered</li>
+                    <li>Firewall not blocking port 8883</li>
+                    <li>Printer IP address is current (hasn't changed)</li>
+                </ul>
+            </div>
+
+            <h2>📚 Related Resources</h2>
+            <ul>
+                <li><a href="https://bambulab.com" target="_blank">Bambu Lab Official Website</a></li>
+                <li><a href="https://bambulab.com/download" target="_blank">Bambu Studio Download</a></li>
+                <li><a href="https://bambulab.com/download" target="_blank">Bambu Handy App</a></li>
+                <li><a href="https://bambulab.com/community" target="_blank">Bambu Lab Community</a></li>
+            </ul>
+
+            <div class="success">
+                <strong>Happy Printing! 🖨️</strong>
+            </div>
+        </div>
+    </body>
+    </html>
+  `;
+
+  helpWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(helpContent)}`);
+}
+
 async function checkForUpdates(isRussian) {
   const { dialog } = require('electron');
   const https = require('https');
@@ -866,11 +1356,14 @@ ipcMain.handle('open-printer-window', (event, printerData) => {
       id: String(printerData.id),
       name: String(printerData.name),
       ip: String(printerData.ip),
+      type: String(printerData.type || 'klipper'),
       port: String(printerData.port || '7125'),
-      webPort: String(printerData.webPort || '80')
+      webPort: String(printerData.webPort || '80'),
+      accessCode: printerData.accessCode ? String(printerData.accessCode) : undefined,
+      serialNumber: printerData.serialNumber ? String(printerData.serialNumber) : undefined
     };
     
-    console.log('Opening printer tab for:', sanitizedPrinterData.name);
+    console.log('Opening printer tab for:', sanitizedPrinterData.name, 'Type:', sanitizedPrinterData.type);
     
     // Проверяем, существует ли уже вкладка
     if (printerTabs.has(sanitizedPrinterData.id)) {
@@ -941,6 +1434,45 @@ ipcMain.on('show-telegram-help', () => {
   const currentLang = getSavedLanguage();
   const isRussian = currentLang === 'ru';
   showTelegramHelp(isRussian);
+});
+
+ipcMain.on('show-bambu-help', () => {
+  const currentLang = getSavedLanguage();
+  const isRussian = currentLang === 'ru';
+  showBambuLabHelp(isRussian);
+});
+
+// Bambu Lab interface data handlers
+ipcMain.on('bambu-interface-ready', (event, printerId) => {
+  console.log('Bambu Lab interface ready for printer:', printerId);
+  // Отправляем начальные данные
+  sendBambuDataToInterface(printerId);
+});
+
+ipcMain.on('request-bambu-data', (event, printerId) => {
+  console.log('Bambu data requested for printer:', printerId);
+  sendBambuDataToInterface(printerId);
+});
+
+function sendBambuDataToInterface(printerId) {
+  if (!tabsWindow || !printerTabs.has(printerId)) {
+    return;
+  }
+
+  const printerData = printerTabs.get(printerId);
+  
+  // Получаем данные принтера из главного окна через IPC
+  if (mainWindow) {
+    mainWindow.webContents.send('get-printer-data', printerId);
+  }
+}
+
+// Обработчик для пересылки данных Bambu Lab в окно вкладок
+ipcMain.on('send-bambu-data', (event, printerId, data) => {
+  if (tabsWindow && !tabsWindow.isDestroyed()) {
+    console.log('Sending Bambu data to tabs window for printer:', printerId);
+    tabsWindow.webContents.send('bambu-data-update', printerId, data);
+  }
 });
 
 // App events

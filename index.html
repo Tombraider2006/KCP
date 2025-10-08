@@ -212,6 +212,7 @@
                 <div class="notification-settings">
                     <h4 id="telegramNotifyTitle">Notify on:</h4>
                     <label><input type="checkbox" id="notifyPrintComplete" checked> <span id="labelPrintComplete">Print complete</span></label>
+                    <label><input type="checkbox" id="notifyPrintStart" checked> <span id="labelPrintStart">Print start</span></label>
                     <label><input type="checkbox" id="notifyPrintError" checked> <span id="labelPrintError">Print error</span></label>
                     <label><input type="checkbox" id="notifyPrintPaused" checked> <span id="labelPrintPaused">Print paused</span></label>
                     <label><input type="checkbox" id="notifyPrinterOffline"> <span id="labelPrinterOffline">Printer offline</span></label>
@@ -390,6 +391,7 @@
                     There is no local web interface available for this printer type.
                 </p>
                 <div class="modal-footer" style="margin-top: 20px;">
+                    <button class="btn btn-help" onclick="openBambuLabHelpFromModal()" style="margin-right: auto;">❓ <span id="bambuInfoHelpBtn">Help</span></button>
                     <button class="btn btn-primary" onclick="closeBambuInfoModal()">OK</button>
                 </div>
             </div>

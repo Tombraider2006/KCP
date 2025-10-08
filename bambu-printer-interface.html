@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' data:; script-src 'self' 'unsafe-inline';">
+    <title>Bambu Lab Printer Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a1628 0%, #1a2942 50%, #0d1b2a 100%);
+            color: #e8e8e8;
+            height: 100vh;
+            overflow: auto;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: rgba(0, 212, 255, 0.1);
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .printer-name {
+            font-size: 28px;
+            font-weight: 600;
+            color: #00d4ff;
+            text-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .printer-icon {
+            font-size: 36px;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: #7ea8c8;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-online {
+            background: #28a745;
+            box-shadow: 0 0 15px rgba(40, 167, 69, 0.8);
+        }
+
+        .status-offline {
+            background: #dc3545;
+            box-shadow: 0 0 15px rgba(220, 53, 69, 0.8);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .card {
+            background: rgba(10, 22, 40, 0.6);
+            border: 2px solid rgba(0, 212, 255, 0.2);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(0, 212, 255, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #00d4ff;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-icon {
+            font-size: 24px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .status-printing {
+            background: rgba(40, 167, 69, 0.2);
+            color: #5dff8f;
+            border: 2px solid rgba(40, 167, 69, 0.5);
+        }
+
+        .status-ready {
+            background: rgba(0, 123, 255, 0.2);
+            color: #4dabf7;
+            border: 2px solid rgba(0, 123, 255, 0.5);
+        }
+
+        .status-paused {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+            border: 2px solid rgba(255, 193, 7, 0.5);
+        }
+
+        .status-error {
+            background: rgba(220, 53, 69, 0.2);
+            color: #ff6b6b;
+            border: 2px solid rgba(220, 53, 69, 0.5);
+        }
+
+        .status-complete {
+            background: rgba(108, 117, 125, 0.2);
+            color: #adb5bd;
+            border: 2px solid rgba(108, 117, 125, 0.5);
+        }
+
+        .status-offline {
+            background: rgba(220, 53, 69, 0.2);
+            color: #ff6b6b;
+            border: 2px solid rgba(220, 53, 69, 0.5);
+        }
+
+        .progress-container {
+            margin: 20px 0;
+        }
+
+        .progress-bar-wrapper {
+            width: 100%;
+            height: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            overflow: hidden;
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #4dabf7);
+            border-radius: 13px;
+            transition: width 0.5s ease;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: 600;
+            font-size: 14px;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+        }
+
+        .file-name {
+            font-size: 16px;
+            color: #b8d4e8;
+            margin-top: 10px;
+            word-break: break-all;
+        }
+
+        .temp-grid {
+            display: grid;
+            gap: 15px;
+        }
+
+        .temp-item {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .temp-label {
+            font-size: 14px;
+            color: #7ea8c8;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .temp-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #00d4ff;
+            text-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+        }
+
+        .temp-target {
+            font-size: 14px;
+            color: #7ea8c8;
+            margin-top: 5px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #7ea8c8;
+            font-weight: 500;
+        }
+
+        .info-value {
+            color: #e8e8e8;
+            font-weight: 600;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #7ea8c8;
+            font-style: italic;
+        }
+
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            gap: 20px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(0, 212, 255, 0.2);
+            border-top: 4px solid #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .last-update {
+            text-align: center;
+            color: #7ea8c8;
+            font-size: 12px;
+            margin-top: 20px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="printer-name">
+                <span class="printer-icon">🎋</span>
+                <span id="printerName">Bambu Lab Printer</span>
+            </div>
+            <div class="connection-status">
+                <span class="status-indicator" id="connectionIndicator"></span>
+                <span id="connectionStatus">Connecting...</span>
+            </div>
+        </div>
+
+        <div id="loadingContainer" class="loading">
+            <div class="spinner"></div>
+            <div>Loading printer data...</div>
+        </div>
+
+        <div id="contentContainer" style="display: none;">
+            <div class="grid">
+                <!-- Status Card -->
+                <div class="card">
+                    <div class="card-title">
+                        <span class="card-icon">📊</span>
+                        <span>Status</span>
+                    </div>
+                    <div style="text-align: center;">
+                        <span class="status-badge" id="statusBadge">READY</span>
+                    </div>
+                </div>
+
+                <!-- Print Progress Card -->
+                <div class="card">
+                    <div class="card-title">
+                        <span class="card-icon">📈</span>
+                        <span>Print Progress</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar-wrapper">
+                            <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+                            <div class="progress-text" id="progressText">0%</div>
+                        </div>
+                        <div class="file-name" id="fileName">No file</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Temperatures -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="card-icon">🌡️</span>
+                    <span>Temperatures</span>
+                </div>
+                <div class="temp-grid">
+                    <div class="temp-item">
+                        <div class="temp-label">🔥 Nozzle</div>
+                        <div class="temp-value" id="nozzleTemp">--°C</div>
+                        <div class="temp-target" id="nozzleTarget">Target: --°C</div>
+                    </div>
+                    <div class="temp-item">
+                        <div class="temp-label">🛏️ Bed</div>
+                        <div class="temp-value" id="bedTemp">--°C</div>
+                        <div class="temp-target" id="bedTarget">Target: --°C</div>
+                    </div>
+                    <div class="temp-item">
+                        <div class="temp-label">📦 Chamber</div>
+                        <div class="temp-value" id="chamberTemp">--°C</div>
+                        <div class="temp-target">Ambient</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Printer Info -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="card-icon">ℹ️</span>
+                    <span>Printer Information</span>
+                </div>
+                <div>
+                    <div class="info-item">
+                        <span class="info-label">IP Address:</span>
+                        <span class="info-value" id="printerIP">--</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Serial Number:</span>
+                        <span class="info-value" id="serialNumber">--</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Connection:</span>
+                        <span class="info-value">MQTT</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Last Update:</span>
+                        <span class="info-value" id="lastUpdate">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="last-update">
+            💡 This interface displays real-time data from your Bambu Lab printer via MQTT
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        let printerId = null;
+
+        // Initialize
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('Bambu Lab interface loaded');
+            setupIPC();
+            setupPostMessage();
+            requestInitialData();
+        });
+
+        function setupIPC() {
+            // Listen for printer data updates
+            ipcRenderer.on('bambu-data-update', (event, data) => {
+                console.log('Received bambu data update via IPC:', data);
+                updateInterface(data);
+            });
+
+            // Listen for printer ID
+            ipcRenderer.on('set-printer-id', (event, id) => {
+                console.log('Printer ID set via IPC:', id);
+                printerId = id;
+                requestInitialData();
+            });
+        }
+
+        function setupPostMessage() {
+            // Listen for messages from parent window
+            window.addEventListener('message', (event) => {
+                console.log('Received postMessage:', event.data);
+                
+                if (event.data.type === 'set-printer-id') {
+                    printerId = event.data.printerId;
+                    console.log('Printer ID set via postMessage:', printerId);
+                    requestInitialData();
+                } else if (event.data.type === 'bambu-data-update') {
+                    console.log('Received bambu data update via postMessage:', event.data.data);
+                    updateInterface(event.data.data);
+                }
+            });
+        }
+
+        function requestInitialData() {
+            if (printerId) {
+                console.log('Requesting initial data for printer:', printerId);
+                ipcRenderer.send('request-bambu-data', printerId);
+            }
+        }
+
+        function updateInterface(data) {
+            if (!data) return;
+
+            // Hide loading, show content
+            document.getElementById('loadingContainer').style.display = 'none';
+            document.getElementById('contentContainer').style.display = 'block';
+
+            // Update printer name
+            if (data.name) {
+                document.getElementById('printerName').textContent = data.name;
+            }
+
+            // Update connection status
+            const isOnline = data.status !== 'offline';
+            const indicator = document.getElementById('connectionIndicator');
+            const statusText = document.getElementById('connectionStatus');
+            
+            if (isOnline) {
+                indicator.className = 'status-indicator status-online';
+                statusText.textContent = 'Connected (MQTT)';
+            } else {
+                indicator.className = 'status-indicator status-offline';
+                statusText.textContent = 'Offline';
+            }
+
+            // Update status badge
+            updateStatusBadge(data.status);
+
+            // Update progress
+            const progress = data.progress || 0;
+            document.getElementById('progressBar').style.width = progress + '%';
+            document.getElementById('progressText').textContent = progress + '%';
+
+            // Update file name
+            const fileName = data.fileName || 'No file';
+            document.getElementById('fileName').textContent = fileName;
+
+            // Update temperatures
+            if (data.temps) {
+                document.getElementById('nozzleTemp').textContent = Math.round(data.temps.nozzle || 0) + '°C';
+                document.getElementById('nozzleTarget').textContent = 'Target: ' + Math.round(data.temps.nozzle_target || 0) + '°C';
+                
+                document.getElementById('bedTemp').textContent = Math.round(data.temps.bed || 0) + '°C';
+                document.getElementById('bedTarget').textContent = 'Target: ' + Math.round(data.temps.bed_target || 0) + '°C';
+                
+                const chamberTemp = data.temps.chamber !== null && data.temps.chamber !== undefined 
+                    ? Math.round(data.temps.chamber) + '°C' 
+                    : '--°C';
+                document.getElementById('chamberTemp').textContent = chamberTemp;
+            }
+
+            // Update printer info
+            if (data.ip) {
+                document.getElementById('printerIP').textContent = data.ip;
+            }
+            if (data.serialNumber) {
+                document.getElementById('serialNumber').textContent = data.serialNumber;
+            }
+
+            // Update last update time
+            const now = new Date();
+            document.getElementById('lastUpdate').textContent = now.toLocaleTimeString();
+        }
+
+        function updateStatusBadge(status) {
+            const badge = document.getElementById('statusBadge');
+            badge.className = 'status-badge status-' + (status || 'offline');
+            
+            const statusMap = {
+                'printing': 'PRINTING',
+                'ready': 'READY',
+                'paused': 'PAUSED',
+                'error': 'ERROR',
+                'complete': 'COMPLETE',
+                'offline': 'OFFLINE'
+            };
+            
+            badge.textContent = statusMap[status] || 'UNKNOWN';
+        }
+
+        // Request data updates periodically
+        setInterval(() => {
+            if (printerId) {
+                ipcRenderer.send('request-bambu-data', printerId);
+            }
+        }, 5000); // Every 5 seconds
+    </script>
+</body>
+</html>
+

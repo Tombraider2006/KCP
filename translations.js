@@ -113,6 +113,7 @@ const TRANSLATIONS = {
         'enable_notifications': 'Включить уведомления',
         'notify_on': 'Уведомлять о:',
         'print_complete': 'Завершение печати',
+        'print_start': 'Начало печати',
         'print_error': 'Ошибка печати', 
         'print_paused': 'Пауза печати',
         'printer_offline': 'Принтер offline',
@@ -223,6 +224,8 @@ const TRANSLATIONS = {
         'bambu_info_modal_title': '🎋 Bambu Lab',
         'bambu_info_message': 'Принтеры Bambu Lab используют мобильное приложение <strong>Bambu Handy</strong> или <strong>Bambu Studio</strong> для управления.',
         'bambu_info_no_web': 'Локальный веб-интерфейс недоступен для данного типа принтера.',
+        'bambu_info_help': 'Помощь',
+        'bambu_lab_setup_help': 'Настройка принтеров Bambu Lab',
         
         // Inefficiency Comment Modal
         'ineff_comment_modal_title_add': '📝 Добавить комментарий',
@@ -484,6 +487,7 @@ const TRANSLATIONS = {
         'enable_notifications': 'Enable notifications',
         'notify_on': 'Notify on:',
         'print_complete': 'Print complete',
+        'print_start': 'Print start',
         'print_error': 'Print error',
         'print_paused': 'Print paused', 
         'printer_offline': 'Printer offline',
@@ -594,6 +598,8 @@ const TRANSLATIONS = {
         'bambu_info_modal_title': '🎋 Bambu Lab',
         'bambu_info_message': 'Bambu Lab printers use mobile app <strong>Bambu Handy</strong> or <strong>Bambu Studio</strong> for control.',
         'bambu_info_no_web': 'There is no local web interface available for this printer type.',
+        'bambu_info_help': 'Help',
+        'bambu_lab_setup_help': 'Bambu Lab Printer Setup',
         
         // Inefficiency Comment Modal
         'ineff_comment_modal_title_add': '📝 Add Comment',
