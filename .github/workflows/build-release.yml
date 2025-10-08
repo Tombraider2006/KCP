@@ -1,0 +1,89 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Запускается при создании тега версии (например, v1.5.0)
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            artifact_name: '*.AppImage'
+            asset_name_pattern: 'linux'
+          - os: macos-latest
+            artifact_name: '*.dmg'
+            asset_name_pattern: 'mac'
+          - os: windows-latest
+            artifact_name: '*.exe'
+            asset_name_pattern: 'windows'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build for Linux
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run build:linux
+      
+      - name: Build for macOS
+        if: matrix.os == 'macos-latest'
+        run: npm run build:mac
+      
+      - name: Build for Windows
+        if: matrix.os == 'windows-latest'
+        run: npm run build:win
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name_pattern }}-build
+          path: dist-electron/${{ matrix.artifact_name }}
+          retention-days: 1
+
+  release:
+    name: Upload to Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+      
+      - name: Display structure of downloaded files
+        run: ls -R ./artifacts
+      
+      - name: Upload files to existing release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ./artifacts/linux-build/*.AppImage
+            ./artifacts/mac-build/*.dmg
+            ./artifacts/windows-build/*.exe
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
