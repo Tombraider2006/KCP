@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' data: https: http:; script-src 'self' 'unsafe-inline' 'unsafe-eval';">
+    <title id="windowTitle">3D Printer Interfaces</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* ===== СПЕЦИФИЧНЫЕ СТИЛИ ДЛЯ ОКНА ВКЛАДОК ===== */
+        body {
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: linear-gradient(135deg, #0a1628 0%, #1a2942 50%, #0d1b2a 100%);
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(0, 255, 255, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 150, 255, 0.03) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        /* КНОПКА ВОЗВРАТА */
+        .back-to-main {
+            background: linear-gradient(135deg, rgba(40, 167, 69, 0.3), rgba(40, 167, 69, 0.2));
+            color: #5dff8f;
+            border: none;
+            border-bottom: 2px solid rgba(40, 167, 69, 0.5);
+            padding: 15px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-shadow: 0 0 10px rgba(93, 255, 143, 0.5);
+            position: relative;
+            z-index: 2;
+            box-shadow: 0 2px 15px rgba(40, 167, 69, 0.3);
+        }
+        
+        .back-to-main:hover {
+            background: linear-gradient(135deg, rgba(40, 167, 69, 0.4), rgba(40, 167, 69, 0.3));
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(40, 167, 69, 0.5);
+            border-bottom-color: rgba(40, 167, 69, 0.7);
+        }
+        
+        .back-to-main:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 10px rgba(40, 167, 69, 0.4);
+        }
+        
+        .back-icon {
+            font-size: 20px;
+            text-shadow: 0 0 15px rgba(93, 255, 143, 0.8);
+        }
+        
+        /* КОНТЕЙНЕР ВКЛАДОК */
+        .tabs-container {
+            display: flex;
+            background: rgba(13, 27, 42, 0.8);
+            border-bottom: 2px solid rgba(0, 255, 255, 0.3);
+            overflow-x: auto;
+            min-height: 45px;
+            position: relative;
+            z-index: 2;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        /* ВКЛАДКА */
+        .tab {
+            padding: 12px 20px;
+            background: rgba(10, 22, 40, 0.6);
+            color: #7ea8c8;
+            border: none;
+            border-right: 1px solid rgba(0, 212, 255, 0.2);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 180px;
+            max-width: 280px;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            position: relative;
+        }
+
+        .tab::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .tab:hover {
+            background: rgba(0, 212, 255, 0.1);
+            color: #00d4ff;
+        }
+
+        .tab:hover::before {
+            background: rgba(0, 212, 255, 0.4);
+        }
+        
+        .tab.active {
+            background: rgba(0, 212, 255, 0.15);
+            color: #00d4ff;
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+            border-right-color: rgba(0, 212, 255, 0.4);
+        }
+
+        .tab.active::before {
+            background: linear-gradient(90deg, #00d4ff, #4dabf7);
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.8);
+        }
+        
+        .tab-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 14px;
+        }
+        
+        .tab-close {
+            background: rgba(220, 53, 69, 0.2);
+            border: 1px solid rgba(220, 53, 69, 0.4);
+            color: #ff6b6b;
+            cursor: pointer;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 18px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 24px;
+            height: 24px;
+        }
+        
+        .tab-close:hover {
+            background: rgba(220, 53, 69, 0.4);
+            border-color: rgba(220, 53, 69, 0.6);
+            transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(220, 53, 69, 0.5);
+        }
+        
+        /* КОНТЕНТ ВКЛАДОК */
+        .tab-content {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+        
+        .iframe-container {
+            width: 100%;
+            height: 100%;
+            display: none;
+            position: relative;
+        }
+        
+        .iframe-container.active {
+            display: block;
+        }
+        
+        /* СООБЩЕНИЕ "НЕТ ВКЛАДОК" */
+        .no-tabs {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            flex-direction: column;
+            gap: 15px;
+            background: rgba(10, 22, 40, 0.3);
+            border: 2px dashed rgba(0, 212, 255, 0.3);
+            margin: 20px;
+            border-radius: 15px;
+            padding: 40px;
+        }
+
+        .no-tabs #noTabsTitle {
+            color: #00d4ff;
+            font-size: 24px;
+            font-weight: 600;
+            text-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+        }
+        
+        .no-tabs .loading-message {
+            color: #7ea8c8;
+            font-size: 16px;
+        }
+        
+        .printer-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #000;
+        }
+
+        /* ИНДИКАТОР ЗАГРУЗКИ */
+        .loading-indicator {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(10, 22, 40, 0.98), rgba(13, 27, 42, 0.98));
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            z-index: 10;
+            color: #00d4ff;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(0, 212, 255, 0.2);
+            border-top: 4px solid #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-indicator p {
+            font-size: 16px;
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+
+        /* СООБЩЕНИЕ ОБ ОШИБКЕ */
+        .error-message {
+            color: #ff6b6b;
+            padding: 25px;
+            text-align: center;
+            background: rgba(220, 53, 69, 0.15);
+            border: 2px solid rgba(220, 53, 69, 0.4);
+            border-radius: 12px;
+            margin: 20px;
+            max-width: 600px;
+            box-shadow: 0 4px 20px rgba(220, 53, 69, 0.3);
+        }
+
+        .error-message h3 {
+            margin-bottom: 15px;
+            color: #ff6b6b;
+            font-size: 20px;
+            text-shadow: 0 0 10px rgba(220, 53, 69, 0.5);
+        }
+
+        .error-message p {
+            color: #b8d4e8;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+
+        .error-message ul {
+            text-align: left;
+            margin: 15px auto;
+            padding-left: 20px;
+            max-width: 400px;
+            color: #7ea8c8;
+        }
+
+        .error-message li {
+            margin: 8px 0;
+        }
+
+        .retry-btn {
+            background: rgba(0, 123, 255, 0.3);
+            color: #4dabf7;
+            border: 1px solid rgba(0, 123, 255, 0.5);
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 10px rgba(0, 123, 255, 0.3);
+        }
+
+        .retry-btn:hover {
+            background: rgba(0, 123, 255, 0.4);
+            border-color: rgba(0, 123, 255, 0.7);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.5);
+        }
+
+        /* СКРОЛЛБАР ДЛЯ ВКЛАДОК */
+        .tabs-container::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .tabs-container::-webkit-scrollbar-track {
+            background: rgba(10, 22, 40, 0.5);
+        }
+
+        .tabs-container::-webkit-scrollbar-thumb {
+            background: rgba(0, 212, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        .tabs-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 212, 255, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <!-- КНОПКА ВОЗВРАТА -->
+    <button class="back-to-main" onclick="goBackToMain()">
+        <span class="back-icon">←</span>
+        <span id="backButtonText">Вернуться на главный экран</span>
+    </button>
+    
+    <div class="tabs-container" id="tabsContainer"></div>
+    <div class="tab-content" id="tabContent">
+        <div class="no-tabs" id="noTabsMessage">
+            <div id="noTabsTitle">Нет открытых интерфейсов</div>
+            <div class="loading-message" id="noTabsHint">Нажмите на карточки принтеров чтобы открыть интерфейсы</div>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        // ФУНКЦИЯ ДЛЯ ОПРЕДЕЛЕНИЯ ЯЗЫКА
+        async function getBrowserLanguage() {
+            // Пытаемся получить сохраненный язык из store
+            try {
+                const { ipcRenderer } = require('electron');
+                const savedLang = await ipcRenderer.invoke('store-get', 'appLanguage', null);
+                if (savedLang) {
+                    return savedLang;
+                }
+            } catch (error) {
+                console.error('Error getting saved language:', error);
+            }
+            
+            // Fallback на системный язык
+            return navigator.language.toLowerCase().startsWith('ru') ? 'ru' : 'en';
+        }
+
+        // ПЕРЕВОДЫ ДЛЯ ОКНА ВКЛАДОК
+        const TAB_TRANSLATIONS = {
+            ru: {
+                'back_to_main': 'Вернуться на главный экран',
+                'printer_interfaces': 'Интерфейсы принтеров',
+                'no_open_interfaces': 'Нет открытых интерфейсов',
+                'click_printer_cards_to_open': 'Нажмите на карточки принтеров чтобы открыть интерфейсы',
+                'loading_interface': 'Загрузка интерфейса',
+                'interface_loaded': 'Интерфейс загружен',
+                'interface_load_failed': 'Не удалось загрузить интерфейс',
+                'check_printer_connection': 'Проверьте подключение к принтеру',
+                'retry_loading': 'Повторить загрузку',
+                'printer': 'Принтер',
+                'error': 'Ошибка',
+                'connection_error': 'Ошибка подключения',
+                'please_check': 'Пожалуйста проверьте:',
+                'printer_powered_on': 'Принтер включен',
+                'network_working': 'Сетевое подключение работает',
+                'web_accessible': 'Веб-интерфейс доступен в браузере'
+            },
+            en: {
+                'back_to_main': 'Back to main screen',
+                'printer_interfaces': 'Printer Interfaces',
+                'no_open_interfaces': 'No open interfaces',
+                'click_printer_cards_to_open': 'Click on printer cards to open interfaces',
+                'loading_interface': 'Loading interface',
+                'interface_loaded': 'Interface loaded',
+                'interface_load_failed': 'Failed to load interface',
+                'check_printer_connection': 'Check printer connection',
+                'retry_loading': 'Retry loading',
+                'printer': 'Printer',
+                'error': 'Error',
+                'connection_error': 'Connection error',
+                'please_check': 'Please check:',
+                'printer_powered_on': 'Printer is powered on',
+                'network_working': 'Network connection is working',
+                'web_accessible': 'Web interface is accessible in browser'
+            }
+        };
+
+        // Текущий язык (кешируем для синхронного доступа)
+        let currentLang = 'en';
+
+        // ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ ПЕРЕВОДА
+        function t(key) {
+            return TAB_TRANSLATIONS[currentLang][key] || key;
+        }
+
+        // ОБНОВЛЕНИЕ ИНТЕРФЕЙСА ПРИ ЗАГРУЗКЕ
+        async function updateInterfaceLanguage() {
+            currentLang = await getBrowserLanguage();
+            document.getElementById('windowTitle').textContent = t('printer_interfaces');
+            document.getElementById('backButtonText').textContent = t('back_to_main');
+            document.getElementById('noTabsTitle').textContent = t('no_open_interfaces');
+            document.getElementById('noTabsHint').textContent = t('click_printer_cards_to_open');
+        }
+
+        // ФУНКЦИЯ ДЛЯ ВОЗВРАТА НА ГЛАВНЫЙ ЭКРАН
+        function goBackToMain() {
+            console.log('Returning to main window...');
+            ipcRenderer.send('focus-main-window');
+        }
+
+        class PrinterTabsManager {
+            constructor() {
+                this.tabs = new Map();
+                this.activeTabId = null;
+                this.init();
+            }
+
+            init() {
+                console.log('PrinterTabsManager initialized');
+                this.setupIPC();
+                this.renderTabs();
+                // ОБНОВЛЯЕМ ИНТЕРФЕЙС ПРИ ИНИЦИАЛИЗАЦИИ
+                updateInterfaceLanguage();
+            }
+
+            setupIPC() {
+                ipcRenderer.on('add-printer-tab', (event, printerData) => {
+                    console.log('Received add-printer-tab event:', printerData);
+                    this.addTab(printerData);
+                });
+
+                ipcRenderer.on('focus-printer-tab', (event, printerId) => {
+                    console.log('Received focus-printer-tab event:', printerId);
+                    this.focusTab(printerId);
+                });
+            }
+
+            addTab(printerData) {
+                const tabId = printerData.id;
+                console.log('Adding tab for printer:', printerData.name, 'ID:', tabId);
+                
+                if (this.tabs.has(tabId)) {
+                    console.log('Tab already exists, focusing:', tabId);
+                    this.focusTab(tabId);
+                    return;
+                }
+
+                // Создаем вкладку
+                const tabElement = document.createElement('div');
+                tabElement.className = 'tab';
+                tabElement.dataset.tabId = tabId;
+                
+                tabElement.innerHTML = `
+                    <span class="tab-name">${printerData.name}</span>
+                    <button class="tab-close">×</button>
+                `;
+
+                const closeButton = tabElement.querySelector('.tab-close');
+                closeButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.closeTab(tabId);
+                });
+
+                tabElement.addEventListener('click', () => {
+                    this.focusTab(tabId);
+                });
+
+                // Создаем контейнер для iframe
+                const iframeContainer = document.createElement('div');
+                iframeContainer.className = 'iframe-container';
+                iframeContainer.dataset.tabId = tabId;
+                
+                const webPort = printerData.webPort || '80';
+                const printerUrl = `http://${printerData.ip}:${webPort}`;
+                console.log('Loading URL in iframe:', printerUrl);
+                
+                iframeContainer.innerHTML = `
+                    <iframe 
+                        src="${printerUrl}"
+                        class="printer-iframe"
+                        style="width: 100%; height: 100%; border: none;"
+                        allow="autoplay; camera; microphone; display-capture"
+                        allowfullscreen
+                    ></iframe>
+                    <div class="loading-indicator" id="loading-${tabId}">
+                        <div class="loading-spinner"></div>
+                        <p>${t('loading_interface')} ${printerData.name}...</p>
+                    </div>
+                `;
+
+                const iframe = iframeContainer.querySelector('.printer-iframe');
+                const loadingIndicator = iframeContainer.querySelector('.loading-indicator');
+
+                // Обработчики событий iframe
+                iframe.addEventListener('load', () => {
+                    console.log(`Iframe for ${printerData.name} loaded successfully`);
+                    loadingIndicator.style.display = 'none';
+                });
+
+                iframe.addEventListener('error', (event) => {
+                    console.error(`Iframe for ${printerData.name} failed to load:`, event);
+                    loadingIndicator.innerHTML = `
+                        <div class="error-message">
+                            <h3>❌ ${t('interface_load_failed')}</h3>
+                            <p><strong>${t('printer')}:</strong> ${printerData.name}</p>
+                            <p><strong>URL:</strong> ${printerUrl}</p>
+                            <p><strong>${t('error')}:</strong> ${t('connection_error')}</p>
+                            <p>${t('check_printer_connection')}</p>
+                            <ul>
+                                <li>${t('printer_powered_on')}</li>
+                                <li>${t('network_working')}</li>
+                                <li>${t('web_accessible')}</li>
+                            </ul>
+                            <button onclick="window.tabsManager.retryLoad('${tabId}', '${printerUrl}')" class="retry-btn">🔄 ${t('retry_loading')}</button>
+                        </div>
+                    `;
+                });
+
+                // Добавляем элементы в DOM
+                document.getElementById('tabsContainer').appendChild(tabElement);
+                document.getElementById('tabContent').appendChild(iframeContainer);
+
+                // Сохраняем вкладку
+                this.tabs.set(tabId, {
+                    element: tabElement,
+                    container: iframeContainer,
+                    iframe: iframe,
+                    printer: printerData,
+                    url: printerUrl
+                });
+
+                // Активируем новую вкладку
+                this.focusTab(tabId);
+
+                // Скрываем сообщение "нет вкладок"
+                document.getElementById('noTabsMessage').style.display = 'none';
+                
+                console.log('Tab added successfully:', tabId);
+            }
+
+            focusTab(tabId) {
+                if (!this.tabs.has(tabId)) {
+                    console.log('Tab not found for focusing:', tabId);
+                    return;
+                }
+
+                console.log('Focusing tab:', tabId);
+
+                // Деактивируем все вкладки
+                this.tabs.forEach((tab, id) => {
+                    tab.element.classList.remove('active');
+                    tab.container.classList.remove('active');
+                });
+
+                // Активируем выбранную вкладку
+                const tab = this.tabs.get(tabId);
+                tab.element.classList.add('active');
+                tab.container.classList.add('active');
+                
+                this.activeTabId = tabId;
+                console.log('Tab focused:', tabId);
+            }
+
+            closeTab(tabId) {
+                if (!this.tabs.has(tabId)) {
+                    console.log('Tab not found for closing:', tabId);
+                    return;
+                }
+
+                console.log('Closing tab:', tabId);
+
+                const tab = this.tabs.get(tabId);
+                
+                // Удаляем элементы из DOM
+                tab.element.remove();
+                tab.container.remove();
+                
+                // Удаляем из Map
+                this.tabs.delete(tabId);
+
+                // Уведомляем главный процесс о закрытии вкладки
+                ipcRenderer.send('close-printer-tab', tabId);
+
+                // Если это была активная вкладка, активируем другую
+                if (this.activeTabId === tabId) {
+                    const remainingTabs = Array.from(this.tabs.keys());
+                    if (remainingTabs.length > 0) {
+                        this.focusTab(remainingTabs[0]);
+                    } else {
+                        this.activeTabId = null;
+                        // Показываем сообщение "нет вкладок"
+                        document.getElementById('noTabsMessage').style.display = 'flex';
+                    }
+                }
+                
+                console.log('Tab closed:', tabId);
+            }
+
+            retryLoad(tabId, url) {
+                if (this.tabs.has(tabId)) {
+                    const tab = this.tabs.get(tabId);
+                    const loadingIndicator = tab.container.querySelector('.loading-indicator');
+                    const iframe = tab.iframe;
+                    
+                    loadingIndicator.innerHTML = `
+                        <div class="loading-spinner"></div>
+                        <p>${t('retry_loading')} ${tab.printer.name}...</p>
+                    `;
+                    loadingIndicator.style.display = 'flex';
+                    
+                    console.log('Retrying load for:', url);
+                    iframe.src = url;
+                }
+            }
+
+            renderTabs() {
+                document.getElementById('noTabsMessage').style.display = 'flex';
+                console.log('Tabs manager rendered');
+            }
+        }
+
+        // Инициализация менеджера вкладок при загрузке страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded, initializing tabs manager');
+            window.tabsManager = new PrinterTabsManager();
+        });
+
+        // Fallback на случай если DOM уже загружен
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            setTimeout(() => {
+                console.log('DOM already loaded, initializing tabs manager');
+                window.tabsManager = new PrinterTabsManager();
+            }, 100);
+        }
+    </script>
+</body>
+</html>
