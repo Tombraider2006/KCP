@@ -206,19 +206,19 @@
                 </div>
                 <div class="form-group">
                     <label>
-                        <input type="checkbox" id="telegramEnabled"> Enable Telegram notifications
+                        <input type="checkbox" id="telegramEnabled"> <span id="labelEnableTelegram">Enable Telegram notifications</span>
                     </label>
                 </div>
                 <div class="notification-settings">
-                    <h4>Notify on:</h4>
-                    <label><input type="checkbox" id="notifyPrintComplete" checked> Print complete</label>
-                    <label><input type="checkbox" id="notifyPrintError" checked> Print error</label>
-                    <label><input type="checkbox" id="notifyPrintPaused" checked> Print paused</label>
-                    <label><input type="checkbox" id="notifyPrinterOffline"> Printer offline</label>
-                    <label><input type="checkbox" id="notifyPrinterOnline"> Printer online</label>
-                    <label><input type="checkbox" id="notifyInefficiency" checked> Inefficiency event</label>
-                    <label><input type="checkbox" id="notifyInefficiencyReason" checked> Inefficiency reason saved</label>
-                    <label><input type="checkbox" id="notifyProgramStart" checked> Program start</label>
+                    <h4 id="telegramNotifyTitle">Notify on:</h4>
+                    <label><input type="checkbox" id="notifyPrintComplete" checked> <span id="labelPrintComplete">Print complete</span></label>
+                    <label><input type="checkbox" id="notifyPrintError" checked> <span id="labelPrintError">Print error</span></label>
+                    <label><input type="checkbox" id="notifyPrintPaused" checked> <span id="labelPrintPaused">Print paused</span></label>
+                    <label><input type="checkbox" id="notifyPrinterOffline"> <span id="labelPrinterOffline">Printer offline</span></label>
+                    <label><input type="checkbox" id="notifyPrinterOnline"> <span id="labelPrinterOnline">Printer online</span></label>
+                    <label><input type="checkbox" id="notifyInefficiency" checked> <span id="labelInefficiency">Inefficiency event</span></label>
+                    <label><input type="checkbox" id="notifyInefficiencyReason" checked> <span id="labelInefficiencyReason">Inefficiency reason saved</span></label>
+                    <label><input type="checkbox" id="notifyProgramStart" checked> <span id="labelProgramStart">Program start</span></label>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-help" onclick="openTelegramHelp()" style="margin-right: auto;">❓ Help</button>
