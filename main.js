@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, shell, Menu } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
+const { version: APP_VERSION } = require('./package.json');
 
 const store = new Store();
 
@@ -20,7 +21,7 @@ function createMainWindow() {
       preload: path.join(__dirname, 'preload.js')
     },
     icon: getIconPath(),
-    title: '3D Printer Control Panel v1.3.0',
+    title: `3D Printer Control Panel v${APP_VERSION}`,
     show: false
   });
 
@@ -660,7 +661,7 @@ async function checkForUpdates(isRussian) {
   const { dialog } = require('electron');
   const https = require('https');
   
-  const currentVersion = '1.3.0';
+  const currentVersion = APP_VERSION;
   const repoOwner = 'Tombraider2006';
   const repoName = 'KCP';
   
@@ -798,7 +799,7 @@ function createTabsWindow() {
       webSecurity: false,
       allowRunningInsecureContent: true
     },
-    title: '3D Printer Interfaces - v1.3.1',
+    title: `3D Printer Interfaces - v${APP_VERSION}`,
     icon: getIconPath(),
     show: false
   });
@@ -910,7 +911,7 @@ ipcMain.on('focus-main-window', (event) => {
 });
 
 ipcMain.handle('get-app-version', () => {
-  return '1.3.0';
+  return APP_VERSION;
 });
 
 // Storage handlers

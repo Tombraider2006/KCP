@@ -197,12 +197,12 @@ header {
     min-height: 280px;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 4px 20px rgba(0, 212, 255, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 20px rgba(0, 212, 255, 0.2);
 }
 
 .printer-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(0, 212, 255, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 30px rgba(0, 212, 255, 0.4);
     border-color: rgba(0, 212, 255, 0.6);
 }
 
@@ -222,32 +222,32 @@ header {
 /* ===== ЦВЕТА СТАТУСОВ (СВЕЧЕНИЕ) ===== */
 .printer-card.ready {
     border-color: rgba(255, 193, 7, 0.6);
-    box-shadow: 0 4px 20px rgba(255, 193, 7, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 20px rgba(255, 193, 7, 0.3);
 }
 
 .printer-card.printing {
     border-color: rgba(40, 167, 69, 0.6);
-    box-shadow: 0 4px 20px rgba(40, 167, 69, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 20px rgba(40, 167, 69, 0.3);
 }
 
 .printer-card.error {
     border-color: rgba(220, 53, 69, 0.6);
-    box-shadow: 0 4px 20px rgba(220, 53, 69, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 20px rgba(220, 53, 69, 0.3);
 }
 
 .printer-card.offline {
     border-color: rgba(108, 117, 125, 0.6);
-    box-shadow: 0 4px 20px rgba(108, 117, 125, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 20px rgba(108, 117, 125, 0.2);
 }
 
 .printer-card.paused {
     border-color: rgba(220, 53, 69, 0.6);
-    box-shadow: 0 4px 20px rgba(220, 53, 69, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 20px rgba(220, 53, 69, 0.3);
 }
 
 .printer-card.complete {
     border-color: rgba(220, 53, 69, 0.6);
-    box-shadow: 0 4px 20px rgba(220, 53, 69, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 20px rgba(220, 53, 69, 0.3);
 }
 
 /* ===== АНИМАЦИИ МИГАНИЯ ===== */
@@ -258,12 +258,12 @@ header {
 @keyframes blinkRedBackground {
     0%, 100% { 
         background: rgba(10, 22, 40, 0.7);
-        box-shadow: 0 4px 20px rgba(220, 53, 69, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+        box-shadow: 0 4px 20px rgba(220, 53, 69, 0.4);
         border-color: rgba(220, 53, 69, 0.6);
     }
     50% { 
         background: rgba(220, 53, 69, 0.15);
-        box-shadow: 0 8px 40px rgba(220, 53, 69, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 40px rgba(220, 53, 69, 0.7);
         border-color: rgba(220, 53, 69, 0.9);
     }
 }
@@ -275,12 +275,12 @@ header {
 @keyframes blinkGreenBackground {
     0%, 100% { 
         background: rgba(10, 22, 40, 0.7);
-        box-shadow: 0 4px 20px rgba(40, 167, 69, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+        box-shadow: 0 4px 20px rgba(40, 167, 69, 0.3);
         border-color: rgba(40, 167, 69, 0.6);
     }
     50% { 
         background: rgba(40, 167, 69, 0.1);
-        box-shadow: 0 8px 30px rgba(40, 167, 69, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 30px rgba(40, 167, 69, 0.5);
         border-color: rgba(40, 167, 69, 0.8);
     }
 }
@@ -292,12 +292,12 @@ header {
 @keyframes blinkYellowBackground {
     0%, 100% { 
         background: rgba(10, 22, 40, 0.7);
-        box-shadow: 0 4px 20px rgba(255, 193, 7, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+        box-shadow: 0 4px 20px rgba(255, 193, 7, 0.3);
         border-color: rgba(255, 193, 7, 0.6);
     }
     50% { 
         background: rgba(255, 193, 7, 0.1);
-        box-shadow: 0 8px 30px rgba(255, 193, 7, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 30px rgba(255, 193, 7, 0.5);
         border-color: rgba(255, 193, 7, 0.8);
     }
 }
@@ -601,6 +601,36 @@ header {
     text-align: center;
     color: #7ea8c8;
     padding: 20px;
+}
+
+/* Chart canvas styling */
+.analytics-card canvas {
+    max-width: 100%;
+    height: auto !important;
+    display: block;
+    box-sizing: border-box;
+}
+
+/* Info items in analytics cards */
+.analytics-card .info-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+    font-size: 14px;
+}
+
+.analytics-card .info-item:last-child {
+    border-bottom: none;
+}
+
+.analytics-card .info-item span:first-child {
+    color: #7ea8c8;
+}
+
+.analytics-card .info-item span:last-child {
+    color: #00d4ff;
+    font-weight: 500;
 }
 
 /* ===== ANALYTICS HELP SECTION ===== */

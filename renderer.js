@@ -27,6 +27,12 @@ let analytics = {
 // Track last inefficiency periods to avoid duplicate notifications
 let lastInefficiencyCheck = {};
 
+// Chart.js instances storage for proper cleanup
+let chartInstances = {};
+
+// Current analytics tab
+let currentAnalyticsTab = 'eff';
+
 // Telegram Bot Configuration
 let telegramConfig = {
     enabled: false,
@@ -574,8 +580,87 @@ async function confirmClearAnalytics() {
     // Обновляем вкладку аналитики если она открыта
     const currentTab = document.querySelector('.analytics-card');
     if (currentTab) {
-        setAnalyticsTab('energy');
+        setAnalyticsTab(currentAnalyticsTab);  // Refresh current tab
     }
+}
+
+async function clearPrinterAnalytics() {
+    const sel = document.getElementById('clearPrinterSelect');
+    if (!sel) return;
+    
+    const printerId = sel.value;
+    const printer = printers.find(p => String(p.id) === String(printerId));
+    
+    if (!printer) return;
+    
+    const confirmed = confirm(`Удалить все данные аналитики для принтера "${printer.name}"?\n\nЭто действие необратимо!`);
+    if (!confirmed) return;
+    
+    const beforeCount = analytics.events.length;
+    analytics.events = analytics.events.filter(e => String(e.printerId) !== String(printerId));
+    const afterCount = analytics.events.length;
+    const removed = beforeCount - afterCount;
+    
+    // Also clear wattage settings for this printer
+    if (analytics.wattageByPrinter[printerId]) {
+        delete analytics.wattageByPrinter[printerId];
+    }
+    
+    await saveAnalytics();
+    addConsoleMessage(`🗑️ Удалено ${removed} событий аналитики для "${printer.name}"`, 'warning');
+    
+    // Refresh analytics tab
+    setAnalyticsTab(currentAnalyticsTab);
+}
+
+async function clearOrphanedAnalytics() {
+    // Find current printer IDs
+    const currentPrinterIds = printers.map(p => String(p.id));
+    
+    // Find orphaned events (events from deleted printers)
+    const orphanedEvents = analytics.events.filter(e => !currentPrinterIds.includes(String(e.printerId)));
+    
+    if (orphanedEvents.length === 0) {
+        alert('Нет данных от удаленных принтеров.\n\nВсе события принадлежат текущим принтерам.');
+        return;
+    }
+    
+    // Count events by orphaned printer ID
+    const orphanedByPrinter = {};
+    orphanedEvents.forEach(e => {
+        const pid = String(e.printerId);
+        if (!orphanedByPrinter[pid]) orphanedByPrinter[pid] = 0;
+        orphanedByPrinter[pid]++;
+    });
+    
+    const orphanedPrinters = Object.keys(orphanedByPrinter);
+    const message = `Найдено ${orphanedEvents.length} событий от ${orphanedPrinters.length} удаленных принтеров:\n\n` +
+        orphanedPrinters.map(pid => `• ${pid.substring(0, 10)}...: ${orphanedByPrinter[pid]} событий`).join('\n') +
+        '\n\nУдалить эти данные?';
+    
+    const confirmed = confirm(message);
+    if (!confirmed) return;
+    
+    const beforeCount = analytics.events.length;
+    
+    // Keep only events from current printers
+    analytics.events = analytics.events.filter(e => currentPrinterIds.includes(String(e.printerId)));
+    
+    // Clean up wattage settings for orphaned printers
+    Object.keys(analytics.wattageByPrinter).forEach(pid => {
+        if (!currentPrinterIds.includes(String(pid))) {
+            delete analytics.wattageByPrinter[pid];
+        }
+    });
+    
+    const afterCount = analytics.events.length;
+    const removed = beforeCount - afterCount;
+    
+    await saveAnalytics();
+    addConsoleMessage(`🧹 Удалено ${removed} событий от удаленных принтеров`, 'success');
+    
+    // Refresh analytics tab
+    setAnalyticsTab(currentAnalyticsTab);
 }
 
 function updateClearAnalyticsModalTranslations() {
@@ -742,30 +827,30 @@ function checkStatusChanges() {
             
             switch(currentStatus) {
                 case 'complete':
-                    event = 'Print Complete';
+                    event = t('event_print_complete');
                     message = t('complete_state');
                     playCompletionSound();
                     break;
                 case 'error':
-                    event = 'Print Error';
+                    event = t('event_print_error');
                     message = t('error_state');
                     playCompletionSound();
                     break;
                 case 'paused':
-                    event = 'Print Paused';
+                    event = t('event_print_paused');
                     message = t('paused_state');
                     playCompletionSound();
                     break;
                 case 'offline':
                     if (previousStatus && previousStatus !== 'offline') {
-                        event = 'Printer Offline';
+                        event = t('event_printer_offline');
                         message = t('printer_offline');
                     }
                     break;
                 case 'ready':
                 case 'printing':
                     if (previousStatus === 'offline') {
-                        event = 'Printer Online';
+                        event = t('event_printer_online');
                         message = `${t('printer')} ${printer.status === 'printing' ? t('printing_state') : t('ready_state')}`;
                     }
                     break;
@@ -782,15 +867,23 @@ function checkStatusChanges() {
 }
 
 function trackStatusTransition(printerId, fromStatus, toStatus) {
-    const ev = { printerId, ts: Date.now(), from: fromStatus, to: toStatus };
+    // Ensure printerId is always a string for consistent comparison
+    const printerIdStr = String(printerId);
+    const ev = { printerId: printerIdStr, ts: Date.now(), from: fromStatus, to: toStatus };
     analytics.events.push(ev);
+    
+    // Log event creation
+    const printer = printers.find(p => String(p.id) === printerIdStr);
+    const printerName = printer ? printer.name : 'Unknown';
+    console.log(`📊 Analytics Event: ${printerName} (${printerIdStr}): ${fromStatus} → ${toStatus}`);
+    
     // keep only last 90 days to limit growth
     const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
     analytics.events = analytics.events.filter(e => e.ts >= ninetyDaysAgo);
     saveAnalytics();
     
     // Проверяем на новые события неэффективности
-    checkForNewInefficiency(printerId);
+    checkForNewInefficiency(printerIdStr);
 }
 
 // Build inefficiency periods based on rules:
@@ -798,8 +891,14 @@ function trackStatusTransition(printerId, fromStatus, toStatus) {
 function findInefficiencyPeriods(printerId, since, until) {
     const MAX_GAP = 10 * 60 * 1000;
     const MAX_PAUSE = 7 * 60 * 1000;
+    
+    // Ensure printerId is string for consistent comparison
+    const printerIdStr = String(printerId);
     const events = analytics.events
-        .filter(e => e.ts >= since && e.ts <= until && (printerId==='all' || e.printerId === printerId))
+        .filter(e => {
+            const eventPrinterIdStr = String(e.printerId);
+            return e.ts >= since && e.ts <= until && (printerIdStr === 'all' || eventPrinterIdStr === printerIdStr);
+        })
         .sort((a,b)=>a.ts-b.ts);
     const periods = [];
     let lastPrintEnd = null;
@@ -889,7 +988,7 @@ function sendInefficiencyNotification(printer, period) {
         return;
     }
     
-    const type = period.type === 'gap' ? 'Gap (перерыв между печатями)' : 'Pause (пауза во время печати)';
+    const type = period.type === 'gap' ? t('inefficiency_gap') : t('inefficiency_pause');
     const duration = formatDuration(period.duration);
     const from = new Date(period.from).toLocaleString();
     const to = new Date(period.to).toLocaleString();
@@ -897,8 +996,8 @@ function sendInefficiencyNotification(printer, period) {
     const notification = {
         printerName: printer.name,
         printerIP: printer.ip,
-        event: '⚠️ Неэффективность',
-        message: `Тип: ${type}\nДлительность: ${duration}\nНачало: ${from}\nКонец: ${to}`
+        event: t('inefficiency_notification_event'),
+        message: `${t('inefficiency_type')}: ${type}\n${t('inefficiency_duration')}: ${duration}\n${t('inefficiency_start')}: ${from}\n${t('inefficiency_end')}: ${to}`
     };
     
     sendTelegramNotification(notification);
@@ -917,7 +1016,7 @@ function sendInefficiencyReasonNotification(from, to, reason) {
     if (period) {
         const printer = printers.find(p => p.id === period.printerId);
         if (printer) {
-            const type = period.type === 'gap' ? 'Gap' : 'Pause';
+            const type = period.type === 'gap' ? t('inefficiency_gap') : t('inefficiency_pause');
             const duration = formatDuration(period.duration);
             const fromStr = new Date(from).toLocaleString();
             const toStr = new Date(to).toLocaleString();
@@ -925,8 +1024,8 @@ function sendInefficiencyReasonNotification(from, to, reason) {
             const notification = {
                 printerName: printer.name,
                 printerIP: printer.ip,
-                event: '📝 Отчет оператора',
-                message: `Тип: ${type}\nДлительность: ${duration}\nПериод: ${fromStr} - ${toStr}\nПричина: ${reason}`
+                event: t('operator_report_event'),
+                message: `${t('inefficiency_type')}: ${type}\n${t('inefficiency_duration')}: ${duration}\n${t('inefficiency_period')}: ${fromStr} - ${toStr}\n${t('inefficiency_reason')}: ${reason}`
             };
             
             sendTelegramNotification(notification);
@@ -1157,14 +1256,28 @@ function renderInefficiency(printerId, custom) {
     if (custom) since = custom.from;
     const until = custom ? custom.to : Date.now();
     const periods = findInefficiencyPeriods(printerId, since, until);
-    // markers chart: draw durations as markers by day
+    
+    // Aggregate by day with separate Gap and Pause durations
     const byDay = {};
     periods.forEach(p => {
         const day = new Date(p.from).toISOString().slice(0,10);
-        if (!byDay[day]) byDay[day] = [];
-        byDay[day].push(p);
+        if (!byDay[day]) {
+            byDay[day] = { gapMinutes: 0, pauseMinutes: 0 };
+        }
+        const durationMinutes = p.duration / (60 * 1000);
+        if (p.type === 'gap') {
+            byDay[day].gapMinutes += durationMinutes;
+        } else if (p.type === 'pause') {
+            byDay[day].pauseMinutes += durationMinutes;
+        }
     });
-    const series = Object.keys(byDay).sort().map(day => ({ day, count: byDay[day].length }));
+    
+    const series = Object.keys(byDay).sort().map(day => ({ 
+        day, 
+        gapMinutes: byDay[day].gapMinutes,
+        pauseMinutes: byDay[day].pauseMinutes
+    }));
+    
     drawIneffMarkers('ineffChart', series);
     const list = document.getElementById('ineffList');
     if (list) list.innerHTML = renderInefficiencyTab(printerId, custom);
@@ -1173,21 +1286,98 @@ function renderInefficiency(printerId, custom) {
 function drawIneffMarkers(canvasId, series) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const w = canvas.width = canvas.offsetWidth;
-    const h = canvas.height;
-    ctx.clearRect(0,0,w,h);
-    if (!series || series.length === 0) return;
-    const max = Math.max(...series.map(s=>s.count));
-    const pad = 30; const gap = 10; const barW = Math.max(4,(w - pad*2 - gap*(series.length-1))/series.length);
-    ctx.fillStyle = '#e74c3c';
-    series.forEach((s,i)=>{
-        const x = pad + i*(barW+gap);
-        const hBar = max>0 ? Math.round((s.count/max)*(h - pad*2)) : 0;
-        const y = h - pad - hBar;
-        ctx.fillRect(x,y,barW,hBar);
+    
+    destroyChart(canvasId);
+    
+    if (!series || series.length === 0) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#666';
+        ctx.font = '14px sans-serif';
+        ctx.fillText(t('no_inefficiency') || 'No inefficiency events', 10, 20);
+        return;
+    }
+    
+    const labels = series.map(s => {
+        const date = new Date(s.day);
+        return date.toLocaleDateString('ru-RU', { month: 'short', day: 'numeric' });
     });
-    ctx.strokeStyle = '#ccc'; ctx.beginPath(); ctx.moveTo(pad,pad); ctx.lineTo(pad,h-pad); ctx.lineTo(w-pad,h-pad); ctx.stroke();
+    
+    const gapData = series.map(s => (s.gapMinutes || 0).toFixed(1));
+    const pauseData = series.map(s => (s.pauseMinutes || 0).toFixed(1));
+    
+    chartInstances[canvasId] = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: t('ineff_type_gap') || 'Gap',
+                    data: gapData,
+                    backgroundColor: 'rgba(231, 76, 60, 0.7)',
+                    borderColor: 'rgba(231, 76, 60, 1)',
+                    borderWidth: 2,
+                    borderRadius: 4,
+                    maxBarThickness: 50  // Limit bar width
+                },
+                {
+                    label: t('ineff_type_pause') || 'Pause',
+                    data: pauseData,
+                    backgroundColor: 'rgba(230, 126, 34, 0.7)',
+                    borderColor: 'rgba(230, 126, 34, 1)',
+                    borderWidth: 2,
+                    borderRadius: 4,
+                    maxBarThickness: 50  // Limit bar width
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: { color: '#ccc', font: { size: 12 } }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: '#e74c3c',
+                    borderWidth: 1,
+                    callbacks: {
+                        label: function(context) {
+                            const hours = Math.floor(context.parsed.y / 60);
+                            const mins = Math.round(context.parsed.y % 60);
+                            return `${context.dataset.label}: ${hours}h ${mins}m`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    ticks: { 
+                        color: '#888', 
+                        font: { size: 11 },
+                        callback: function(value) {
+                            return Math.round(value) + ' min';
+                        }
+                    },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                },
+                x: {
+                    stacked: true,
+                    ticks: { color: '#888', font: { size: 11 }, maxRotation: 45, minRotation: 0 },
+                    grid: { display: false }
+                }
+            },
+            // Control bar sizing
+            categoryPercentage: 0.8,
+            barPercentage: 0.7
+        }
+    });
 }
 
 // ===== ФУНКЦИИ ПОДКЛЮЧЕНИЯ И WEBSOCKET =====
@@ -1444,7 +1634,7 @@ function handleWebSocketMessage(printer, data) {
         // Telegram: notify on print start
         if (prevStatus !== 'printing' && printer.status === 'printing') {
             const fn = getFileName(printer);
-            sendEventNotification(printer, 'Print Start', `${t('printer')}: ${printer.name}, ${t('file')}: ${fn}`);
+            sendEventNotification(printer, t('event_print_start'), `${t('printer')}: ${printer.name}, ${t('file')}: ${fn}`);
         }
         updatePrinterDisplay(printer);
         updatePrintersCounter();
@@ -1698,21 +1888,41 @@ function openAnalyticsModal() {
     document.getElementById('analyticsPeriod').value = '7d';
     localizeAnalyticsUi();
     bindAnalyticsFilters();
-    setAnalyticsTab('energy');
+    setAnalyticsTab('eff');  // Open Efficiency tab by default to showcase new charts
     modal.style.display = 'block';
 }
 
 function closeAnalyticsModal() {
+    // Destroy all chart instances before closing
+    Object.keys(chartInstances).forEach(chartId => {
+        destroyChart(chartId);
+    });
+    
     const modal = document.getElementById('analyticsModal');
     if (modal) modal.style.display = 'none';
 }
 
 function setAnalyticsTab(tab) {
+    currentAnalyticsTab = tab;  // Save current tab
+    
+    // Destroy all existing chart instances before switching tabs
+    Object.keys(chartInstances).forEach(chartId => {
+        destroyChart(chartId);
+    });
+    
     const content = document.getElementById('analyticsTabContent');
     if (!content) return;
     const period = document.getElementById('analyticsPeriod').value;
     const printerId = document.getElementById('analyticsPrinter').value || 'all';
     const custom = getCustomRangeIfAny();
+    
+    console.log('========== setAnalyticsTab DEBUG ==========');
+    console.log('Selected printerId from dropdown:', printerId);
+    console.log('Type of printerId:', typeof printerId);
+    console.log('Period:', period);
+    console.log('Total events in analytics:', analytics.events.length);
+    console.log('Printers:', printers.map(p => ({ id: p.id, name: p.name })));
+    
     const stats = computeAnalytics(period, printerId, custom);
     // Update header metrics
     document.getElementById('stat-print-time').textContent = formatDuration(stats.totalPrintMs);
@@ -1739,11 +1949,100 @@ function setAnalyticsTab(tab) {
     }
 
     if (tab === 'eff') {
+        const dailyData = aggregateDailyEnergy(period, printerId, custom, true);
+        
+        if (dailyData.length === 0) {
+            content.innerHTML = `
+                <div class="analytics-card">
+                    <div class="analytics-empty">${t('no_data_available') || 'No data available'}</div>
+                </div>
+            `;
+            return;
+        }
+        
+        // Calculate summary statistics
+        const totalPrint = dailyData.reduce((sum, d) => sum + d.printMs, 0);
+        const totalIdle = dailyData.reduce((sum, d) => sum + d.idleMs, 0);
+        const avgEff = totalPrint + totalIdle > 0 ? (totalPrint / (totalPrint + totalIdle) * 100) : 0;
+        
+        // Find best and worst days
+        let bestDay = null, worstDay = null;
+        let maxEff = -1, minEff = 101;
+        
+        dailyData.forEach(d => {
+            const total = d.printMs + d.idleMs;
+            if (total > 0) {
+                const eff = (d.printMs / total) * 100;
+                if (eff > maxEff) {
+                    maxEff = eff;
+                    bestDay = d.day;
+                }
+                if (eff < minEff) {
+                    minEff = eff;
+                    worstDay = d.day;
+                }
+            }
+        });
+        
+        const formatDate = (dayStr) => {
+            const date = new Date(dayStr);
+            return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+        };
+        
         content.innerHTML = `
-            <div class="analytics-card">
-                <div class="analytics-empty">${t('efficiency_rules_hint')}</div>
+            <div class="analytics-grid">
+                <div class="analytics-card" style="grid-column: 1 / -1;">
+                    <h4 style="margin-bottom: 10px; color: #00d4ff;">${t('efficiency_overview') || 'Efficiency Overview'}</h4>
+                    <div style="height: 260px; position: relative;">
+                        <canvas id="efficiencyComboChart"></canvas>
+                    </div>
+                </div>
+                <div class="analytics-card">
+                    <h4 style="color: #2ecc71; margin-bottom: 15px;">📊 ${t('efficiency_stats') || 'Statistics'}</h4>
+                    <div class="info-item">
+                        <span>${t('avg_efficiency') || 'Average Efficiency'}:</span>
+                        <span style="color: ${avgEff >= 70 ? '#2ecc71' : avgEff >= 50 ? '#f39c12' : '#e74c3c'}; font-weight: bold; font-size: 18px;">
+                            ${avgEff.toFixed(1)}%
+                        </span>
+                    </div>
+                    ${bestDay ? `
+                    <div class="info-item">
+                        <span>🏆 ${t('best_day') || 'Best Day'}:</span>
+                        <span style="color: #2ecc71;">${formatDate(bestDay)} (${maxEff.toFixed(1)}%)</span>
+                    </div>
+                    ` : ''}
+                    ${worstDay ? `
+                    <div class="info-item">
+                        <span>⚠️ ${t('worst_day') || 'Worst Day'}:</span>
+                        <span style="color: #e74c3c;">${formatDate(worstDay)} (${minEff.toFixed(1)}%)</span>
+                    </div>
+                    ` : ''}
+                    <div class="info-item">
+                        <span>${t('total_days') || 'Total Days'}:</span>
+                        <span>${dailyData.length}</span>
+                    </div>
+                </div>
+                <div class="analytics-card">
+                    <h4 style="color: #3498db; margin-bottom: 15px;">💡 ${t('efficiency_tips') || 'Tips'}</h4>
+                    <div style="font-size: 13px; line-height: 1.8; color: #aaa;">
+                        ${avgEff >= 70 ? `
+                            <p style="color: #2ecc71;">✅ ${t('eff_tip_good') || 'Excellent efficiency! Your printers are well utilized.'}</p>
+                        ` : avgEff >= 50 ? `
+                            <p style="color: #f39c12;">⚠️ ${t('eff_tip_medium') || 'Good efficiency, but there\'s room for improvement.'}</p>
+                            <p>• ${t('eff_tip_reduce_gaps') || 'Reduce gaps between prints'}</p>
+                            <p>• ${t('eff_tip_batch') || 'Consider batch printing'}</p>
+                        ` : `
+                            <p style="color: #e74c3c;">❌ ${t('eff_tip_low') || 'Low efficiency detected.'}</p>
+                            <p>• ${t('eff_tip_check_ineff') || 'Check Inefficiency tab for details'}</p>
+                            <p>• ${t('eff_tip_schedule') || 'Optimize print scheduling'}</p>
+                            <p>• ${t('eff_tip_minimize') || 'Minimize idle time'}</p>
+                        `}
+                    </div>
+                </div>
             </div>
         `;
+        
+        drawEfficiencyComboChart('efficiencyComboChart', dailyData);
         return;
     }
 
@@ -1751,7 +2050,9 @@ function setAnalyticsTab(tab) {
         content.innerHTML = `
             <div class="analytics-grid">
                 <div class="analytics-card">
-                    <canvas id="ineffChart" height="200"></canvas>
+                    <div style="height: 220px; position: relative;">
+                        <canvas id="ineffChart"></canvas>
+                    </div>
                 </div>
                 <div class="analytics-card" id="ineffList"></div>
             </div>
@@ -1765,8 +2066,12 @@ function setAnalyticsTab(tab) {
     content.innerHTML = `
         <div class="analytics-grid">
             <div class="analytics-card">
-                <canvas id="analyticsChart" height="220"></canvas>
-                <canvas id="efficiencyChart" height="160" style="margin-top:10px;"></canvas>
+                <div style="height: 200px; position: relative; margin-bottom: 15px;">
+                    <canvas id="analyticsChart"></canvas>
+                </div>
+                <div style="height: 150px; position: relative;">
+                    <canvas id="efficiencyChart"></canvas>
+                </div>
             </div>
             <div class="analytics-card">
                 <h4>${t('energy_details_title')}</h4>
@@ -1819,15 +2124,15 @@ function bindAnalyticsFilters() {
     const customBox = document.getElementById('analyticsCustomRange');
     const onChange = () => {
         customBox.style.display = periodSel.value === 'custom' ? 'flex' : 'none';
-        setAnalyticsTab('energy');
+        setAnalyticsTab(currentAnalyticsTab);  // Keep current tab
     };
     periodSel.onchange = onChange;
     const from = document.getElementById('analyticsFrom');
     const to = document.getElementById('analyticsTo');
-    if (from) from.onchange = () => setAnalyticsTab('energy');
-    if (to) to.onchange = () => setAnalyticsTab('energy');
+    if (from) from.onchange = () => setAnalyticsTab(currentAnalyticsTab);  // Keep current tab
+    if (to) to.onchange = () => setAnalyticsTab(currentAnalyticsTab);  // Keep current tab
     const printerSel = document.getElementById('analyticsPrinter');
-    if (printerSel) printerSel.onchange = () => setAnalyticsTab('energy');
+    if (printerSel) printerSel.onchange = () => setAnalyticsTab(currentAnalyticsTab);  // Keep current tab
 }
 
 function getCustomRangeIfAny() {
@@ -1847,14 +2152,40 @@ function populateAnalyticsPrinterSelect() {
     sel.innerHTML = '';
     const all = document.createElement('option');
     all.value = 'all';
-    all.textContent = 'Все принтеры';
+    all.textContent = t('all_printers') || 'Все принтеры';
     sel.appendChild(all);
     for (const p of printers) {
         const o = document.createElement('option');
-        o.value = p.id;
+        o.value = String(p.id);  // Ensure ID is string
         o.textContent = p.name;
         sel.appendChild(o);
     }
+    
+    // Debug: Log detailed analytics status
+    console.log('========== ANALYTICS STATUS ==========');
+    console.log('Total printers configured:', printers.length);
+    console.log('Printers:', printers.map(p => ({ id: p.id, name: p.name, status: p.status })));
+    console.log('Total analytics events:', analytics.events.length);
+    
+    if (analytics.events.length > 0) {
+        const eventsByPrinter = {};
+        analytics.events.forEach(e => {
+            const pid = String(e.printerId);
+            if (!eventsByPrinter[pid]) eventsByPrinter[pid] = 0;
+            eventsByPrinter[pid]++;
+        });
+        console.log('Events by printer:', eventsByPrinter);
+        console.log('Unique printer IDs in events:', Object.keys(eventsByPrinter));
+        
+        // Show date range
+        const timestamps = analytics.events.map(e => e.ts);
+        const oldest = new Date(Math.min(...timestamps));
+        const newest = new Date(Math.max(...timestamps));
+        console.log('Data range:', oldest.toLocaleString(), 'to', newest.toLocaleString());
+    } else {
+        console.log('⚠️ NO ANALYTICS EVENTS YET! Events will be created when printer status changes.');
+    }
+    console.log('======================================');
 }
 
 function renderAnalyticsSettings() {
@@ -1862,6 +2193,24 @@ function renderAnalyticsSettings() {
     return `
         <div class="analytics-card">
             <h4>Настройки стоимости энергии</h4>
+            <div style="margin-bottom: 20px; padding: 10px; background: rgba(231, 76, 60, 0.1); border: 1px solid rgba(231, 76, 60, 0.3); border-radius: 5px;">
+                <h5 style="color: #e74c3c; margin-bottom: 10px;">🗑️ Очистка данных</h5>
+                
+                <div style="margin-bottom: 15px;">
+                    <p style="font-size: 13px; color: #aaa; margin-bottom: 10px;">Удалить данные от удаленных принтеров (рекомендуется):</p>
+                    <button class="btn btn-danger btn-small" onclick="clearOrphanedAnalytics()" style="width: 100%;">🧹 Очистить данные от удаленных принтеров</button>
+                </div>
+                
+                <div>
+                    <p style="font-size: 13px; color: #aaa; margin-bottom: 10px;">Или удалить данные конкретного принтера:</p>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <select id="clearPrinterSelect" style="flex: 1; padding: 8px; background: #1a1a1a; border: 1px solid #444; color: #fff; border-radius: 5px;">
+                            ${printers.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+                        </select>
+                        <button class="btn btn-danger btn-small" onclick="clearPrinterAnalytics()">Очистить</button>
+                    </div>
+                </div>
+            </div>
             <div class="form-group">
                 <label>Стоимость за 1 кВтч:</label>
                 <input type="number" step="0.01" id="energyCostInput" value="${analytics.energyCostPerKwh.toFixed(2)}">
@@ -1955,7 +2304,35 @@ function computeAnalytics(periodKey, printerId, customRange) {
     if (periodKey === '30d') since = Date.now() - 30*24*60*60*1000;
     if (periodKey === 'custom' && customRange) since = customRange.from;
     const until = (periodKey === 'custom' && customRange) ? customRange.to : Date.now();
-    const filtered = analytics.events.filter(e => e.ts >= since && e.ts <= until && (printerId==='all' || e.printerId === printerId));
+    
+    // Ensure printerId is string for consistent comparison
+    const printerIdStr = String(printerId);
+    
+    // Debug: show first few events
+    if (analytics.events.length > 0) {
+        console.log('Sample of first 3 events:', analytics.events.slice(0, 3).map(e => ({
+            printerId: e.printerId,
+            printerIdType: typeof e.printerId,
+            from: e.from,
+            to: e.to,
+            ts: new Date(e.ts).toISOString()
+        })));
+    }
+    
+    const filtered = analytics.events.filter(e => {
+        const eventPrinterIdStr = String(e.printerId);
+        const timeMatch = e.ts >= since && e.ts <= until;
+        const printerMatch = printerIdStr === 'all' || eventPrinterIdStr === printerIdStr;
+        
+        // Debug: log comparison for first 5 events
+        if (analytics.events.indexOf(e) < 5) {
+            console.log(`Event ${analytics.events.indexOf(e)}: printerId="${e.printerId}" (type: ${typeof e.printerId}), comparing with "${printerIdStr}" -> match: ${printerMatch}`);
+        }
+        
+        return timeMatch && printerMatch;
+    });
+    
+    console.log(`computeAnalytics: filtering by printerId="${printerIdStr}", found ${filtered.length} events out of ${analytics.events.length}`);
     // Approximate by summing durations between transitions: printing vs not printing
     let totalPrintMs = 0;
     let totalIdleMs = 0;
@@ -1971,10 +2348,87 @@ function computeAnalytics(periodKey, printerId, customRange) {
     const tail = Math.max(0, until - lastTs);
     if (lastState === 'printing') totalPrintMs += tail; else totalIdleMs += tail;
 
-    // kWh estimation: use wattageByPrinter if set else default 120W while printing, 8W idle
-    const wattPrint = averageWattage(printerId, true);
-    const wattIdle = averageWattage(printerId, false);
-    const kwhTotal = (wattPrint * totalPrintMs + wattIdle * totalIdleMs) / (1000 * 60 * 60 * 1000);
+    // kWh estimation
+    let kwhTotal = 0;
+    
+    if (printerIdStr === 'all') {
+        // For "all" - calculate energy for each printer separately and sum
+        const printerTimes = {}; // Track time per printer
+        
+        console.log('=== "ALL PRINTERS" ENERGY CALCULATION ===');
+        console.log('Filtered events:', filtered.length);
+        console.log('Unique printer IDs in filtered events:', [...new Set(filtered.map(e => String(e.printerId)))]);
+        
+        filtered.forEach(e => {
+            const pid = String(e.printerId);
+            if (!printerTimes[pid]) {
+                printerTimes[pid] = { printMs: 0, idleMs: 0 };
+            }
+        });
+        
+        // Recalculate time per printer
+        let lastTsByPrinter = {};
+        let lastStatByPrinter = {};
+        
+        filtered.forEach(e => {
+            const pid = String(e.printerId);
+            
+            if (lastTsByPrinter[pid]) {
+                const dur = Math.max(0, e.ts - lastTsByPrinter[pid]);
+                if (lastStatByPrinter[pid] === 'printing') {
+                    printerTimes[pid].printMs += dur;
+                } else {
+                    printerTimes[pid].idleMs += dur;
+                }
+            }
+            
+            lastTsByPrinter[pid] = e.ts;
+            lastStatByPrinter[pid] = (e.to === 'printing') ? 'printing' : 'idle';
+        });
+        
+        // Add tail time for each printer
+        Object.keys(lastTsByPrinter).forEach(pid => {
+            const tailTime = Math.max(0, until - lastTsByPrinter[pid]);
+            if (lastStatByPrinter[pid] === 'printing') {
+                printerTimes[pid].printMs += tailTime;
+            } else {
+                printerTimes[pid].idleMs += tailTime;
+            }
+        });
+        
+        // Calculate energy for each printer and sum
+        console.log('Energy calculation for "All Printers":');
+        console.log('Printers with time data:', Object.keys(printerTimes));
+        
+        Object.keys(printerTimes).forEach(pid => {
+            const wattPrint = getPrinterWattage(pid, true);
+            const wattIdle = getPrinterWattage(pid, false);
+            const printHours = printerTimes[pid].printMs / (1000 * 60 * 60);
+            const idleHours = printerTimes[pid].idleMs / (1000 * 60 * 60);
+            const kwh = (wattPrint * printerTimes[pid].printMs + wattIdle * printerTimes[pid].idleMs) / (1000 * 60 * 60 * 1000);
+            const printer = printers.find(p => String(p.id) === pid);
+            const name = printer ? printer.name : pid.substring(0, 10);
+            console.log(`  ${name} (${pid.substring(0,10)}...):`);
+            console.log(`    Print: ${printHours.toFixed(2)}h × ${wattPrint}W = ${(wattPrint * printHours / 1000).toFixed(3)} kWh`);
+            console.log(`    Idle: ${idleHours.toFixed(2)}h × ${wattIdle}W = ${(wattIdle * idleHours / 1000).toFixed(3)} kWh`);
+            console.log(`    Total: ${kwh.toFixed(3)} kWh`);
+            kwhTotal += kwh;
+        });
+        console.log(`  === GRAND TOTAL: ${kwhTotal.toFixed(3)} kWh ===`);
+    } else {
+        // For single printer - use existing calculation
+        const wattPrint = getPrinterWattage(printerIdStr, true);
+        const wattIdle = getPrinterWattage(printerIdStr, false);
+        kwhTotal = (wattPrint * totalPrintMs + wattIdle * totalIdleMs) / (1000 * 60 * 60 * 1000);
+        
+        const printHours = totalPrintMs / (1000 * 60 * 60);
+        const idleHours = totalIdleMs / (1000 * 60 * 60);
+        console.log(`=== SINGLE PRINTER ENERGY (${printerIdStr.substring(0,10)}...) ===`);
+        console.log(`  Print: ${printHours.toFixed(2)}h × ${wattPrint}W = ${(wattPrint * printHours / 1000).toFixed(3)} kWh`);
+        console.log(`  Idle: ${idleHours.toFixed(2)}h × ${wattIdle}W = ${(wattIdle * idleHours / 1000).toFixed(3)} kWh`);
+        console.log(`  Total: ${kwhTotal.toFixed(3)} kWh`);
+    }
+    
     const energyCost = kwhTotal * (analytics.energyCostPerKwh || 0);
     const efficiency = (totalPrintMs + totalIdleMs) > 0 ? (totalPrintMs / (totalPrintMs + totalIdleMs)) * 100 : 0;
     const days = Math.max(1, Math.round((until - since) / (24*60*60*1000)));
@@ -1998,75 +2452,281 @@ function aggregateDailyEnergy(periodKey, printerId, customRange, withRaw) {
     };
     // sample each minute based on last state approximation
     let state = 'idle';
-    const events = analytics.events.filter(e => e.ts >= since && e.ts <= until && (printerId==='all' || e.printerId===printerId)).sort((a,b)=>a.ts-b.ts);
-    let cursor = since;
-    let idx = 0;
-    while (cursor <= until) {
-        while (idx < events.length && events[idx].ts <= cursor) {
-            state = (events[idx].to === 'printing') ? 'printing' : (events[idx].to === 'paused' ? 'paused' : 'idle');
-            idx++;
+    
+    // Ensure printerId is string for consistent comparison
+    const printerIdStr = String(printerId);
+    const events = analytics.events.filter(e => {
+        const eventPrinterIdStr = String(e.printerId);
+        return e.ts >= since && e.ts <= until && (printerIdStr === 'all' || eventPrinterIdStr === printerIdStr);
+    }).sort((a,b)=>a.ts-b.ts);
+    
+    if (printerIdStr === 'all') {
+        // For "all" - track each printer separately
+        const bucketsByPrinter = {}; // { printerId: { day: { printMs, idleMs } } }
+        
+        // Group events by printer
+        const eventsByPrinter = {};
+        events.forEach(e => {
+            const pid = String(e.printerId);
+            if (!eventsByPrinter[pid]) eventsByPrinter[pid] = [];
+            eventsByPrinter[pid].push(e);
+        });
+        
+        // Process each printer separately
+        Object.keys(eventsByPrinter).forEach(pid => {
+            const printerEvents = eventsByPrinter[pid];
+            let state = 'idle';
+            let cursor = since;
+            let idx = 0;
+            
+            while (cursor <= until) {
+                while (idx < printerEvents.length && printerEvents[idx].ts <= cursor) {
+                    state = (printerEvents[idx].to === 'printing') ? 'printing' : (printerEvents[idx].to === 'paused' ? 'paused' : 'idle');
+                    idx++;
+                }
+                
+                const day = new Date(cursor).toISOString().slice(0,10);
+                if (!bucketsByPrinter[pid]) bucketsByPrinter[pid] = {};
+                if (!bucketsByPrinter[pid][day]) bucketsByPrinter[pid][day] = { printMs: 0, idleMs: 0 };
+                
+                if (state === 'printing') {
+                    bucketsByPrinter[pid][day].printMs += 60000;
+                } else {
+                    bucketsByPrinter[pid][day].idleMs += 60000;
+                }
+                
+                cursor += 60000;
+            }
+        });
+        
+        // Sum energy across all printers by day
+        const combinedBuckets = {};
+        Object.keys(bucketsByPrinter).forEach(pid => {
+            const wPrint = getPrinterWattage(pid, true);
+            const wIdle = getPrinterWattage(pid, false);
+            
+            Object.keys(bucketsByPrinter[pid]).forEach(day => {
+                if (!combinedBuckets[day]) {
+                    combinedBuckets[day] = { kwh: 0, printMs: 0, idleMs: 0 };
+                }
+                
+                const dayData = bucketsByPrinter[pid][day];
+                const kwh = (wPrint * dayData.printMs + wIdle * dayData.idleMs) / (1000*60*60*1000);
+                
+                combinedBuckets[day].kwh += kwh;
+                combinedBuckets[day].printMs += dayData.printMs;
+                combinedBuckets[day].idleMs += dayData.idleMs;
+            });
+        });
+        
+        const data = Object.keys(combinedBuckets).sort().map(day => {
+            return withRaw 
+                ? { day, kwh: combinedBuckets[day].kwh, printMs: combinedBuckets[day].printMs, idleMs: combinedBuckets[day].idleMs }
+                : { day, kwh: combinedBuckets[day].kwh };
+        });
+        return data;
+        
+    } else {
+        // Single printer - original logic
+        let cursor = since;
+        let idx = 0;
+        let state = 'idle';
+        
+        while (cursor <= until) {
+            while (idx < events.length && events[idx].ts <= cursor) {
+                state = (events[idx].to === 'printing') ? 'printing' : (events[idx].to === 'paused' ? 'paused' : 'idle');
+                idx++;
+            }
+            push(cursor, state === 'printing');
+            cursor += 60000;
         }
-        push(cursor, state === 'printing');
-        cursor += 60000;
+        
+        const data = Object.keys(buckets).sort().map(day => {
+            const wPrint = getPrinterWattage(printerIdStr, true);
+            const wIdle = getPrinterWattage(printerIdStr, false);
+            const kwh = (wPrint * buckets[day].printMs + wIdle * buckets[day].idleMs) / (1000*60*60*1000);
+            return withRaw ? { day, kwh, printMs: buckets[day].printMs, idleMs: buckets[day].idleMs } : { day, kwh };
+        });
+        return data;
     }
-    const data = Object.keys(buckets).sort().map(day => {
-        const wPrint = averageWattage(printerId, true);
-        const wIdle = averageWattage(printerId, false);
-        const kwh = (wPrint * buckets[day].printMs + wIdle * buckets[day].idleMs) / (1000*60*60*1000);
-        return withRaw ? { day, kwh, printMs: buckets[day].printMs, idleMs: buckets[day].idleMs } : { day, kwh };
-    });
-    return data;
+}
+
+// Helper function to destroy chart instance if exists
+function destroyChart(chartId) {
+    if (chartInstances[chartId]) {
+        chartInstances[chartId].destroy();
+        delete chartInstances[chartId];
+    }
+    
+    // Reset canvas size to prevent accumulation
+    const canvas = document.getElementById(chartId);
+    if (canvas) {
+        // Clear the canvas context
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        // Remove inline width/height that Chart.js may have set
+        canvas.removeAttribute('width');
+        canvas.removeAttribute('height');
+        
+        // Reset style to allow proper resizing
+        canvas.style.width = '';
+        canvas.style.height = '';
+    }
 }
 
 function drawEnergyChart(canvasId, series) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const w = canvas.width = canvas.offsetWidth;
-    const h = canvas.height;
-    ctx.clearRect(0,0,w,h);
+    
+    destroyChart(canvasId);
+    
     if (!series || series.length === 0) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#666';
+        ctx.font = '14px sans-serif';
         ctx.fillText('No data', 10, 20);
         return;
     }
-    const max = Math.max(...series.map(s=>s.kwh));
-    const pad = 30; const gap = 8;
-    const barW = Math.max(4, (w - pad*2 - gap*(series.length-1)) / series.length);
-    ctx.fillStyle = '#3498db';
-    series.forEach((s, i) => {
-        const x = pad + i*(barW+gap);
-        const hBar = max>0 ? Math.round((s.kwh/max)*(h - pad*2)) : 0;
-        const y = h - pad - hBar;
-        ctx.fillRect(x, y, barW, hBar);
+    
+    const labels = series.map(s => {
+        const date = new Date(s.day);
+        return date.toLocaleDateString('ru-RU', { month: 'short', day: 'numeric' });
     });
-    // axes
-    ctx.strokeStyle = '#ccc';
-    ctx.beginPath();
-    ctx.moveTo(pad, pad);
-    ctx.lineTo(pad, h - pad);
-    ctx.lineTo(w - pad, h - pad);
-    ctx.stroke();
+    
+    const data = series.map(s => s.kwh.toFixed(2));
+    
+    chartInstances[canvasId] = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: t('energy_consumption_kwh') || 'Energy (kWh)',
+                data: data,
+                backgroundColor: 'rgba(52, 152, 219, 0.7)',
+                borderColor: 'rgba(52, 152, 219, 1)',
+                borderWidth: 2,
+                borderRadius: 4,
+                maxBarThickness: 60  // Limit bar width
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: { color: '#ccc', font: { size: 12 } }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: '#3498db',
+                    borderWidth: 1,
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: ${context.parsed.y} kWh`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: '#888', font: { size: 11 } },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                },
+                x: {
+                    ticks: { color: '#888', font: { size: 11 }, maxRotation: 45, minRotation: 0 },
+                    grid: { display: false }
+                }
+            },
+            // Control bar sizing
+            categoryPercentage: 0.8,
+            barPercentage: 0.7
+        }
+    });
 }
 
 function drawEfficiencyLine(canvasId, series) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const w = canvas.width = canvas.offsetWidth;
-    const h = canvas.height;
-    ctx.clearRect(0,0,w,h);
+    
+    destroyChart(canvasId);
+    
     if (!series || series.length === 0) return;
-    const max = 100, min = 0; const pad = 30;
-    ctx.strokeStyle = '#ccc';
-    ctx.beginPath(); ctx.moveTo(pad, pad); ctx.lineTo(pad, h-pad); ctx.lineTo(w-pad, h-pad); ctx.stroke();
-    ctx.strokeStyle = '#8e44ad'; ctx.beginPath();
-    series.forEach((s,i)=>{
-        const x = pad + i * ((w - pad*2) / Math.max(1, series.length-1));
-        const y = h - pad - ((s.eff - min)/(max-min)) * (h - pad*2);
-        if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    
+    const labels = series.map(s => {
+        const date = new Date(s.day);
+        return date.toLocaleDateString('ru-RU', { month: 'short', day: 'numeric' });
     });
-    ctx.stroke();
+    
+    const data = series.map(s => s.eff.toFixed(1));
+    
+    chartInstances[canvasId] = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: t('kpi_efficiency') || 'Efficiency (%)',
+                data: data,
+                borderColor: 'rgba(142, 68, 173, 1)',
+                backgroundColor: 'rgba(142, 68, 173, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4,
+                pointBackgroundColor: 'rgba(142, 68, 173, 1)',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: { color: '#ccc', font: { size: 12 } }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: '#8e44ad',
+                    borderWidth: 1,
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: ${context.parsed.y}%`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: { 
+                        color: '#888', 
+                        font: { size: 11 },
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                },
+                x: {
+                    ticks: { color: '#888', font: { size: 11 }, maxRotation: 45, minRotation: 0 },
+                    grid: { display: false }
+                }
+            }
+        }
+    });
 }
 
 function aggregateDailyEfficiency(periodKey, printerId, customRange) {
@@ -2078,14 +2738,162 @@ function aggregateDailyEfficiency(periodKey, printerId, customRange) {
     });
 }
 
-function averageWattage(printerId, printing) {
-    if (printerId !== 'all') {
-        const w = analytics.wattageByPrinter[printerId];
-        if (w && typeof w === 'object') {
-            return printing ? (w.print || 120) : (w.idle || 8);
+// Draw combined efficiency chart: print/idle time + efficiency line
+function drawEfficiencyComboChart(canvasId, series) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    
+    destroyChart(canvasId);
+    
+    if (!series || series.length === 0) return;
+    
+    const labels = series.map(s => {
+        const date = new Date(s.day);
+        return date.toLocaleDateString('ru-RU', { month: 'short', day: 'numeric' });
+    });
+    
+    const printHours = series.map(s => (s.printMs / (1000 * 60 * 60)).toFixed(2));
+    const idleHours = series.map(s => (s.idleMs / (1000 * 60 * 60)).toFixed(2));
+    const effData = series.map(s => {
+        const total = s.printMs + s.idleMs;
+        return total > 0 ? ((s.printMs / total) * 100).toFixed(1) : 0;
+    });
+    
+    chartInstances[canvasId] = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: t('kpi_print_time') || 'Print Time',
+                    data: printHours,
+                    backgroundColor: 'rgba(46, 204, 113, 0.7)',
+                    borderColor: 'rgba(46, 204, 113, 1)',
+                    borderWidth: 2,
+                    borderRadius: 4,
+                    maxBarThickness: 50,  // Limit bar width
+                    yAxisID: 'y'
+                },
+                {
+                    label: t('kpi_idle_time') || 'Idle Time',
+                    data: idleHours,
+                    backgroundColor: 'rgba(52, 152, 219, 0.7)',
+                    borderColor: 'rgba(52, 152, 219, 1)',
+                    borderWidth: 2,
+                    borderRadius: 4,
+                    maxBarThickness: 50,  // Limit bar width
+                    yAxisID: 'y'
+                },
+                {
+                    label: t('kpi_efficiency') || 'Efficiency',
+                    data: effData,
+                    type: 'line',
+                    borderColor: 'rgba(241, 196, 15, 1)',
+                    backgroundColor: 'rgba(241, 196, 15, 0.1)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.4,
+                    pointRadius: 5,
+                    pointBackgroundColor: 'rgba(241, 196, 15, 1)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointHoverRadius: 7,
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: { color: '#ccc', font: { size: 12 } }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: '#00d4ff',
+                    borderWidth: 1,
+                    callbacks: {
+                        label: function(context) {
+                            if (context.dataset.yAxisID === 'y1') {
+                                return `${context.dataset.label}: ${context.parsed.y}%`;
+                            }
+                            return `${context.dataset.label}: ${context.parsed.y}h`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    beginAtZero: true,
+                    ticks: { 
+                        color: '#888', 
+                        font: { size: 11 },
+                        callback: function(value) {
+                            return value + 'h';
+                        }
+                    },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                    title: {
+                        display: true,
+                        text: t('hours') || 'Hours',
+                        color: '#888'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: { 
+                        color: '#888', 
+                        font: { size: 11 },
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    },
+                    grid: { drawOnChartArea: false },
+                    title: {
+                        display: true,
+                        text: t('kpi_efficiency') || 'Efficiency %',
+                        color: '#888'
+                    }
+                },
+                x: {
+                    ticks: { color: '#888', font: { size: 11 }, maxRotation: 45, minRotation: 0 },
+                    grid: { display: false }
+                }
+            },
+            // Control bar sizing
+            categoryPercentage: 0.8,
+            barPercentage: 0.7
         }
+    });
+}
+
+// Get wattage for a specific printer (not "all")
+function getPrinterWattage(printerId, printing) {
+    const w = analytics.wattageByPrinter[printerId];
+    if (w && typeof w === 'object') {
+        return printing ? (w.print || 120) : (w.idle || 8);
     }
     return printing ? 120 : 8;
+}
+
+// DEPRECATED: For backward compatibility in aggregateDailyEnergy
+function averageWattage(printerId, printing) {
+    return getPrinterWattage(printerId, printing);
 }
 
 function formatDuration(ms) {
@@ -2472,7 +3280,14 @@ async function loadTelegramSettings() {
         savedConfig = saved ? JSON.parse(saved) : null;
     }
     if (savedConfig) {
-        telegramConfig = savedConfig;
+        telegramConfig = {
+            ...telegramConfig,
+            ...savedConfig,
+            notifications: {
+                ...telegramConfig.notifications,
+                ...savedConfig.notifications
+            }
+        };
     }
     
     const tokenInput = document.getElementById('telegramBotToken');
@@ -2566,7 +3381,12 @@ async function sendTelegramNotification(notification) {
     }
     
     try {
-        const message = `🖨️ *${notification.printerName}* (${notification.printerIP})\n` +
+        // Формируем заголовок с IP только если он указан и не пустой
+        const header = notification.printerIP && notification.printerIP.trim() 
+            ? `🖨️ *${notification.printerName}* (${notification.printerIP})`
+            : `🖨️ *${notification.printerName}*`;
+        
+        const message = `${header}\n` +
                        `📋 *Event:* ${notification.event}\n` +
                        `💬 *Message:* ${notification.message}\n` +
                        `⏰ *Time:* ${new Date().toLocaleString()}`;
@@ -2625,26 +3445,20 @@ function sendEventNotification(printer, event, message) {
     
     let shouldSend = false;
     
-    switch(event) {
-        case 'Print Complete':
-            shouldSend = telegramConfig.notifications.printComplete;
-            break;
-        case 'Print Start':
-            // always send start if enabled globally
-            shouldSend = true;
-            break;
-        case 'Print Error':
-            shouldSend = telegramConfig.notifications.printError;
-            break;
-        case 'Print Paused':
-            shouldSend = telegramConfig.notifications.printPaused;
-            break;
-        case 'Printer Offline':
-            shouldSend = telegramConfig.notifications.printerOffline;
-            break;
-        case 'Printer Online':
-            shouldSend = telegramConfig.notifications.printerOnline;
-            break;
+    // Проверяем тип события по переведенным строкам
+    if (event === t('event_print_complete')) {
+        shouldSend = telegramConfig.notifications.printComplete;
+    } else if (event === t('event_print_start')) {
+        // always send start if enabled globally
+        shouldSend = true;
+    } else if (event === t('event_print_error')) {
+        shouldSend = telegramConfig.notifications.printError;
+    } else if (event === t('event_print_paused')) {
+        shouldSend = telegramConfig.notifications.printPaused;
+    } else if (event === t('event_printer_offline')) {
+        shouldSend = telegramConfig.notifications.printerOffline;
+    } else if (event === t('event_printer_online')) {
+        shouldSend = telegramConfig.notifications.printerOnline;
     }
     
     if (shouldSend) {
@@ -2663,9 +3477,9 @@ function sendProgramStartNotification() {
     
     const notification = {
         printerName: '3D Printer Control Panel',
-        printerIP: 'localhost',
-        event: '🚀 Запуск программы',
-        message: `Версия: ${appVersion}\nПринтеров в системе: ${printersCount}\nСтатус: готово к работе`
+        printerIP: '', // Пустой IP для системных уведомлений
+        event: t('startup_event'),
+        message: `${t('startup_version')}: ${appVersion}\n${t('startup_printers_count')}: ${printersCount}\n${t('startup_status')}`
     };
     
     sendTelegramNotification(notification);
