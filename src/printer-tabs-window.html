@@ -427,7 +427,7 @@
 
         // ФУНКЦИЯ ДЛЯ ВОЗВРАТА НА ГЛАВНЫЙ ЭКРАН
         function goBackToMain() {
-            console.log('Returning to main window...');
+            // Returning to main window
             ipcRenderer.send('focus-main-window');
         }
 
@@ -439,7 +439,7 @@
             }
 
             init() {
-                console.log('PrinterTabsManager initialized');
+                // PrinterTabsManager initialized
                 this.setupIPC();
                 this.setupPostMessageProxy();
                 this.renderTabs();
@@ -449,24 +449,24 @@
 
             setupIPC() {
                 ipcRenderer.on('add-printer-tab', (event, printerData) => {
-                    console.log('Received add-printer-tab event:', printerData);
+                    // Received add-printer-tab event
                     this.addTab(printerData);
                 });
 
                 ipcRenderer.on('focus-printer-tab', (event, printerId) => {
-                    console.log('Received focus-printer-tab event:', printerId);
+                    // Received focus-printer-tab event
                     this.focusTab(printerId);
                 });
 
                 // Обработчик данных Bambu Lab
                 ipcRenderer.on('bambu-data-update', (event, printerId, data) => {
-                    console.log('Received bambu-data-update for printer:', printerId, data);
+                    // Received bambu-data-update
                     this.sendDataToBambuInterface(printerId, data);
                 });
                 
                 // Обработчик обновлений камеры Bambu Lab
                 ipcRenderer.on('bambu-camera-update', (event, printerId, imageDataUrl) => {
-                    console.log('[CAMERA TABS] Received camera update for printer:', printerId);
+                    // Received camera update
                     this.sendCameraToBambuInterface(printerId, imageDataUrl);
                 });
             }
@@ -474,17 +474,17 @@
             setupPostMessageProxy() {
                 // Обработчик postMessage от iframe Bambu Lab
                 window.addEventListener('message', (event) => {
-                    console.log('Received postMessage from iframe:', event.data);
+                    // Received postMessage from iframe
                     
                     if (event.data.type === 'request-bambu-data') {
                         const printerId = event.data.printerId;
-                        console.log('Proxying bambu data request to main process for printer:', printerId);
+                        // Proxying data request to main process
                         
                         // Проксируем запрос в main процесс через IPC
                         ipcRenderer.send('request-bambu-data', printerId);
                     } else if (event.data.type === 'start-camera') {
                         const printerId = event.data.printerId;
-                        console.log('[CAMERA PROXY] Proxying camera start request for printer:', printerId);
+                        // Proxying camera start request
                         
                         // Проксируем запрос камеры в main процесс через IPC
                         ipcRenderer.send('start-camera-updates', printerId);
@@ -494,10 +494,10 @@
 
             addTab(printerData) {
                 const tabId = printerData.id;
-                console.log('Adding tab for printer:', printerData.name, 'ID:', tabId, 'Type:', printerData.type);
+                // Adding tab for printer
                 
                 if (this.tabs.has(tabId)) {
-                    console.log('Tab already exists, focusing:', tabId);
+                    // Tab already exists, focusing
                     this.focusTab(tabId);
                     return;
                 }
@@ -536,13 +536,13 @@
                     // Для Bambu Lab используем локальный интерфейс
                     // ИСПРАВЛЕНО: убрали src/ т.к. мы уже в папке src/
                     printerUrl = 'bambu-printer-interface.html';
-                    console.log('Loading Bambu Lab interface:', printerData.name, 'URL:', printerUrl);
+                    // Loading Bambu Lab interface
                 } else {
                     // Для Klipper используем веб-интерфейс принтера
                     const webPortRaw = printerData.webPort;
                     const webPort = (webPortRaw && String(webPortRaw).trim() !== '') ? String(webPortRaw).trim() : '80';
                     printerUrl = `http://${printerData.ip}:${webPort}`;
-                    console.log('Loading Klipper interface:', printerData.name, '-', printerUrl);
+                    // Loading Klipper interface
                 }
                 
                 iframeContainer.innerHTML = `
@@ -564,7 +564,7 @@
 
                 // Обработчики событий iframe
                 iframe.addEventListener('load', () => {
-                    console.log(`Iframe for ${printerData.name} loaded successfully`);
+                    // Iframe loaded successfully
                     loadingIndicator.style.display = 'none';
                     
                     // Для Bambu Lab отправляем printer ID в iframe
@@ -579,18 +579,18 @@
                             ipcRenderer.send('bambu-interface-ready', tabId);
                             
                             // Запускаем обновления камеры после загрузки iframe
-                            console.log('[CAMERA] Requesting camera start for:', tabId);
+                            // Requesting camera start
                             setTimeout(() => {
                                 ipcRenderer.send('start-camera-updates', tabId);
                             }, 500);
                         } catch (error) {
-                            console.error('Error sending printer ID to iframe:', error);
+                            // Error sending printer ID to iframe
                         }
                     }
                 });
 
                 iframe.addEventListener('error', (event) => {
-                    console.error(`Iframe for ${printerData.name} failed to load:`, event);
+                    // Iframe failed to load
                     loadingIndicator.innerHTML = `
                         <div class="error-message">
                             <h3>❌ ${t('interface_load_failed')}</h3>
@@ -628,16 +628,16 @@
                 // Скрываем сообщение "нет вкладок"
                 document.getElementById('noTabsMessage').style.display = 'none';
                 
-                console.log('Tab added successfully:', tabId);
+                // Tab added successfully
             }
 
             focusTab(tabId) {
                 if (!this.tabs.has(tabId)) {
-                    console.log('Tab not found for focusing:', tabId);
+                    // Tab not found for focusing
                     return;
                 }
 
-                console.log('Focusing tab:', tabId);
+                // Focusing tab
 
                 // Деактивируем все вкладки
                 this.tabs.forEach((tab, id) => {
@@ -651,22 +651,22 @@
                 tab.container.classList.add('active');
                 
                 this.activeTabId = tabId;
-                console.log('Tab focused:', tabId);
+                // Tab focused
             }
 
             closeTab(tabId) {
                 if (!this.tabs.has(tabId)) {
-                    console.log('Tab not found for closing:', tabId);
+                    // Tab not found for closing
                     return;
                 }
 
-                console.log('Closing tab:', tabId);
+                // Closing tab
 
                 const tab = this.tabs.get(tabId);
                 
                 // Для Bambu Lab останавливаем обновления камеры
                 if (tab.isBambu) {
-                    console.log('[CAMERA] Stopping camera updates for:', tabId);
+                    // Stopping camera updates
                     ipcRenderer.send('stop-camera-updates', tabId);
                 }
                 
@@ -692,7 +692,7 @@
                     }
                 }
                 
-                console.log('Tab closed:', tabId);
+                // Tab closed
             }
 
             retryLoad(tabId, url) {
@@ -707,33 +707,33 @@
                     `;
                     loadingIndicator.style.display = 'flex';
                     
-                    console.log('Retrying load for:', url);
+                    // Retrying load
                     iframe.src = url;
                 }
             }
 
             sendDataToBambuInterface(printerId, data) {
-                console.log('[sendDataToBambuInterface] Called for printer:', printerId);
-                console.log('[sendDataToBambuInterface] Has tabs:', this.tabs.has(printerId));
+                // sendDataToBambuInterface called
+                // Checking if tabs exist
                 
                 if (!this.tabs.has(printerId)) {
-                    console.log('[sendDataToBambuInterface] Tab not found for Bambu data:', printerId);
-                    console.log('[sendDataToBambuInterface] Available tabs:', Array.from(this.tabs.keys()));
+                    // Tab not found for Bambu data
+                    // Available tabs listed
                     return;
                 }
 
                 const tab = this.tabs.get(printerId);
-                console.log('[sendDataToBambuInterface] Tab found:', tab);
-                console.log('[sendDataToBambuInterface] Is Bambu?:', tab.isBambu);
+                // Tab found
+                // Checking if tab is Bambu type
                 
                 if (!tab.isBambu) {
-                    console.log('[sendDataToBambuInterface] Tab is not Bambu type:', printerId);
+                    // Tab is not Bambu type
                     return;
                 }
 
-                console.log('[sendDataToBambuInterface] Sending data to Bambu interface:', printerId, data);
-                console.log('[sendDataToBambuInterface] Iframe exists?:', !!tab.iframe);
-                console.log('[sendDataToBambuInterface] ContentWindow exists?:', !!(tab.iframe && tab.iframe.contentWindow));
+                // Sending data to Bambu interface
+                // Checking iframe existence
+                // Checking contentWindow existence
                 
                 try {
                     // Отправляем данные в iframe через postMessage
@@ -742,9 +742,9 @@
                             type: 'bambu-data-update',
                             data: data
                         }, '*');
-                        console.log('[sendDataToBambuInterface] postMessage sent successfully');
+                        // postMessage sent successfully
                     } else {
-                        console.error('[sendDataToBambuInterface] iframe or contentWindow not available');
+                        // iframe or contentWindow not available
                     }
                 } catch (error) {
                     console.error('[sendDataToBambuInterface] Error sending data to Bambu interface:', error);

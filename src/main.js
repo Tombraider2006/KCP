@@ -53,7 +53,7 @@ function createMainWindow() {
   });
 
   if (process.argv.includes('--dev')) {
-    mainWindow.webContents.openDevTools();
+    // mainWindow.webContents.openDevTools(); // Отключено для продакшена
   }
 
   createApplicationMenu();
@@ -1391,15 +1391,15 @@ function createTabsWindow() {
 
   tabsWindow.loadFile('src/printer-tabs-window.html');
 
-  // Открываем DevTools для отладки (временно)
-  tabsWindow.webContents.openDevTools();
+  // DevTools отключены для продакшена
+  // tabsWindow.webContents.openDevTools();
 
   tabsWindow.on('closed', () => {
     tabsWindow = null;
     printerTabs.clear();
   });
 
-  console.log('Tabs window created and shown');
+  // Tabs window created and shown
 
   return tabsWindow;
 }
@@ -1411,7 +1411,7 @@ function addPrinterTab(printerData) {
   const window = createTabsWindow();
   const isNewWindow = wasWindowNull; // Новое окно если раньше его не было
   
-  console.log('Adding printer tab:', printerData.name, 'isNewWindow:', isNewWindow);
+  // Adding printer tab
   
   // Сохраняем данные принтера
   printerTabs.set(printerData.id, printerData);
@@ -1419,12 +1419,12 @@ function addPrinterTab(printerData) {
   // Отправляем данные в окно вкладок
   const sendData = () => {
     if (window && !window.isDestroyed()) {
-      console.log('Sending add-printer-tab event for:', printerData.name);
+      // Sending add-printer-tab event
       window.webContents.send('add-printer-tab', printerData);
       
       // Для Bambu Lab принтеров сразу отправляем данные
       if (printerData.type === 'bambu') {
-        console.log('Scheduling Bambu data send for:', printerData.name);
+        // Scheduling Bambu data send
         setTimeout(async () => {
           await sendBambuDataToInterface(printerData.id);
         }, 500); // Увеличил задержку до 500мс
@@ -1434,14 +1434,14 @@ function addPrinterTab(printerData) {
   
   // Если это новое окно (первый принтер) - ждем dom-ready
   if (isNewWindow) {
-    console.log('Waiting for dom-ready event...');
+    // Waiting for dom-ready event
     window.webContents.once('dom-ready', () => {
-      console.log('dom-ready event fired');
+      // DOM ready event fired
       setTimeout(sendData, 300); // Увеличил задержку до 300мс
     });
   } else {
     // Окно уже существует - отправляем сразу
-    console.log('Window already exists, sending data immediately');
+    // Window already exists, sending data immediately
     setTimeout(sendData, 50); // Увеличил задержку до 50мс
   }
 }
@@ -1773,15 +1773,15 @@ async function sendBambuDataToInterface(printerId) {
       printerData.hasCamera = adapter.hasCamera();
       printerData.cameraStreamUrl = adapter.getCameraStreamUrl();
       
-      console.log('[CAMERA] Added to data - hasCamera:', printerData.hasCamera, 'URL:', printerData.cameraStreamUrl);
+      // Camera data added to printer data
       
       // Отправляем данные в окно вкладок
       if (tabsWindow && !tabsWindow.isDestroyed()) {
         tabsWindow.webContents.send('bambu-data-update', printerId, printerData);
-        console.log('Data sent to tabs window for printer:', printerId);
+        // Data sent to tabs window
       }
     } else {
-      console.log('No MQTT adapter found for printer:', printerId);
+      // No MQTT adapter found
       // Отправляем сообщение об отсутствии данных
       if (tabsWindow && !tabsWindow.isDestroyed()) {
         tabsWindow.webContents.send('bambu-data-update', printerId, {
@@ -1822,14 +1822,7 @@ ipcMain.on('send-bambu-data', (event, printerId, data) => {
 
 const cameraIntervals = new Map(); // printerId -> interval
 
-/**
- * Отправка лога в DevTools окна вкладок
- */
-function sendCameraLog(message, level = 'log') {
-  if (tabsWindow && !tabsWindow.isDestroyed()) {
-    tabsWindow.webContents.executeJavaScript(`console.${level}('${message.replace(/'/g, "\\'")}');`);
-  }
-}
+// Функция sendCameraLog удалена для продакшена
 
 // Хранилище CameraController для каждого принтера
 const cameraControllers = new Map(); // printerId -> CameraController
@@ -1839,9 +1832,6 @@ const cameraControllers = new Map(); // printerId -> CameraController
  */
 async function fetchBambuCamera(ip, accessCode, model = 'P1S') {
   try {
-    console.log('[CAMERA bambu-js] Creating camera controller for:', ip, 'model:', model);
-    sendCameraLog(`[CAMERA bambu-js] Connecting to ${ip} (model: ${model})`, 'log');
-    
     // Динамический импорт bambu-js как ES модуль
     const { CameraController } = await import('bambu-js');
     
@@ -1856,18 +1846,8 @@ async function fetchBambuCamera(ip, accessCode, model = 'P1S') {
       }
     });
     
-    console.log('[CAMERA bambu-js] Capturing frame...');
-    sendCameraLog('[CAMERA bambu-js] Capturing frame...', 'log');
-    
     // Захватываем кадр
     const frame = await camera.captureFrame();
-    
-    console.log('[CAMERA bambu-js] Frame captured:', {
-      frameNumber: frame.frameNumber,
-      size: frame.size,
-      timestamp: frame.timestamp
-    });
-    sendCameraLog(`[CAMERA bambu-js] ✅ Frame captured! Size: ${frame.size} bytes, Frame #${frame.frameNumber}`, 'log');
     
     // Конвертируем Buffer в base64 Data URL
     const base64 = frame.imageData.toString('base64');
@@ -1875,8 +1855,7 @@ async function fetchBambuCamera(ip, accessCode, model = 'P1S') {
     
     return dataUrl;
   } catch (error) {
-    console.error('[CAMERA bambu-js] Error:', error.message);
-    sendCameraLog(`[CAMERA bambu-js] ❌ Error: ${error.message}`, 'error');
+    console.error('[CAMERA] Error:', error.message);
     return null;
   }
 }
@@ -1885,49 +1864,32 @@ async function fetchBambuCamera(ip, accessCode, model = 'P1S') {
  * Запуск периодической загрузки камеры для принтера
  */
 function startCameraUpdates(printerId) {
-  console.log('[CAMERA START] Function called for:', printerId);
-  sendCameraLog(`[CAMERA START] Function called for: ${printerId}`, 'log');
-  
   // Останавливаем существующий интервал если есть
   stopCameraUpdates(printerId);
   
   const printerData = printerTabs.get(printerId);
-  console.log('[CAMERA START] Printer data:', printerData);
   
   if (!printerData) {
-    console.log('[CAMERA START] ERROR: No printer data found for ID:', printerId);
-    sendCameraLog(`[CAMERA START] ❌ ERROR: No printer data found for ID: ${printerId}`, 'error');
+    console.error('[CAMERA] No printer data found for ID:', printerId);
     return;
   }
   
   if (printerData.type !== 'bambu') {
-    console.log('[CAMERA START] ERROR: Not a Bambu printer, type:', printerData.type);
-    sendCameraLog(`[CAMERA START] ❌ ERROR: Not a Bambu printer, type: ${printerData.type}`, 'error');
+    console.error('[CAMERA] Not a Bambu printer, type:', printerData.type);
     return;
   }
   
   const cleanIp = printerData.ip.split(':')[0];
   const accessCode = printerData.accessCode;
   
-  console.log('[CAMERA START] Clean IP:', cleanIp);
-  console.log('[CAMERA START] Has access code:', !!accessCode);
-  sendCameraLog(`[CAMERA START] Clean IP: ${cleanIp}, Has access code: ${!!accessCode}`, 'log');
-  
   if (!accessCode) {
-    console.log('[CAMERA START] ERROR: No access code for printer:', printerId);
-    sendCameraLog('[CAMERA START] ❌ ERROR: No access code', 'error');
+    console.error('[CAMERA] No access code for printer:', printerId);
     return;
   }
-  
-  console.log('[CAMERA START] ✅ All checks passed, starting camera updates for:', printerData.name);
-  sendCameraLog(`[CAMERA START] ✅ All checks passed, starting for: ${printerData.name}`, 'log');
   
   // Определяем модель для bambu-js (используем P1S как базовую для всех моделей)
   // bambu-js поддерживает только P1S и H2D, используем P1S для большинства принтеров
   const model = 'P1S';  // TCP_STREAM на порту 6000
-  
-  console.log('[CAMERA START] Using model:', model, 'for camera access');
-  sendCameraLog(`[CAMERA START] Using model: ${model} (TCP port 6000)`, 'log');
   
   // Загружаем камеру каждые 3 секунды (чтобы не нагружать принтер)
   const interval = setInterval(async () => {

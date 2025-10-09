@@ -461,62 +461,51 @@
     </div>
 
     <script>
-        console.log('[BAMBU IFRAME] Script tag executed!');
-        console.log('[BAMBU IFRAME] Window location:', window.location.href);
-        console.log('[BAMBU IFRAME] Parent exists?:', window.parent !== window);
+        // Bambu interface script executed
         
-        // Глобальный обработчик ошибок
-        window.addEventListener('error', (e) => {
-            console.error('[BAMBU IFRAME] Global error:', e.error, e.message, e.filename, e.lineno);
-        });
-        
-        window.addEventListener('unhandledrejection', (e) => {
-            console.error('[BAMBU IFRAME] Unhandled promise rejection:', e.reason);
-        });
+        // Error handlers (minimal logging for production)
         
         let printerId = null;
 
         // Initialize
         window.addEventListener('DOMContentLoaded', () => {
-            console.log('[BAMBU IFRAME] DOMContentLoaded event fired');
-            console.log('[BAMBU IFRAME] Bambu Lab interface loaded (iframe mode)');
             setupPostMessage();
             
             // Запрашиваем данные сразу при загрузке
             setTimeout(() => {
-                console.log('[BAMBU IFRAME] Calling requestInitialData');
+                // Requesting initial data
                 requestInitialData();
             }, 100);
         });
         
-        console.log('[BAMBU IFRAME] Setting up load event listener');
+        // Setting up load event listener
 
         function setupPostMessage() {
-            console.log('[BAMBU IFRAME] setupPostMessage called');
+            // Setting up postMessage listener
             // Listen for messages from parent window
             window.addEventListener('message', (event) => {
-                console.log('[BAMBU IFRAME] Received postMessage:', event.data);
+                // Received postMessage
                 
                 if (event.data.type === 'set-printer-id') {
                     printerId = event.data.printerId;
-                    console.log('[BAMBU IFRAME] Printer ID set via postMessage:', printerId);
+                    // Printer ID set
                     requestInitialData();
                 } else if (event.data.type === 'bambu-data-update') {
-                    console.log('[BAMBU IFRAME] Received bambu data update via postMessage:', event.data.data);
+                    // Received data update
                     updateInterface(event.data.data);
                 } else if (event.data.type === 'camera-update') {
-                    console.log('[BAMBU IFRAME] Received camera update');
+                    // Received camera update
                     updateCameraImage(event.data.imageDataUrl);
                 } else {
-                    console.log('[BAMBU IFRAME] Unknown message type:', event.data.type);
+                    // Unknown message type
                 }
             });
-            console.log('[BAMBU IFRAME] Message listener attached');
+            // Message listener attached
         }
 
         function requestInitialData() {
             if (printerId) {
-                console.log('Requesting initial data for printer via postMessage:', printerId);
+                // Requesting initial data
                 // Отправляем запрос в parent window через postMessage
                 window.parent.postMessage({
                     type: 'request-bambu-data',
@@ -541,16 +530,16 @@
         }
 
         function updateInterface(data) {
-            console.log('Updating interface with data:', data);
+            // Updating interface with data
             if (!data) {
-                console.log('No data provided to updateInterface');
+                // No data provided
                 return;
             }
 
             // Hide loading, show content
             document.getElementById('loadingContainer').style.display = 'none';
             document.getElementById('contentContainer').style.display = 'block';
-            console.log('Interface content displayed');
+            // Interface content displayed
 
             // Update camera
             updateCamera(data);
@@ -616,24 +605,24 @@
         let cameraStarted = false;
         
         function updateCamera(data) {
-            console.log('[CAMERA] updateCamera called');
-            console.log('[CAMERA] data.hasCamera:', data.hasCamera);
+            // Camera update called
+            // Checking camera availability
             
             const cameraContainer = document.getElementById('cameraContainer');
             
             if (!data.hasCamera) {
-                console.log('[CAMERA] Camera not available on this printer');
+                // Camera not available
                 cameraContainer.style.display = 'none';
                 return;
             }
 
-            console.log('[CAMERA] Printer has camera, showing container');
+            // Camera available, showing container
             cameraContainer.style.display = 'block';
             
             // Запускаем загрузку камеры (один раз)
             if (!cameraStarted && printerId) {
                 cameraStarted = true;
-                console.log('[CAMERA] Requesting camera start from iframe for printer:', printerId);
+                // Requesting camera start
                 window.parent.postMessage({
                     type: 'start-camera',
                     printerId: printerId
@@ -641,16 +630,16 @@
             }
             
             // Изображения будут загружаться через main процесс (FTP) и приходить через postMessage
-            console.log('[CAMERA] Waiting for camera updates from main process...');
+            // Waiting for camera updates
         }
         
         function updateCameraImage(imageDataUrl) {
-            console.log('[CAMERA] updateCameraImage called');
+            // Camera image update called
             
             const cameraContent = document.getElementById('cameraContent');
             
             if (!imageDataUrl) {
-                console.log('[CAMERA] No image data provided');
+                // No image data provided
                 showCameraError('Camera image not available');
                 return;
             }
