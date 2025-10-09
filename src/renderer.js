@@ -510,6 +510,9 @@ function togglePrinterTypeFields(modalType) {
 function openAddPrinterModal() {
     const modal = document.getElementById('addPrinterModal');
     if (modal) {
+        // Update translations before showing modal
+        updateInterfaceLanguage();
+        
         modal.style.display = 'block';
         // Устанавливаем Klipper по умолчанию и показываем соответствующие поля
         const typeSelect = document.getElementById('printerType');
@@ -605,6 +608,9 @@ function editPrinter(printerId, event) {
     if (event) event.stopPropagation();
     const printer = printers.find(p => p.id === printerId);
     if (!printer) return;
+    
+    // Update translations before showing modal
+    updateInterfaceLanguage();
     
     const idInput = document.getElementById('editPrinterId');
     const typeInput = document.getElementById('editPrinterType');
