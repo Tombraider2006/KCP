@@ -418,6 +418,45 @@
             animation: spin 1s linear infinite;
             margin-bottom: 15px;
         }
+
+        /* Кнопка показа/скрытия чувствительных данных */
+        .toggle-visibility-btn {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            color: #00d4ff;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            min-width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .toggle-visibility-btn:hover {
+            background: rgba(0, 212, 255, 0.2);
+            border-color: #00d4ff;
+            transform: scale(1.05);
+        }
+
+        .toggle-visibility-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Маскированное значение */
+        .masked-value[data-masked="true"] {
+            filter: blur(5px);
+            user-select: none;
+            transition: filter 0.3s ease;
+        }
+
+        .masked-value[data-masked="false"] {
+            filter: none;
+        }
     </style>
 </head>
 <body>
@@ -532,7 +571,12 @@
                     </div>
                     <div class="info-item">
                         <span class="info-label">Serial Number:</span>
-                        <span class="info-value" id="serialNumber">--</span>
+                        <div style="display: flex; gap: 8px; align-items: center; flex: 1;">
+                            <span class="info-value masked-value" id="serialNumber" data-masked="true">--</span>
+                            <button type="button" class="toggle-visibility-btn" onclick="toggleSerialNumberVisibility()" title="Show/Hide">
+                                👁️
+                            </button>
+                        </div>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Connection:</span>
@@ -677,6 +721,8 @@
                 document.getElementById('printerIP').textContent = data.ip;
             }
             if (data.serialNumber) {
+                // Сохраняем реальный серийный номер
+                realSerialNumber = data.serialNumber;
                 document.getElementById('serialNumber').textContent = data.serialNumber;
             }
 
@@ -854,6 +900,28 @@
 
         // Initialize control buttons when DOM is ready
         document.addEventListener('DOMContentLoaded', setupControlButtons);
+
+        // Функция для переключения видимости серийного номера
+        let realSerialNumber = '--'; // Хранит реальный серийный номер
+        
+        function toggleSerialNumberVisibility() {
+            const serialElement = document.getElementById('serialNumber');
+            const button = event.target.closest('.toggle-visibility-btn');
+            
+            if (!serialElement || !button) return;
+            
+            const isMasked = serialElement.getAttribute('data-masked') === 'true';
+            
+            if (isMasked) {
+                // Показываем реальное значение
+                serialElement.setAttribute('data-masked', 'false');
+                button.textContent = '🙈';
+            } else {
+                // Скрываем значение
+                serialElement.setAttribute('data-masked', 'true');
+                button.textContent = '👁️';
+            }
+        }
 
         // Request data updates periodically
         setInterval(() => {

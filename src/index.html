@@ -99,12 +99,22 @@
                 <div id="bambuFields" class="printer-type-fields" style="display: none;">
                     <div class="form-group">
                         <label for="accessCode" data-i18n="access_code">Access Code:</label>
-                        <input type="text" id="accessCode" placeholder="12345678">
+                        <div style="display: flex; gap: 5px; align-items: center;">
+                            <input type="password" id="accessCode" placeholder="12345678" style="flex: 1;">
+                            <button type="button" class="toggle-visibility" data-target="accessCode" title="Show/Hide">
+                                👁️
+                            </button>
+                        </div>
                         <small data-i18n="access_code_hint">Get from printer settings → Network → Access Code</small>
                     </div>
                     <div class="form-group">
                         <label for="serialNumber" data-i18n="serial_number">Serial Number:</label>
-                        <input type="text" id="serialNumber" placeholder="01P00A123456789">
+                        <div style="display: flex; gap: 5px; align-items: center;">
+                            <input type="password" id="serialNumber" placeholder="01P00A123456789" style="flex: 1;">
+                            <button type="button" class="toggle-visibility" data-target="serialNumber" title="Show/Hide">
+                                👁️
+                            </button>
+                        </div>
                         <small data-i18n="serial_number_hint">Find on printer label or in settings</small>
                     </div>
                     <div class="form-group">
@@ -165,12 +175,22 @@
                 <div id="editBambuFields" class="printer-type-fields" style="display: none;">
                     <div class="form-group">
                         <label for="editAccessCode" data-i18n="access_code">Access Code:</label>
-                        <input type="text" id="editAccessCode" placeholder="12345678">
+                        <div style="display: flex; gap: 5px; align-items: center;">
+                            <input type="password" id="editAccessCode" placeholder="12345678" style="flex: 1;">
+                            <button type="button" class="toggle-visibility" data-target="editAccessCode" title="Show/Hide">
+                                👁️
+                            </button>
+                        </div>
                         <small data-i18n="access_code_hint">Get from printer settings → Network → Access Code</small>
                     </div>
                     <div class="form-group">
                         <label for="editSerialNumber" data-i18n="serial_number">Serial Number:</label>
-                        <input type="text" id="editSerialNumber" placeholder="01P00A123456789">
+                        <div style="display: flex; gap: 5px; align-items: center;">
+                            <input type="password" id="editSerialNumber" placeholder="01P00A123456789" style="flex: 1;">
+                            <button type="button" class="toggle-visibility" data-target="editSerialNumber" title="Show/Hide">
+                                👁️
+                            </button>
+                        </div>
                         <small data-i18n="serial_number_hint">Find on printer label or in settings</small>
                     </div>
                 </div>

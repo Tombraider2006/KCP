@@ -68,6 +68,7 @@ const STATUS_PRIORITY = {
 // ===== ОСНОВНЫЕ ФУНКЦИИ =====
 document.addEventListener('DOMContentLoaded', function() {
     initApp();
+    setupToggleVisibilityButtons();
 });
 
 async function initApp() {
@@ -539,6 +540,9 @@ function openAddPrinterModal() {
             typeSelect.value = 'klipper';
             togglePrinterTypeFields('add');
         }
+        
+        // Инициализируем кнопки показа/скрытия для модального окна
+        setupToggleVisibilityButtons();
     }
 }
 
@@ -662,6 +666,9 @@ function editPrinter(printerId, event) {
     }
     
     if (modal) modal.style.display = 'block';
+    
+    // Переинициализируем кнопки показа/скрытия для модального окна редактирования
+    setupToggleVisibilityButtons();
 }
 
 function savePrinterChanges() {
@@ -5223,3 +5230,25 @@ document.addEventListener('keypress', function(event) {
         }
     }
 });
+
+// ===== ФУНКЦИЯ ДЛЯ КНОПОК ПОКАЗА/СКРЫТИЯ ЧУВСТВИТЕЛЬНЫХ ДАННЫХ =====
+function setupToggleVisibilityButtons() {
+    // Находим все кнопки показа/скрытия
+    document.querySelectorAll('.toggle-visibility').forEach(button => {
+        button.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const input = document.getElementById(targetId);
+            
+            if (input) {
+                // Переключаем тип поля между password и text
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    this.textContent = '🙈'; // Закрытые глаза - данные видны
+                } else {
+                    input.type = 'password';
+                    this.textContent = '👁️'; // Открытые глаза - данные скрыты
+                }
+            }
+        });
+    });
+}
