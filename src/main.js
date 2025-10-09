@@ -1825,6 +1825,15 @@ ipcMain.on('send-bambu-data', (event, printerId, data) => {
 const cameraIntervals = new Map(); // printerId -> interval
 
 /**
+ * Отправка лога в DevTools окна вкладок
+ */
+function sendCameraLog(message, level = 'log') {
+  if (tabsWindow && !tabsWindow.isDestroyed()) {
+    tabsWindow.webContents.executeJavaScript(`console.${level}('${message.replace(/'/g, "\\'")}');`);
+  }
+}
+
+/**
  * Загрузка изображения с камеры Bambu Lab через FTP
  */
 async function fetchBambuCamera(ip, accessCode) {
@@ -1833,6 +1842,8 @@ async function fetchBambuCamera(ip, accessCode) {
   
   try {
     console.log('[CAMERA FTP] Connecting to:', ip);
+    sendCameraLog(`[CAMERA FTP] Connecting to: ${ip}`, 'log');
+    
     await client.access({
       host: ip,
       user: 'bblp',
@@ -1841,6 +1852,7 @@ async function fetchBambuCamera(ip, accessCode) {
     });
     
     console.log('[CAMERA FTP] Connected, downloading ipcam.jpg');
+    sendCameraLog('[CAMERA FTP] Connected, downloading ipcam.jpg', 'log');
     
     const chunks = [];
     await client.downloadTo({
@@ -1854,9 +1866,12 @@ async function fetchBambuCamera(ip, accessCode) {
     const dataUrl = `data:image/jpeg;base64,${base64}`;
     
     console.log('[CAMERA FTP] Image downloaded, size:', buffer.length, 'bytes');
+    sendCameraLog(`[CAMERA FTP] ✅ Image downloaded, size: ${buffer.length} bytes`, 'log');
+    
     return dataUrl;
   } catch (error) {
     console.error('[CAMERA FTP] Error:', error.message);
+    sendCameraLog(`[CAMERA FTP] ❌ Error: ${error.message}`, 'error');
     client.close();
     return null;
   }
@@ -1867,6 +1882,7 @@ async function fetchBambuCamera(ip, accessCode) {
  */
 function startCameraUpdates(printerId) {
   console.log('[CAMERA START] Function called for:', printerId);
+  sendCameraLog(`[CAMERA START] Function called for: ${printerId}`, 'log');
   
   // Останавливаем существующий интервал если есть
   stopCameraUpdates(printerId);
@@ -1876,11 +1892,13 @@ function startCameraUpdates(printerId) {
   
   if (!printerData) {
     console.log('[CAMERA START] ERROR: No printer data found for ID:', printerId);
+    sendCameraLog(`[CAMERA START] ❌ ERROR: No printer data found for ID: ${printerId}`, 'error');
     return;
   }
   
   if (printerData.type !== 'bambu') {
     console.log('[CAMERA START] ERROR: Not a Bambu printer, type:', printerData.type);
+    sendCameraLog(`[CAMERA START] ❌ ERROR: Not a Bambu printer, type: ${printerData.type}`, 'error');
     return;
   }
   
@@ -1889,13 +1907,16 @@ function startCameraUpdates(printerId) {
   
   console.log('[CAMERA START] Clean IP:', cleanIp);
   console.log('[CAMERA START] Has access code:', !!accessCode);
+  sendCameraLog(`[CAMERA START] Clean IP: ${cleanIp}, Has access code: ${!!accessCode}`, 'log');
   
   if (!accessCode) {
     console.log('[CAMERA START] ERROR: No access code for printer:', printerId);
+    sendCameraLog('[CAMERA START] ❌ ERROR: No access code', 'error');
     return;
   }
   
   console.log('[CAMERA START] ✅ All checks passed, starting camera updates for:', printerData.name);
+  sendCameraLog(`[CAMERA START] ✅ All checks passed, starting for: ${printerData.name}`, 'log');
   
   // Загружаем камеру каждые 2 секунды
   const interval = setInterval(async () => {
