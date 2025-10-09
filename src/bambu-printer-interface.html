@@ -504,6 +504,9 @@
                 } else if (event.data.type === 'bambu-data-update') {
                     console.log('[BAMBU IFRAME] Received bambu data update via postMessage:', event.data.data);
                     updateInterface(event.data.data);
+                } else if (event.data.type === 'camera-update') {
+                    console.log('[BAMBU IFRAME] Received camera update');
+                    updateCameraImage(event.data.imageDataUrl);
                 } else {
                     console.log('[BAMBU IFRAME] Unknown message type:', event.data.type);
                 }
@@ -613,13 +616,11 @@
         function updateCamera(data) {
             console.log('[CAMERA] updateCamera called');
             console.log('[CAMERA] data.hasCamera:', data.hasCamera);
-            console.log('[CAMERA] data.cameraStreamUrl:', data.cameraStreamUrl);
             
             const cameraContainer = document.getElementById('cameraContainer');
-            const cameraContent = document.getElementById('cameraContent');
             
             if (!data.hasCamera) {
-                console.log('[CAMERA] Camera not available on this printer model');
+                console.log('[CAMERA] Camera not available on this printer');
                 cameraContainer.style.display = 'none';
                 return;
             }
@@ -627,60 +628,37 @@
             console.log('[CAMERA] Printer has camera, showing container');
             cameraContainer.style.display = 'block';
             
-            if (!data.cameraStreamUrl) {
-                console.log('[CAMERA] ERROR: No camera stream URL provided');
-                showCameraError('Camera URL not available');
+            // Изображения будут загружаться через main процесс (FTP) и приходить через postMessage
+            console.log('[CAMERA] Waiting for camera updates from main process...');
+        }
+        
+        function updateCameraImage(imageDataUrl) {
+            console.log('[CAMERA] updateCameraImage called');
+            
+            const cameraContent = document.getElementById('cameraContent');
+            
+            if (!imageDataUrl) {
+                console.log('[CAMERA] No image data provided');
+                showCameraError('Camera image not available');
                 return;
             }
             
-            console.log('[CAMERA] Loading stream from:', data.cameraStreamUrl);
-
-            // Bambu Lab использует FTP для доступа к снимкам камеры (как OrcaSlicer)
-            // Нужно периодически загружать изображение
-            const img = document.createElement('img');
-            img.className = 'camera-stream';
-            img.alt = 'Camera Stream';
+            // Проверяем, есть ли уже img элемент
+            let img = cameraContent.querySelector('.camera-stream');
             
-            // Функция для обновления изображения камеры
-            let cameraUpdateInterval;
-            const updateCameraImage = async () => {
-                try {
-                    // Для FTP URLs браузер не поддерживает прямую загрузку
-                    // Добавляем timestamp для обхода кэша
-                    const timestamp = new Date().getTime();
-                    const urlWithTimestamp = data.cameraStreamUrl + '?t=' + timestamp;
-                    
-                    // Пробуем загрузить изображение
-                    img.src = urlWithTimestamp;
-                    console.log('[CAMERA] Updating image, timestamp:', timestamp);
-                } catch (error) {
-                    console.error('[CAMERA] Error updating image:', error);
-                }
-            };
+            if (!img) {
+                // Создаем новый img элемент
+                img = document.createElement('img');
+                img.className = 'camera-stream';
+                img.alt = 'Camera Stream';
+                cameraContent.innerHTML = '';
+                cameraContent.appendChild(img);
+                console.log('[CAMERA] Created new img element');
+            }
             
-            // Handle image events
-            img.addEventListener('load', () => {
-                console.log('[CAMERA] Image loaded successfully');
-                if (cameraContent.querySelector('.camera-stream') !== img) {
-                    cameraContent.innerHTML = '';
-                    cameraContent.appendChild(img);
-                    
-                    // Обновляем изображение каждую секунду
-                    cameraUpdateInterval = setInterval(updateCameraImage, 1000);
-                    console.log('[CAMERA] Started auto-refresh (1 sec interval)');
-                }
-            });
-            
-            img.addEventListener('error', (e) => {
-                console.error('[CAMERA] Image error:', e);
-                console.error('[CAMERA] Failed URL:', data.cameraStreamUrl);
-                console.error('[CAMERA] Note: Camera requires access code for FTP authentication');
-                clearInterval(cameraUpdateInterval);
-                showCameraError('Failed to load camera. Camera requires access code for authentication (FTP).');
-            });
-            
-            // Первая загрузка
-            updateCameraImage();
+            // Обновляем src с base64 данными
+            img.src = imageDataUrl;
+            console.log('[CAMERA] Image updated (base64, size:', imageDataUrl.length, 'chars)');
         }
 
         function showCameraError(message) {

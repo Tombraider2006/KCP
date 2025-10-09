@@ -1,5 +1,51 @@
 Changelog: 
 
+## 🔧 v1.5.19 (09.10.2025) - Camera via FTP (OrcaSlicer Method)
+
+### 📹 РЕАЛИЗОВАНА КАМЕРА ЧЕРЕЗ FTP!
+
+#### Проблема решена:
+- **Обнаружено**: Браузеры больше не поддерживают FTP протокол в `<img>` теге
+- **Решение**: Загружаем изображение через Node.js (basic-ftp) в main процессе
+- **Передача**: Конвертируем в base64 Data URL и отправляем в renderer через IPC
+- **Метод**: Как в OrcaSlicer - `ftp://bblp:ACCESS_CODE@IP/ipcam.jpg`
+
+#### Архитектура камеры:
+```
+Main Process (main.js)
+  ↓ fetchBambuCamera() через basic-ftp
+  ↓ Загрузка ipcam.jpg каждые 2 секунды
+  ↓ Конвертация в base64 Data URL
+  ↓ IPC: bambu-camera-update
+Tabs Window (printer-tabs-window.html)
+  ↓ postMessage: camera-update
+Iframe (bambu-printer-interface.html)
+  ↓ updateCameraImage(base64)
+  ↓ Отображение <img src="data:image/jpeg;base64,...">
+```
+
+#### Технические детали:
+- **Пакет**: `basic-ftp@^5.0.5` добавлен в dependencies
+- **FTP соединение**: `host: IP, user: 'bblp', password: ACCESS_CODE`
+- **Файл**: `ipcam.jpg` (снимок с камеры)
+- **Частота**: Обновление каждые 2 секунды
+- **Формат**: JPEG конвертируется в base64 Data URL
+
+#### Функции:
+- `fetchBambuCamera(ip, accessCode)` - загружает изображение через FTP
+- `startCameraUpdates(printerId)` - запускает периодическую загрузку
+- `stopCameraUpdates(printerId)` - останавливает при закрытии вкладки
+- `updateCameraImage(imageDataUrl)` - отображает изображение в iframe
+
+#### Логирование:
+```
+[CAMERA FTP] Connecting to: IP
+[CAMERA FTP] Connected, downloading ipcam.jpg
+[CAMERA FTP] Image downloaded, size: XXX bytes
+[CAMERA TABS] Camera image sent to iframe
+[CAMERA] Image updated (base64, size: XXX chars)
+```
+
 ## 🔧 v1.5.19 (09.10.2025) - Camera Investigation & MQTT Logging
 
 ### 🔍 Расширенное логирование MQTT для камеры

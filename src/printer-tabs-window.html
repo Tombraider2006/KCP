@@ -463,6 +463,12 @@
                     console.log('Received bambu-data-update for printer:', printerId, data);
                     this.sendDataToBambuInterface(printerId, data);
                 });
+                
+                // Обработчик обновлений камеры Bambu Lab
+                ipcRenderer.on('bambu-camera-update', (event, printerId, imageDataUrl) => {
+                    console.log('[CAMERA TABS] Received camera update for printer:', printerId);
+                    this.sendCameraToBambuInterface(printerId, imageDataUrl);
+                });
             }
 
             setupPostMessageProxy() {
@@ -610,6 +616,12 @@
                 // Скрываем сообщение "нет вкладок"
                 document.getElementById('noTabsMessage').style.display = 'none';
                 
+                // Для Bambu Lab запускаем обновления камеры
+                if (isBambu) {
+                    console.log('[CAMERA] Starting camera updates for Bambu printer:', tabId);
+                    ipcRenderer.send('start-camera-updates', tabId);
+                }
+                
                 console.log('Tab added successfully:', tabId);
             }
 
@@ -645,6 +657,12 @@
                 console.log('Closing tab:', tabId);
 
                 const tab = this.tabs.get(tabId);
+                
+                // Для Bambu Lab останавливаем обновления камеры
+                if (tab.isBambu) {
+                    console.log('[CAMERA] Stopping camera updates for:', tabId);
+                    ipcRenderer.send('stop-camera-updates', tabId);
+                }
                 
                 // Удаляем элементы из DOM
                 tab.element.remove();
@@ -724,6 +742,33 @@
                     }
                 } catch (error) {
                     console.error('[sendDataToBambuInterface] Error sending data to Bambu interface:', error);
+                }
+            }
+
+            sendCameraToBambuInterface(printerId, imageDataUrl) {
+                console.log('[CAMERA TABS] sendCameraToBambuInterface called for:', printerId);
+                
+                if (!this.tabs.has(printerId)) {
+                    console.log('[CAMERA TABS] Tab not found:', printerId);
+                    return;
+                }
+                
+                const tab = this.tabs.get(printerId);
+                if (!tab.isBambu) {
+                    console.log('[CAMERA TABS] Not a Bambu tab');
+                    return;
+                }
+                
+                try {
+                    if (tab.iframe && tab.iframe.contentWindow) {
+                        tab.iframe.contentWindow.postMessage({
+                            type: 'camera-update',
+                            imageDataUrl: imageDataUrl
+                        }, '*');
+                        console.log('[CAMERA TABS] Camera image sent to iframe');
+                    }
+                } catch (error) {
+                    console.error('[CAMERA TABS] Error sending camera to iframe:', error);
                 }
             }
 

@@ -2,6 +2,9 @@ const { app, BrowserWindow, ipcMain, shell, Menu } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 const { version: APP_VERSION } = require('../package.json');
+const ftp = require('basic-ftp');
+const http = require('http');
+const https = require('https');
 
 const store = new Store();
 
@@ -1809,6 +1812,112 @@ ipcMain.on('send-bambu-data', (event, printerId, data) => {
     console.log('Sending Bambu data to tabs window for printer:', printerId);
     tabsWindow.webContents.send('bambu-data-update', printerId, data);
   }
+});
+
+// ===== BAMBU LAB CAMERA MANAGEMENT =====
+
+const cameraIntervals = new Map(); // printerId -> interval
+
+/**
+ * Загрузка изображения с камеры Bambu Lab через FTP
+ */
+async function fetchBambuCamera(ip, accessCode) {
+  const client = new ftp.Client();
+  client.ftp.timeout = 5000;
+  
+  try {
+    console.log('[CAMERA FTP] Connecting to:', ip);
+    await client.access({
+      host: ip,
+      user: 'bblp',
+      password: accessCode,
+      secure: false
+    });
+    
+    console.log('[CAMERA FTP] Connected, downloading ipcam.jpg');
+    
+    const chunks = [];
+    await client.downloadTo({
+      write: (chunk) => chunks.push(chunk)
+    }, 'ipcam.jpg');
+    
+    client.close();
+    
+    const buffer = Buffer.concat(chunks);
+    const base64 = buffer.toString('base64');
+    const dataUrl = `data:image/jpeg;base64,${base64}`;
+    
+    console.log('[CAMERA FTP] Image downloaded, size:', buffer.length, 'bytes');
+    return dataUrl;
+  } catch (error) {
+    console.error('[CAMERA FTP] Error:', error.message);
+    client.close();
+    return null;
+  }
+}
+
+/**
+ * Запуск периодической загрузки камеры для принтера
+ */
+function startCameraUpdates(printerId) {
+  // Останавливаем существующий интервал если есть
+  stopCameraUpdates(printerId);
+  
+  const printerData = printerTabs.get(printerId);
+  if (!printerData || printerData.type !== 'bambu') {
+    return;
+  }
+  
+  const cleanIp = printerData.ip.split(':')[0];
+  const accessCode = printerData.accessCode;
+  
+  if (!accessCode) {
+    console.log('[CAMERA] No access code for printer:', printerId);
+    return;
+  }
+  
+  console.log('[CAMERA] Starting camera updates for:', printerData.name);
+  
+  // Загружаем камеру каждые 2 секунды
+  const interval = setInterval(async () => {
+    const imageDataUrl = await fetchBambuCamera(cleanIp, accessCode);
+    
+    if (imageDataUrl && tabsWindow && !tabsWindow.isDestroyed()) {
+      tabsWindow.webContents.send('bambu-camera-update', printerId, imageDataUrl);
+    }
+  }, 2000);
+  
+  cameraIntervals.set(printerId, interval);
+  
+  // Первая загрузка сразу
+  (async () => {
+    const imageDataUrl = await fetchBambuCamera(cleanIp, accessCode);
+    if (imageDataUrl && tabsWindow && !tabsWindow.isDestroyed()) {
+      tabsWindow.webContents.send('bambu-camera-update', printerId, imageDataUrl);
+    }
+  })();
+}
+
+/**
+ * Остановка загрузки камеры
+ */
+function stopCameraUpdates(printerId) {
+  if (cameraIntervals.has(printerId)) {
+    clearInterval(cameraIntervals.get(printerId));
+    cameraIntervals.delete(printerId);
+    console.log('[CAMERA] Stopped camera updates for:', printerId);
+  }
+}
+
+// IPC обработчик для запуска камеры
+ipcMain.on('start-camera-updates', (event, printerId) => {
+  console.log('[CAMERA] Start camera updates requested for:', printerId);
+  startCameraUpdates(printerId);
+});
+
+ipcMain.on('stop-camera-updates', (event, printerId) => {
+  console.log('[CAMERA] Stop camera updates requested for:', printerId);
+  stopCameraUpdates(printerId);
 });
 
 // App events
