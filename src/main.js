@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain, shell, Menu } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 const { version: APP_VERSION } = require('../package.json');
-const { CameraController } = require('bambu-js');
+// bambu-js will be imported dynamically as ES module
 
 const store = new Store();
 
@@ -1841,6 +1841,9 @@ async function fetchBambuCamera(ip, accessCode, model = 'P1S') {
   try {
     console.log('[CAMERA bambu-js] Creating camera controller for:', ip, 'model:', model);
     sendCameraLog(`[CAMERA bambu-js] Connecting to ${ip} (model: ${model})`, 'log');
+    
+    // Динамический импорт bambu-js как ES модуль
+    const { CameraController } = await import('bambu-js');
     
     // Создаем camera controller (используем P1S для всех моделей как базовую конфигурацию)
     const camera = CameraController.create({
