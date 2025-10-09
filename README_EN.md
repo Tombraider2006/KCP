@@ -185,7 +185,7 @@ Download the installer from [**releases**](https://github.com/Tombraider2006/KCP
 ### Platforms:
 - ✅ **Windows** 10/11 (automatic installation)
 - ✅ **macOS** 10.15+ (DMG installer)
-- ✅ **Linux** (AppImage, requires npm install)
+- ✅ **Linux** (AppImage, portable version)
 
 ---
 
@@ -201,7 +201,6 @@ The application supports **Bambu Lab** printers via MQTT protocol!
 - ✅ Access Code from printer settings
 - ✅ Printer serial number
 - ✅ Connected to local network
-- ✅ Dependencies installed (npm install)
 
 ---
 
@@ -325,7 +324,7 @@ System analyzes multiple data sources for accurate state determination:
 - 🔢 Check **serial number** correctness
 - 🌐 Ensure printer and PC are on **same network**
 - 🛡️ Check firewall - port **8883** must be open
-- 📦 Run `npm install` in application folder
+- 🔄 Try restarting the application
 - 📖 Details: [BAMBU_LAB_SETUP.md](BAMBU_LAB_SETUP.md)
 
 ### 🌡️ Additional Temperature Sensors Not Visible (Klipper)
