@@ -768,6 +768,27 @@ function showBambuLabHelp(isRussian) {
             .checklist { list-style: none; padding-left: 0; }
             .checklist li:before { content: "✅ "; margin-right: 8px; }
             strong { color: #2d3436; }
+            .close-btn {
+                background: #00b894;
+                color: white;
+                border: none;
+                padding: 12px 30px;
+                border-radius: 6px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                box-shadow: 0 2px 8px rgba(0,184,148,0.3);
+                transition: all 0.3s ease;
+            }
+            .close-btn:hover {
+                background: #00d2a0;
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0,184,148,0.5);
+            }
+            .close-btn:active {
+                transform: translateY(0);
+                box-shadow: 0 2px 6px rgba(0,184,148,0.4);
+            }
         </style>
     </head>
     <body>
@@ -927,6 +948,12 @@ function showBambuLabHelp(isRussian) {
             <div class="success">
                 <strong>Успешной печати! 🖨️</strong>
             </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <button onclick="window.close()" class="close-btn">
+                    ✅ Закрыть
+                </button>
+            </div>
         </div>
     </body>
     </html>
@@ -1004,6 +1031,27 @@ function showBambuLabHelp(isRussian) {
             .checklist { list-style: none; padding-left: 0; }
             .checklist li:before { content: "✅ "; margin-right: 8px; }
             strong { color: #2d3436; }
+            .close-btn {
+                background: #00b894;
+                color: white;
+                border: none;
+                padding: 12px 30px;
+                border-radius: 6px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                box-shadow: 0 2px 8px rgba(0,184,148,0.3);
+                transition: all 0.3s ease;
+            }
+            .close-btn:hover {
+                background: #00d2a0;
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0,184,148,0.5);
+            }
+            .close-btn:active {
+                transform: translateY(0);
+                box-shadow: 0 2px 6px rgba(0,184,148,0.4);
+            }
         </style>
     </head>
     <body>
@@ -1162,6 +1210,12 @@ function showBambuLabHelp(isRussian) {
 
             <div class="success">
                 <strong>Happy Printing! 🖨️</strong>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <button onclick="window.close()" class="close-btn">
+                    ✅ Close
+                </button>
             </div>
         </div>
     </body>

@@ -392,7 +392,8 @@ function updateModalTranslations() {
 // Функция переключения полей в зависимости от типа принтера
 function togglePrinterTypeFields(modalType) {
     const prefix = modalType === 'add' ? '' : 'edit';
-    const printerType = document.getElementById(`${prefix}PrinterType`)?.value || 'klipper';
+    const selectId = modalType === 'add' ? 'printerType' : 'editPrinterType';
+    const printerType = document.getElementById(selectId)?.value || 'klipper';
     
     const klipperFields = document.getElementById(`${prefix}${prefix ? 'K' : 'k'}lipperFields`);
     const bambuFields = document.getElementById(`${prefix}${prefix ? 'B' : 'b'}ambuFields`);
