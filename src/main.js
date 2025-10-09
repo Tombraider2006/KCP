@@ -1831,20 +1831,21 @@ const cameraControllers = new Map(); // printerId -> CameraController
  * Загрузка изображения с камеры Bambu Lab через bambu-js библиотеку
  */
 async function fetchBambuCamera(ip, accessCode, model = 'P1S') {
+  // Сначала пробуем bambu-js (TCP метод)
   try {
-    console.log(`[CAMERA] Attempting to fetch camera from ${ip} (model: ${model})`);
+    console.log(`[CAMERA] Attempting bambu-js method from ${ip} (model: ${model})`);
     
     // Динамический импорт bambu-js как ES модуль
     const { CameraController } = await import('bambu-js');
     console.log('[CAMERA] bambu-js imported successfully');
     
-    // Создаем camera controller (используем P1S для всех моделей как базовую конфигурацию)
+    // Создаем camera controller
     const camera = CameraController.create({
-      model: model,  // P1S или H2D
+      model: model,
       host: ip,
       accessCode: accessCode,
       options: {
-        connectionTimeout: 10000,
+        connectionTimeout: 5000,  // Уменьшил timeout
         maxFrameSize: 2 * 1024 * 1024  // 2MB
       }
     });
@@ -1852,18 +1853,85 @@ async function fetchBambuCamera(ip, accessCode, model = 'P1S') {
     
     // Захватываем кадр
     const frame = await camera.captureFrame();
-    console.log(`[CAMERA] Frame captured: ${frame.size} bytes, frame #${frame.frameNumber}`);
+    console.log(`[CAMERA] bambu-js success: ${frame.size} bytes, frame #${frame.frameNumber}`);
     
     // Конвертируем Buffer в base64 Data URL
     const base64 = frame.imageData.toString('base64');
     const dataUrl = `data:image/jpeg;base64,${base64}`;
     
-    console.log('[CAMERA] Image converted to base64, length:', base64.length);
     return dataUrl;
   } catch (error) {
-    console.error('[CAMERA] Error:', error.message);
-    console.error('[CAMERA] Stack:', error.stack);
-    return null;
+    console.log(`[CAMERA] bambu-js failed: ${error.message}`);
+    
+    // Если bambu-js не работает, пробуем HTTP метод
+    try {
+      console.log(`[CAMERA] Trying HTTP method for ${ip}`);
+      
+      const https = require('https');
+      const http = require('http');
+      
+      // Пробуем разные HTTP URL для камеры
+      const urls = [
+        `http://${ip}:8080/?action=stream`,
+        `http://${ip}:8080/stream`,
+        `http://${ip}:8080/cam.jpg`,
+        `http://${ip}:8080/jpeg`,
+        `http://${ip}/cgi-bin/mjpg/video.cgi?channel=0&subtype=1`,
+        `http://${ip}/cam.jpg`
+      ];
+      
+      for (const url of urls) {
+        try {
+          console.log(`[CAMERA] Trying HTTP URL: ${url}`);
+          
+          const response = await new Promise((resolve, reject) => {
+            const client = url.startsWith('https') ? https : http;
+            const req = client.get(url, {
+              timeout: 3000,
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+              }
+            }, resolve);
+            
+            req.on('error', reject);
+            req.setTimeout(3000, () => reject(new Error('Timeout')));
+          });
+          
+          if (response.statusCode === 200) {
+            console.log(`[CAMERA] HTTP success on: ${url}`);
+            
+            // Получаем изображение
+            const chunks = [];
+            response.on('data', chunk => chunks.push(chunk));
+            
+            await new Promise((resolve, reject) => {
+              response.on('end', resolve);
+              response.on('error', reject);
+              setTimeout(() => reject(new Error('Timeout')), 5000);
+            });
+            
+            const buffer = Buffer.concat(chunks);
+            const base64 = buffer.toString('base64');
+            const dataUrl = `data:image/jpeg;base64,${base64}`;
+            
+            console.log(`[CAMERA] HTTP image converted, size: ${buffer.length} bytes`);
+            return dataUrl;
+          }
+        } catch (httpError) {
+          console.log(`[CAMERA] HTTP failed for ${url}: ${httpError.message}`);
+          continue;
+        }
+      }
+      
+      throw new Error('All HTTP methods failed');
+      
+    } catch (httpError) {
+      console.log(`[CAMERA] HTTP method failed: ${httpError.message}`);
+      
+      // Если и HTTP не работает, возвращаем null
+      console.log('[CAMERA] All camera methods failed');
+      return null;
+    }
   }
 }
 
@@ -1894,9 +1962,22 @@ function startCameraUpdates(printerId) {
     return;
   }
   
-  // Определяем модель для bambu-js (используем P1S как базовую для всех моделей)
-  // bambu-js поддерживает только P1S и H2D, используем P1S для большинства принтеров
-  const model = 'P1S';  // TCP_STREAM на порту 6000
+  // Определяем модель для bambu-js
+  // Попробуем разные модели в зависимости от имени принтера
+  let model = 'P1S';  // По умолчанию
+  
+  if (printerData.name) {
+    const name = printerData.name.toLowerCase();
+    if (name.includes('x1') || name.includes('carbon')) {
+      model = 'X1C';
+    } else if (name.includes('a1')) {
+      model = 'A1';
+    } else if (name.includes('h2d')) {
+      model = 'H2D';
+    }
+  }
+  
+  console.log(`[CAMERA] Using model: ${model} for printer: ${printerData.name}`);
   
   // Загружаем камеру каждые 3 секунды (чтобы не нагружать принтер)
   const interval = setInterval(async () => {

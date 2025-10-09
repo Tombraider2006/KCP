@@ -443,9 +443,31 @@ class BambuLabAdapter extends PrinterAdapter {
      * Проверка наличия камеры у принтера
      */
     hasCamera() {
-        // Все Bambu Lab принтеры могут иметь камеру - пытаемся показать на любом
-        console.log('[CAMERA CHECK] Bambu Lab printer - camera enabled for all models');
-        return true;
+        // Проверяем модель принтера для определения наличия камеры
+        const model = this.printerData.info?.model || this.printerData.info?.machine_type || this.printer.name || '';
+        const modelLower = model.toLowerCase();
+        
+        // Модели с камерой (обычно есть камера)
+        const modelsWithCamera = ['x1', 'x1c', 'x1-carbon', 'x1c-carbon', 'p1s', 'p1p'];
+        
+        // Модели без камеры (обычно нет камеры)
+        const modelsWithoutCamera = ['a1', 'a1-mini'];
+        
+        let hasCamera = false;
+        
+        if (modelsWithoutCamera.some(m => modelLower.includes(m))) {
+            console.log(`[CAMERA CHECK] Model ${model} - camera not typically available`);
+            hasCamera = false;
+        } else if (modelsWithCamera.some(m => modelLower.includes(m))) {
+            console.log(`[CAMERA CHECK] Model ${model} - camera typically available`);
+            hasCamera = true;
+        } else {
+            // Неизвестная модель - пробуем показать камеру
+            console.log(`[CAMERA CHECK] Unknown model ${model} - trying camera anyway`);
+            hasCamera = true;
+        }
+        
+        return hasCamera;
     }
 
     /**
