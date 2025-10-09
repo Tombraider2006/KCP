@@ -8,11 +8,10 @@ This application now supports **Bambu Lab** 3D printers in addition to Klipper-b
 
 ### For Bambu Lab Printers:
 
-1. **Developer Mode** must be enabled on your printer
+1. **Developer Mode** must be enabled on your printer (or "LAN Mode" in older firmware)
 2. **Access Code** from printer settings
 3. **Serial Number** of your printer
 4. **Local Network** connection (printer and PC on same network)
-5. **MQTT Library** installed (see installation steps below)
 
 ## 🔧 Installation Steps
 
