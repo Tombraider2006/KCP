@@ -83,22 +83,37 @@ You'll need:
 
 ## 🔍 Troubleshooting
 
+### ⚠️ Printer Won't Connect?
+
+📖 **[→ Complete Troubleshooting Guide (BAMBU_TROUBLESHOOTING_EN.md)](BAMBU_TROUBLESHOOTING_EN.md)**
+
 ### "Developer mode must be enabled in printer settings"
 
 **Solution**: 
-1. On printer touchscreen: Settings → Network → Developer Mode
+1. On printer touchscreen: Settings → Network → Developer Mode (LAN Only Mode)
 2. Enable it and note the Access Code
-3. Restart the printer if needed
+3. **MUST reboot printer** (power off and on)
+4. Wait 30-60 seconds after powering on
 
-### Connection Failed
+### Connection Failed - Checklist
 
-**Checklist**:
-- ✅ Printer and PC on same network
-- ✅ Developer Mode enabled
-- ✅ Correct Access Code entered
-- ✅ Correct Serial Number entered
+**Check in this order**:
+- ✅ Developer mode enabled **AND printer rebooted**
+- ✅ Printer and PC on same network (test with `ping printer_IP`)
+- ✅ IP address is current (may change after router reboot)
+- ✅ Access Code is correct (exactly 8 digits, no spaces)
+- ✅ Serial number is correct (15 characters, format: `01P00A123456789`)
 - ✅ Firewall not blocking port 8883
-- ✅ Application installed from official installer
+- ✅ Application updated to latest version
+
+### 🚀 Quick Fix (works in 90% of cases)
+
+1. **Reboot printer** (unplug, wait 30 sec, plug back in)
+2. **Check IP address** on printer screen (may have changed)
+3. **Delete and re-add printer** in application
+4. **Restart application**
+
+If this doesn't help → **[Complete Troubleshooting Guide](BAMBU_TROUBLESHOOTING_EN.md)**
 
 ## 📚 Related Resources
 

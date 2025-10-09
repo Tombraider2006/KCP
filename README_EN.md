@@ -6,7 +6,7 @@
 
 **[🇷🇺 Русский](README.md)** | **[🇬🇧 English](README_EN.md)**
 
-![3D Printer Control Panel](https://img.shields.io/badge/Version-1.5.2-blue.svg)
+![3D Printer Control Panel](https://img.shields.io/badge/Version-1.5.6-blue.svg)
 ![Electron](https://img.shields.io/badge/Electron-22.0+-green.svg)
 ![Node.js](https://img.shields.io/badge/Node.js-14.0+-green.svg)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20Mac-lightgrey.svg)
@@ -320,13 +320,24 @@ System analyzes multiple data sources for accurate state determination:
 - 🔧 Check CORS settings in Moonraker
 
 ### 🎋 Bambu Lab Printer Not Connecting
-- 🔑 Ensure **developer mode is enabled**
-- 📝 Check **Access Code** correctness (8 digits)
-- 🔢 Check **serial number** correctness
-- 🌐 Ensure printer and PC are on **same network**
-- 🛡️ Check firewall - port **8883** must be open
-- 🔄 Try restarting the application
-- 📖 Details: [BAMBU_LAB_SETUP.md](BAMBU_LAB_SETUP.md)
+
+**🚀 Quick Fix:**
+1. **Reboot printer** (power off and on)
+2. Check **developer mode** (must be enabled)
+3. Check **IP address** on printer screen
+4. **Delete and re-add printer** in application
+
+**📖 Detailed Instructions:**
+- 🔧 [**Complete Troubleshooting Guide**](BAMBU_TROUBLESHOOTING_EN.md) - **START HERE**
+- 📋 [Bambu Lab Setup Guide](BAMBU_LAB_SETUP.md)
+
+**Common Causes:**
+- 🔑 Developer mode not enabled or **printer not rebooted** after enabling
+- 📝 Wrong **Access Code** (8 digits, no spaces)
+- 🔢 Wrong **serial number** (15 characters, format: `01P00A123456789`)
+- 🌐 Printer and PC on **different networks** (check ping)
+- 🛡️ Firewall blocking **port 8883**
+- 📍 IP address changed after router reboot
 
 ### 🌡️ Additional Temperature Sensors Not Visible (Klipper)
 - ⚙️ Ensure sensors are configured in Klipper configuration
