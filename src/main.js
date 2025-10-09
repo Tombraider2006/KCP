@@ -1860,23 +1860,36 @@ async function fetchBambuCamera(ip, accessCode) {
  * Запуск периодической загрузки камеры для принтера
  */
 function startCameraUpdates(printerId) {
+  console.log('[CAMERA START] Function called for:', printerId);
+  
   // Останавливаем существующий интервал если есть
   stopCameraUpdates(printerId);
   
   const printerData = printerTabs.get(printerId);
-  if (!printerData || printerData.type !== 'bambu') {
+  console.log('[CAMERA START] Printer data:', printerData);
+  
+  if (!printerData) {
+    console.log('[CAMERA START] ERROR: No printer data found for ID:', printerId);
+    return;
+  }
+  
+  if (printerData.type !== 'bambu') {
+    console.log('[CAMERA START] ERROR: Not a Bambu printer, type:', printerData.type);
     return;
   }
   
   const cleanIp = printerData.ip.split(':')[0];
   const accessCode = printerData.accessCode;
   
+  console.log('[CAMERA START] Clean IP:', cleanIp);
+  console.log('[CAMERA START] Has access code:', !!accessCode);
+  
   if (!accessCode) {
-    console.log('[CAMERA] No access code for printer:', printerId);
+    console.log('[CAMERA START] ERROR: No access code for printer:', printerId);
     return;
   }
   
-  console.log('[CAMERA] Starting camera updates for:', printerData.name);
+  console.log('[CAMERA START] ✅ All checks passed, starting camera updates for:', printerData.name);
   
   // Загружаем камеру каждые 2 секунды
   const interval = setInterval(async () => {
@@ -1911,12 +1924,15 @@ function stopCameraUpdates(printerId) {
 
 // IPC обработчик для запуска камеры
 ipcMain.on('start-camera-updates', (event, printerId) => {
-  console.log('[CAMERA] Start camera updates requested for:', printerId);
+  console.log('[CAMERA IPC] ============================================');
+  console.log('[CAMERA IPC] Start camera updates requested for:', printerId);
+  console.log('[CAMERA IPC] printerTabs has this ID?:', printerTabs.has(printerId));
+  console.log('[CAMERA IPC] Available printer IDs:', Array.from(printerTabs.keys()));
   startCameraUpdates(printerId);
 });
 
 ipcMain.on('stop-camera-updates', (event, printerId) => {
-  console.log('[CAMERA] Stop camera updates requested for:', printerId);
+  console.log('[CAMERA IPC] Stop camera updates requested for:', printerId);
   stopCameraUpdates(printerId);
 });
 
