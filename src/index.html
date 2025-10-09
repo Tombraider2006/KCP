@@ -8,7 +8,26 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
+    <!-- Shift Info Bar -->
+    <div id="shiftInfoBar" style="display: none; position: fixed; top: 0; left: 0; right: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 10px 20px; justify-content: space-between; align-items: center; z-index: 10000; box-shadow: 0 2px 10px rgba(0,0,0,0.2); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 20px;">👤</span>
+                <div>
+                    <div style="font-weight: 600; font-size: 14px;" id="shiftUsername">Загрузка...</div>
+                    <div style="font-size: 11px; opacity: 0.9;" id="shiftDuration">--</div>
+                </div>
+            </div>
+            <button id="btnManageUsers" style="display: none; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 6px 15px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.3s ease;" onclick="openUserManagement()">
+                👥 Управление пользователями
+            </button>
+        </div>
+        <button onclick="logout()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 6px 15px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.3s ease;">
+            🚪 Выход
+        </button>
+    </div>
+
+    <div class="container" style="margin-top: 60px;">
         <header>
             <div class="header-main">
                 <h1>🖨️ Tom Tomich's 3D Printer Control Panel</h1>
@@ -544,5 +563,863 @@
     <script src="../node_modules/chart.js/dist/chart.umd.js"></script>
     <script src="translations.js"></script>
     <script src="renderer.js"></script>
+    
+    <script>
+        // Функция для отправки критических уведомлений о сменах (дубль из renderer.js для надежности)
+        if (typeof sendCriticalShiftNotification === 'undefined') {
+            async function sendCriticalShiftNotification(title, message, operatorName, operatorUsername, operatorRole) {
+                try {
+                    const telegramConfig = await window.electronAPI.storeGet('telegramConfig', null);
+                    if (!telegramConfig || !telegramConfig.enabled || !telegramConfig.botToken || !telegramConfig.chatId) {
+                        return false;
+                    }
+                    
+                    const roleEmoji = operatorRole === 'admin' ? '👑' : '👤';
+                    const criticalHeader = '🚨 *КРИТИЧЕСКОЕ УВЕДОМЛЕНИЕ* 🚨';
+                    
+                    const fullMessage = `${criticalHeader}\n\n` +
+                                       `📋 *${title}*\n\n` +
+                                       `💬 ${message}\n\n` +
+                                       `${roleEmoji} *Оператор:* ${operatorName} (${operatorUsername})\n` +
+                                       `⏰ *Время:* ${new Date().toLocaleString()}`;
+                    
+                    const url = `https://api.telegram.org/bot${telegramConfig.botToken}/sendMessage`;
+                    
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            chat_id: telegramConfig.chatId,
+                            text: fullMessage,
+                            parse_mode: 'Markdown',
+                            disable_notification: false
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    return data.ok;
+                } catch (error) {
+                    console.error('Failed to send critical Telegram notification:', error);
+                    return false;
+                }
+            }
+        }
+    </script>
+    
+    <script>
+        // Защита от закрытия приложения без подтверждения
+        window.electronAPI.onBeforeQuit(async () => {
+            const currentUser = await window.electronAPI.storeGet('currentUser', null);
+            
+            if (currentUser && currentUser.isSuperAdmin) {
+                try {
+                    const currentShift = await window.electronAPI.getCurrentShift();
+                    if (currentShift) {
+                        await window.electronAPI.endShift(currentShift.userId);
+                    }
+                } catch (e) {}
+                await window.electronAPI.storeSet('currentUser', null);
+                await window.electronAPI.storeSet('isAuthenticated', false);
+                window.electronAPI.confirmQuit(true);
+                return;
+            }
+
+            const currentShift = await window.electronAPI.getCurrentShift();
+            
+            if (!currentUser || !currentShift) {
+                window.electronAPI.confirmQuit(true);
+                return;
+            }
+            
+            // Показываем диалог с инструкцией использовать кнопку "Выход"
+            alert(`Для выхода из программы используйте кнопку "🚪 Выход" на верхней панели.\n\nТам вы сможете выбрать:\n- Передать смену другому оператору\n- Завершить смену и выйти`);
+                window.electronAPI.confirmQuit(false);
+        });
+        
+        // Проверка аутентификации при загрузке
+        window.addEventListener('DOMContentLoaded', async () => {
+            // Проверяем, инициализирована ли система
+            const isInitialized = await window.electronAPI.isSystemInitialized();
+            if (!isInitialized) {
+                // Перенаправляем на настройку администратора
+                window.location.href = 'setup-admin.html';
+                return;
+            }
+            
+            // Проверяем, есть ли активная сессия
+            const isAuthenticated = await window.electronAPI.storeGet('isAuthenticated', false);
+            const currentUser = await window.electronAPI.storeGet('currentUser', null);
+            
+            if (!isAuthenticated || !currentUser) {
+                // Перенаправляем на логин
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // Инициализируем панель смены
+            await initShiftPanel();
+            
+            // Инициализируем суперадминскую панель
+            await initSuperAdminPanel();
+        });
+
+        // ========== SHIFT PANEL MANAGEMENT ==========
+        
+        let shiftUpdateInterval = null;
+
+        async function initShiftPanel() {
+            const currentUser = await window.electronAPI.storeGet('currentUser', null);
+            const currentShift = await window.electronAPI.getCurrentShift();
+            
+            if (!currentUser) return;
+
+            // Показываем панель
+            document.getElementById('shiftInfoBar').style.display = 'flex';
+
+            // Показываем кнопку управления пользователями только для обычного админа
+            if (currentUser.role === 'admin' && !currentUser.isSuperAdmin) {
+                document.getElementById('btnManageUsers').style.display = 'block';
+            }
+
+            // Обновляем информацию о смене
+            updateShiftInfo();
+
+            // Запускаем периодическое обновление
+            if (shiftUpdateInterval) clearInterval(shiftUpdateInterval);
+            shiftUpdateInterval = setInterval(updateShiftInfo, 60000); // каждую минуту
+        }
+
+        async function updateShiftInfo() {
+            const currentUser = await window.electronAPI.storeGet('currentUser', null);
+            const currentShift = await window.electronAPI.getCurrentShift();
+            
+            if (!currentUser) return;
+
+            const usernameEl = document.getElementById('shiftUsername');
+            const durationEl = document.getElementById('shiftDuration');
+
+            usernameEl.textContent = `${currentUser.displayName} (${currentUser.username})`;
+
+            if (currentShift) {
+                const duration = Date.now() - new Date(currentShift.startTime).getTime();
+                durationEl.textContent = `Смена: ${formatDuration(duration)}`;
+            } else {
+                durationEl.textContent = 'Нет активной смены';
+            }
+        }
+
+        function formatDuration(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+
+            if (hours > 0) {
+                return `${hours}ч ${minutes % 60}м`;
+            } else if (minutes > 0) {
+                return `${minutes}м`;
+            } else {
+                return `${seconds}с`;
+            }
+        }
+
+        async function logout() {
+            console.log('logout() called');
+            showLogoutModal();
+        }
+
+        function showLogoutModal() {
+            console.log('showLogoutModal() called');
+            // Удаляем старое модальное окно если есть
+            const oldModal = document.getElementById('logoutModal');
+            if (oldModal) {
+                console.log('Removing old logout modal');
+                oldModal.remove();
+            }
+
+            const modal = document.createElement('div');
+            modal.id = 'logoutModal';
+            modal.className = 'modal';
+            modal.style.cssText = 'display: block !important;';
+            console.log('Created logout modal with display:', modal.style.display);
+
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 500px;">
+                    <div class="modal-header">
+                        <h3>🚪 Выход из системы</h3>
+                        <span class="close" onclick="closeLogoutModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <p style="margin-bottom: 20px; font-size: 16px;">Выберите действие:</p>
+                        
+                        <button class="btn btn-primary" style="width: 100%; margin-bottom: 15px; padding: 15px; font-size: 16px;" onclick="transferShift()">
+                            🔄 Передать смену другому оператору
+                        </button>
+                        
+                        <button class="btn btn-secondary" style="width: 100%; margin-bottom: 15px; padding: 15px; font-size: 16px; background: #dc3545;" onclick="endShiftAndLogout()">
+                            🛑 Завершить смену и выйти
+                        </button>
+                        
+                        <button class="btn" style="width: 100%; padding: 12px;" onclick="closeLogoutModal()">
+                            ❌ Отмена
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+            console.log('Logout modal appended to body, display:', window.getComputedStyle(modal).display);
+        }
+
+        function closeLogoutModal() {
+            console.log('closeLogoutModal() called');
+            const modal = document.getElementById('logoutModal');
+            if (modal) {
+                modal.remove();
+                console.log('Logout modal removed');
+            }
+        }
+
+        async function transferShift() {
+            closeLogoutModal();
+            
+            try {
+                const currentUser = await window.electronAPI.storeGet('currentUser', null);
+                
+                // Выходим БЕЗ завершения смены
+                const result = await window.electronAPI.logout(false);
+                if (result.success) {
+                    // Отправляем Telegram уведомление о передаче смены
+                    if (currentUser && typeof sendCriticalShiftNotification === 'function') {
+                        try {
+                            await sendCriticalShiftNotification(
+                                'Передача смены',
+                                `Оператор передает смену другому оператору`,
+                                currentUser.displayName,
+                                currentUser.username,
+                                currentUser.role
+                            );
+                        } catch (e) {
+                            console.error('Failed to send shift transfer notification:', e);
+                        }
+                    }
+                    // Перенаправит на экран логина автоматически
+                }
+            } catch (error) {
+                alert('Ошибка при передаче смены: ' + error.message);
+            }
+        }
+
+        async function endShiftAndLogout() {
+            console.log('endShiftAndLogout() called');
+            closeLogoutModal();
+            
+            // Показываем модальное окно для ввода пароля
+            showPasswordConfirmModal();
+        }
+
+        function showPasswordConfirmModal() {
+            const modal = document.createElement('div');
+            modal.id = 'passwordConfirmModal';
+            modal.className = 'modal';
+            modal.style.cssText = 'display: block !important;';
+
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 450px;">
+                    <div class="modal-header">
+                        <h3>🔐 Подтверждение завершения смены</h3>
+                        <span class="close" onclick="closePasswordConfirmModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <p style="margin-bottom: 15px; font-size: 14px; color: #666;" id="passwordConfirmUserInfo">Загрузка...</p>
+                        
+                        <div class="form-group">
+                            <label for="confirmPasswordInput">Введите ваш пароль для подтверждения:</label>
+                            <div style="position: relative;">
+                                <input 
+                                    type="password" 
+                                    id="confirmPasswordInput" 
+                                    placeholder="Введите пароль"
+                                    style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 15px; pointer-events: auto !important; cursor: text !important;"
+                                    autofocus
+                                    tabindex="1"
+                                >
+                                <button type="button" onclick="toggleConfirmPassword()" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 18px; color: #666; padding: 5px;">👁️</button>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; margin-top: 20px;">
+                            <button class="btn btn-primary" style="flex: 1;" onclick="confirmEndShift()">✅ Подтвердить</button>
+                            <button class="btn btn-secondary" style="flex: 1;" onclick="closePasswordConfirmModal()">❌ Отмена</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            // Заполняем информацию о пользователе
+            (async () => {
+                const currentUser = await window.electronAPI.storeGet('currentUser', null);
+                if (currentUser) {
+                    document.getElementById('passwordConfirmUserInfo').textContent = 
+                        `Пользователь: ${currentUser.displayName} (${currentUser.username})`;
+                }
+                // Фокусируем поле пароля и убираем все блокировки
+                setTimeout(() => {
+                    const input = document.getElementById('confirmPasswordInput');
+                    if (input) {
+                        // Явно убираем все возможные блокировки
+                        input.disabled = false;
+                        input.readOnly = false;
+                        input.removeAttribute('disabled');
+                        input.removeAttribute('readonly');
+                        input.style.pointerEvents = 'auto';
+                        input.style.cursor = 'text';
+                        input.focus();
+                        console.log('Password input enabled and focused');
+                    }
+                }, 100);
+            })();
+
+            // Enter для подтверждения
+            document.getElementById('confirmPasswordInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    confirmEndShift();
+                }
+            });
+        }
+
+        function toggleConfirmPassword() {
+            const input = document.getElementById('confirmPasswordInput');
+            const btn = event.target;
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                btn.textContent = '👁️';
+            }
+        }
+
+        function closePasswordConfirmModal() {
+            const modal = document.getElementById('passwordConfirmModal');
+            if (modal) modal.remove();
+        }
+
+        async function confirmEndShift() {
+            const password = document.getElementById('confirmPasswordInput').value;
+            
+            if (!password) {
+                alert('Введите пароль');
+                return;
+            }
+
+            console.log('Verifying password...');
+
+            try {
+                const currentUser = await window.electronAPI.storeGet('currentUser', null);
+                
+                // Проверяем пароль
+                const authResult = await window.electronAPI.authenticateUser(currentUser.username, password);
+                console.log('Auth result:', authResult.success);
+                
+                if (!authResult.success) {
+                    alert('Неверный пароль! Выход отменен.');
+                    return;
+                }
+
+                closePasswordConfirmModal();
+                console.log('Password verified, sending Telegram notification...');
+
+                // Отправляем Telegram уведомление о завершении смены
+                if (typeof sendCriticalShiftNotification === 'function') {
+                    try {
+                        await sendCriticalShiftNotification(
+                            'Завершение смены',
+                            `Оператор завершил смену и закрыл программу`,
+                            currentUser.displayName,
+                            currentUser.username,
+                            currentUser.role
+                        );
+                        console.log('Telegram notification sent');
+                    } catch (e) {
+                        console.error('Failed to send shift end notification:', e);
+                    }
+                }
+
+                console.log('Quitting application...');
+                // Завершаем смену и закрываем приложение
+                await window.electronAPI.quitApp();
+            } catch (error) {
+                console.error('Error in confirmEndShift:', error);
+                alert('Ошибка при выходе: ' + error.message);
+            }
+        }
+
+        // ========== SUPERADMIN PANEL ==========
+
+        async function initSuperAdminPanel() {
+            const currentUser = await window.electronAPI.storeGet('currentUser', null);
+            if (currentUser && currentUser.isSuperAdmin) {
+                createSuperAdminSecretButton();
+            }
+        }
+
+        function createSuperAdminSecretButton() {
+            // Создаем невидимую секретную кнопку 20x20px в верхнем левом углу
+            const btn = document.createElement('div');
+            btn.style.cssText = `
+                position: fixed;
+                left: 0;
+                top: 0;
+                width: 20px;
+                height: 20px;
+                cursor: default;
+                z-index: 99999;
+                background: transparent;
+                opacity: 0;
+            `;
+            
+            btn.addEventListener('click', () => {
+                console.log('Secret SuperAdmin button clicked!');
+                showSuperAdminPanel();
+            });
+            
+            document.body.appendChild(btn);
+            
+            console.log('SuperAdmin secret button created (20x20px at top-left corner)');
+        }
+
+        async function showSuperAdminPanel() {
+            // Удаляем старую панель если есть
+            const oldModal = document.getElementById('superAdminModal');
+            if (oldModal) oldModal.remove();
+
+            const modal = document.createElement('div');
+            modal.id = 'superAdminModal';
+            modal.style.cssText = `
+                display: block !important;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.95);
+                z-index: 999999;
+                overflow-y: auto;
+                padding: 20px;
+            `;
+
+            const { admins, operators } = await window.electronAPI.getUsers();
+            const allUsers = [...admins, ...operators];
+
+            modal.innerHTML = `
+                <div style="max-width: 1200px; margin: 40px auto; background: #1a1a1a; border-radius: 20px; padding: 30px; color: #fff;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                        <h2 style="color: #ff0000; margin: 0;">🔴 SUPERADMIN PANEL 🔴</h2>
+                        <button onclick="closeSuperAdminPanel()" style="background: #ff0000; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">✕ Close</button>
+                    </div>
+
+                    <div style="background: #2a2a2a; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                        <h3 style="color: #ff6b6b; margin-bottom: 15px;">All Users (${allUsers.length})</h3>
+                        <table style="width: 100%; border-collapse: collapse; color: white;">
+                            <thead>
+                                <tr style="background: #333; text-align: left;">
+                                    <th style="padding: 12px; border: 1px solid #444;">Username</th>
+                                    <th style="padding: 12px; border: 1px solid #444;">Display Name</th>
+                                    <th style="padding: 12px; border: 1px solid #444;">Role</th>
+                                    <th style="padding: 12px; border: 1px solid #444;">Active</th>
+                                    <th style="padding: 12px; border: 1px solid #444;">Created</th>
+                                    <th style="padding: 12px; border: 1px solid #444;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${allUsers.map(user => `
+                                    <tr style="border-bottom: 1px solid #444;">
+                                        <td style="padding: 12px; border: 1px solid #444;">${user.username}</td>
+                                        <td style="padding: 12px; border: 1px solid #444;">${user.displayName}</td>
+                                        <td style="padding: 12px; border: 1px solid #444;">
+                                            <span style="background: ${user.role === 'admin' ? '#ff0000' : '#0088cc'}; padding: 4px 8px; border-radius: 4px; font-size: 11px;">
+                                                ${user.role === 'admin' ? '👑 ADMIN' : '👤 OPERATOR'}
+                                            </span>
+                                        </td>
+                                        <td style="padding: 12px; border: 1px solid #444;">${user.isActive ? '✅ Active' : '❌ Inactive'}</td>
+                                        <td style="padding: 12px; border: 1px solid #444; font-size: 11px;">${new Date(user.createdAt).toLocaleString('ru-RU')}</td>
+                                        <td style="padding: 12px; border: 1px solid #444;">
+                                            <button onclick="superAdminResetPassword('${user.id}')" style="background: #ffc107; color: #000; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; margin: 2px;">🔑 Reset Password</button>
+                                            ${user.role !== 'admin' ? `<button onclick="superAdminDeleteUser('${user.id}')" style="background: #dc3545; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; margin: 2px;">🗑️ Delete</button>` : ''}
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div style="background: #2a2a2a; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                        <h3 style="color: #ff6b6b; margin-bottom: 15px;">Quick Actions</h3>
+                        <button onclick="showSuperAdminAddOperator()" style="background: #28a745; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-right: 10px;">➕ Quick Add Operator</button>
+                        <button onclick="showUserManagementModal()" style="background: #0088cc; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">👥 User Management</button>
+                    </div>
+
+                    <div style="background: #2a2a2a; padding: 20px; border-radius: 10px;">
+                        <h3 style="color: #ff6b6b; margin-bottom: 15px;">System Info</h3>
+                        <pre style="background: #1a1a1a; color: #0f0; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px; overflow-x: auto;">${JSON.stringify({
+                            totalUsers: allUsers.length,
+                            admins: admins.length,
+                            operators: operators.length,
+                            activeOperators: operators.filter(o => o.isActive).length
+                        }, null, 2)}</pre>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+        }
+
+        function closeSuperAdminPanel() {
+            const modal = document.getElementById('superAdminModal');
+            if (modal) modal.remove();
+        }
+
+        async function superAdminResetPassword(userId) {
+            showResetPasswordModal(userId, true);
+        }
+
+        async function superAdminDeleteUser(userId) {
+            if (!confirm('Вы уверены, что хотите удалить этого пользователя?')) {
+                return;
+            }
+
+            const currentUser = await window.electronAPI.storeGet('currentUser', null);
+            
+            try {
+                const result = await window.electronAPI.removeOperator(currentUser.id, userId);
+
+                if (result.success) {
+                    alert('Пользователь удален');
+                    closeSuperAdminPanel();
+                    showSuperAdminPanel(); // Обновляем панель
+                } else {
+                    alert('Ошибка: ' + result.error);
+                }
+            } catch (error) {
+                alert('Ошибка: ' + error.message);
+            }
+        }
+
+        async function showSuperAdminAddOperator() {
+            closeSuperAdminPanel();
+            showUserManagementModal();
+        }
+
+        // ========== USER MANAGEMENT MODAL ==========
+
+        function openUserManagement() {
+            showUserManagementModal();
+        }
+
+        async function showUserManagementModal() {
+            const currentUser = await window.electronAPI.storeGet('currentUser', null);
+            if (!currentUser || (currentUser.role !== 'admin' && !currentUser.isSuperAdmin)) {
+                alert('Только администраторы могут управлять пользователями');
+                return;
+            }
+
+            // Удаляем старое модальное окно если есть
+            const oldModal = document.getElementById('userManagementModal');
+            if (oldModal) oldModal.remove();
+
+            const modal = document.createElement('div');
+            modal.id = 'userManagementModal';
+            modal.className = 'modal';
+            modal.style.cssText = 'display: block !important;';
+
+            const operators = await window.electronAPI.getAllOperators();
+
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 900px;">
+                    <div class="modal-header">
+                        <h3>👥 Управление пользователями</h3>
+                        <span class="close" onclick="closeUserManagement()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div style="margin-bottom: 20px;">
+                            <button class="btn btn-primary" onclick="showAddOperatorForm()">➕ Добавить оператора</button>
+                        </div>
+
+                        <div id="addOperatorForm" style="display: none; background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                            <h4>Новый оператор</h4>
+                            <div class="form-group">
+                                <label>Логин:</label>
+                                <input type="text" id="newOperatorUsername" placeholder="operator1">
+                            </div>
+                            <div class="form-group">
+                                <label>Отображаемое имя:</label>
+                                <input type="text" id="newOperatorDisplayName" placeholder="Иван Иванов">
+                            </div>
+                            <div class="form-group">
+                                <label>Пароль:</label>
+                                <input type="password" id="newOperatorPassword" placeholder="минимум 4 символа">
+                            </div>
+                            <button class="btn btn-primary" onclick="addOperator()">Создать</button>
+                            <button class="btn btn-secondary" onclick="hideAddOperatorForm()">Отмена</button>
+                        </div>
+
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f0f0f0;">
+                                    <th style="padding: 12px; text-align: left;">Пользователь</th>
+                                    <th style="padding: 12px; text-align: left;">Роль</th>
+                                    <th style="padding: 12px; text-align: left;">Статус</th>
+                                    <th style="padding: 12px; text-align: left;">Создан</th>
+                                    <th style="padding: 12px; text-align: left;">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${operators.map(op => `
+                                    <tr style="border-bottom: 1px solid #ddd;">
+                                        <td style="padding: 12px;">
+                                            <strong>${op.displayName}</strong><br>
+                                            <small style="color: #666;">${op.username}</small>
+                                        </td>
+                                        <td style="padding: 12px;">
+                                            <span style="background: #0088cc; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;">
+                                                ${op.role === 'admin' ? '👑 ADMIN' : '👤 OPERATOR'}
+                                            </span>
+                                        </td>
+                                        <td style="padding: 12px;">
+                                            ${op.isActive ? '✅ Активен' : '❌ Неактивен'}
+                                        </td>
+                                        <td style="padding: 12px; font-size: 11px;">
+                                            ${new Date(op.createdAt).toLocaleString('ru-RU')}
+                                        </td>
+                                        <td style="padding: 12px;">
+                                            ${op.role !== 'admin' ? `
+                                                <button class="btn btn-small" onclick="resetPassword('${op.id}')">🔑 Сбросить пароль</button>
+                                                <button class="btn btn-small" onclick="toggleStatus('${op.id}')">${op.isActive ? '❌ Деактивировать' : '✅ Активировать'}</button>
+                                                <button class="btn btn-small" style="background: #dc3545;" onclick="removeOperator('${op.id}')">🗑️ Удалить</button>
+                                            ` : '<em>Администратор</em>'}
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+        }
+
+        function closeUserManagement() {
+            const modal = document.getElementById('userManagementModal');
+            if (modal) modal.remove();
+        }
+
+        function showAddOperatorForm() {
+            document.getElementById('addOperatorForm').style.display = 'block';
+        }
+
+        function hideAddOperatorForm() {
+            document.getElementById('addOperatorForm').style.display = 'none';
+            document.getElementById('newOperatorUsername').value = '';
+            document.getElementById('newOperatorDisplayName').value = '';
+            document.getElementById('newOperatorPassword').value = '';
+        }
+
+        async function addOperator() {
+            const username = document.getElementById('newOperatorUsername').value.trim();
+            const displayName = document.getElementById('newOperatorDisplayName').value.trim();
+            const password = document.getElementById('newOperatorPassword').value;
+
+            if (!username || username.length < 3) {
+                alert('Логин должен содержать минимум 3 символа');
+                return;
+            }
+
+            if (!password || password.length < 4) {
+                alert('Пароль должен содержать минимум 4 символа');
+                return;
+            }
+
+            const currentUser = await window.electronAPI.storeGet('currentUser', null);
+            
+            try {
+                // Для суперадмина передаем его ID, обработчик в main.js разберется
+                const result = await window.electronAPI.addOperator(
+                    currentUser.id || 'superadmin', 
+                    username, 
+                    password, 
+                    displayName || username
+                );
+
+                if (result.success) {
+                    alert(`Оператор успешно добавлен!\n\nЛогин: ${username}\nПароль: ${password}\n\nОбязательно запишите!`);
+                    closeUserManagement();
+                    showUserManagementModal(); // Обновляем список
+                } else {
+                    alert('Ошибка: ' + result.error);
+                }
+            } catch (error) {
+                alert('Ошибка: ' + error.message);
+            }
+        }
+
+        async function resetPassword(operatorId) {
+            showResetPasswordModal(operatorId, false);
+        }
+
+        function showResetPasswordModal(operatorId, isSuperAdmin = false) {
+            const modal = document.createElement('div');
+            modal.id = 'resetPasswordModal';
+            modal.className = 'modal';
+            modal.style.cssText = 'display: block !important;';
+
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 450px;">
+                    <div class="modal-header">
+                        <h3>🔑 Сброс пароля оператора</h3>
+                        <span class="close" onclick="closeResetPasswordModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="newPasswordInput">Введите новый пароль (минимум 4 символа):</label>
+                            <div style="position: relative;">
+                                <input 
+                                    type="password" 
+                                    id="newPasswordInput" 
+                                    placeholder="Новый пароль"
+                                    style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 15px;"
+                                    autofocus
+                                >
+                                <button type="button" onclick="toggleNewPassword()" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 18px; color: #666; padding: 5px;">👁️</button>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; margin-top: 20px;">
+                            <button class="btn btn-primary" style="flex: 1;" onclick="confirmResetPassword('${operatorId}', ${isSuperAdmin})">✅ Сбросить пароль</button>
+                            <button class="btn btn-secondary" style="flex: 1;" onclick="closeResetPasswordModal()">❌ Отмена</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            // Фокусируем поле
+            setTimeout(() => {
+                const input = document.getElementById('newPasswordInput');
+                if (input) input.focus();
+            }, 100);
+
+            // Enter для подтверждения
+            document.getElementById('newPasswordInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    confirmResetPassword(operatorId, isSuperAdmin);
+                }
+            });
+        }
+
+        function toggleNewPassword() {
+            const input = document.getElementById('newPasswordInput');
+            const btn = event.target;
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                btn.textContent = '👁️';
+            }
+        }
+
+        function closeResetPasswordModal() {
+            const modal = document.getElementById('resetPasswordModal');
+            if (modal) modal.remove();
+        }
+
+        async function confirmResetPassword(operatorId, isSuperAdmin) {
+            const newPassword = document.getElementById('newPasswordInput').value;
+            
+            if (!newPassword || newPassword.length < 4) {
+                alert('Пароль должен содержать минимум 4 символа');
+                return;
+            }
+
+            const currentUser = await window.electronAPI.storeGet('currentUser', null);
+            
+            try {
+                const result = await window.electronAPI.resetOperatorPassword(
+                    currentUser.id || 'superadmin', 
+                    operatorId, 
+                    newPassword
+                );
+
+                if (result.success) {
+                    closeResetPasswordModal();
+                    alert(`Пароль успешно сброшен!\n\nНовый пароль: ${newPassword}\n\nОбязательно запишите!`);
+                    
+                    // Обновляем панели если открыты
+                    if (isSuperAdmin) {
+                        const superModal = document.getElementById('superAdminModal');
+                        if (superModal) {
+                            superModal.remove();
+                            showSuperAdminPanel();
+                        }
+                    } else {
+                        const userModal = document.getElementById('userManagementModal');
+                        if (userModal) {
+                            userModal.remove();
+                            showUserManagementModal();
+                        }
+                    }
+                } else {
+                    alert('Ошибка: ' + result.error);
+                }
+            } catch (error) {
+                alert('Ошибка: ' + error.message);
+            }
+        }
+
+        async function toggleStatus(operatorId) {
+            const currentUser = await window.electronAPI.storeGet('currentUser', null);
+            
+            try {
+                const result = await window.electronAPI.toggleOperatorStatus(currentUser.id || 'superadmin', operatorId);
+
+                if (result.success) {
+                    closeUserManagement();
+                    showUserManagementModal(); // Обновляем список
+                } else {
+                    alert('Ошибка: ' + result.error);
+                }
+            } catch (error) {
+                alert('Ошибка: ' + error.message);
+            }
+        }
+
+        async function removeOperator(operatorId) {
+            if (!confirm('Вы уверены, что хотите удалить этого оператора?')) {
+                return;
+            }
+
+            const currentUser = await window.electronAPI.storeGet('currentUser', null);
+            
+            try {
+                const result = await window.electronAPI.removeOperator(currentUser.id || 'superadmin', operatorId);
+
+                if (result.success) {
+                    alert('Оператор удален');
+                    closeUserManagement();
+                    showUserManagementModal(); // Обновляем список
+                } else {
+                    alert('Ошибка: ' + result.error);
+                }
+            } catch (error) {
+                alert('Ошибка: ' + error.message);
+            }
+        }
+    </script>
 </body>
 </html>

@@ -3,7 +3,7 @@
  * Использует HTTP REST API и WebSocket для связи с принтером
  */
 
-const PrinterAdapter = require('./printer-adapter.js');
+import PrinterAdapter from './printer-adapter.js';
 
 class KlipperAdapter extends PrinterAdapter {
     constructor(printer) {
@@ -495,7 +495,5 @@ class KlipperAdapter extends PrinterAdapter {
 }
 
 // Экспорт для использования в других модулях
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = KlipperAdapter;
-}
+export default KlipperAdapter;
 

@@ -100,7 +100,5 @@ class PrinterAdapter {
 }
 
 // Экспорт для использования в других модулях
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = PrinterAdapter;
-}
+export default PrinterAdapter;
 

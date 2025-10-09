@@ -1460,15 +1460,15 @@ function updatePrintersCounter() {
 }
 
 // Функция для проверки изменений статусов и воспроизведения звуков
-function checkStatusChanges() {
-    printers.forEach(printer => {
+async function checkStatusChanges() {
+    for (const printer of printers) {
         const previousStatus = previousStatuses[printer.id];
         const currentStatus = printer.status;
 
         if (previousStatus !== currentStatus) {
             // Track analytics event
             if (previousStatus) {
-                trackStatusTransition(printer.id, previousStatus, currentStatus);
+                await trackStatusTransition(printer.id, previousStatus, currentStatus);
             }
             let event = '';
             let message = '';
@@ -1511,7 +1511,7 @@ function checkStatusChanges() {
         }
 
         previousStatuses[printer.id] = currentStatus;
-    });
+    }
 }
 
 // ============================================================================
@@ -1520,16 +1520,38 @@ function checkStatusChanges() {
 
 // 5.1. Event Tracking
 
-function trackStatusTransition(printerId, fromStatus, toStatus) {
+async function trackStatusTransition(printerId, fromStatus, toStatus) {
     // Ensure printerId is always a string for consistent comparison
     const printerIdStr = String(printerId);
-    const ev = { printerId: printerIdStr, ts: Date.now(), from: fromStatus, to: toStatus };
+    
+    // Получаем информацию о текущем операторе
+    let operatorId = null;
+    let operatorName = null;
+    try {
+        const currentUser = await window.electronAPI.storeGet('currentUser', null);
+        if (currentUser) {
+            operatorId = currentUser.id;
+            operatorName = currentUser.displayName;
+        }
+    } catch (error) {
+        console.log('Could not get operator info for analytics:', error);
+    }
+    
+    const ev = { 
+        printerId: printerIdStr, 
+        ts: Date.now(), 
+        from: fromStatus, 
+        to: toStatus,
+        operatorId: operatorId,
+        operatorName: operatorName
+    };
     analytics.events.push(ev);
     
     // Log event creation
     const printer = printers.find(p => String(p.id) === printerIdStr);
     const printerName = printer ? printer.name : 'Unknown';
-    console.log(`📊 Analytics Event: ${printerName} (${printerIdStr}): ${fromStatus} → ${toStatus}`);
+    const operatorInfo = operatorName ? ` (Operator: ${operatorName})` : '';
+    console.log(`📊 Analytics Event: ${printerName} (${printerIdStr}): ${fromStatus} → ${toStatus}${operatorInfo}`);
     
     // keep only last 90 days to limit growth
     const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
@@ -4724,6 +4746,18 @@ async function sendTelegramNotification(notification) {
     }
     
     try {
+        // Получаем информацию о текущем операторе
+        let operatorInfo = '';
+        try {
+            const currentUser = await window.electronAPI.storeGet('currentUser', null);
+            if (currentUser) {
+                const roleEmoji = currentUser.role === 'admin' ? '👑' : '👤';
+                operatorInfo = `\n${roleEmoji} *Operator:* ${currentUser.displayName}`;
+            }
+        } catch (error) {
+            console.log('Could not get operator info for Telegram:', error);
+        }
+        
         // Формируем заголовок с IP только если он указан и не пустой
         const header = notification.printerIP && notification.printerIP.trim() 
             ? `🖨️ *${notification.printerName}* (${notification.printerIP})`
@@ -4731,7 +4765,7 @@ async function sendTelegramNotification(notification) {
         
         const message = `${header}\n` +
                        `📋 *Event:* ${notification.event}\n` +
-                       `💬 *Message:* ${notification.message}\n` +
+                       `💬 *Message:* ${notification.message}${operatorInfo}\n` +
                        `⏰ *Time:* ${new Date().toLocaleString()}`;
         
         const url = `https://api.telegram.org/bot${telegramConfig.botToken}/sendMessage`;
@@ -4761,6 +4795,52 @@ async function sendTelegramNotification(notification) {
     } catch (error) {
         console.error('Failed to send Telegram message:', error);
         addConsoleMessage('❌ Failed to send Telegram message', 'error');
+        return false;
+    }
+}
+
+// Отправка КРИТИЧЕСКИХ уведомлений о сменах
+async function sendCriticalShiftNotification(title, message, operatorName, operatorUsername, operatorRole) {
+    if (!telegramConfig.enabled || !telegramConfig.botToken || !telegramConfig.chatId) {
+        return false;
+    }
+    
+    try {
+        const roleEmoji = operatorRole === 'admin' ? '👑' : '👤';
+        const criticalHeader = '🚨 *КРИТИЧЕСКОЕ УВЕДОМЛЕНИЕ* 🚨';
+        
+        const fullMessage = `${criticalHeader}\n\n` +
+                           `📋 *${title}*\n\n` +
+                           `💬 ${message}\n\n` +
+                           `${roleEmoji} *Оператор:* ${operatorName} (${operatorUsername})\n` +
+                           `⏰ *Время:* ${new Date().toLocaleString()}`;
+        
+        const url = `https://api.telegram.org/bot${telegramConfig.botToken}/sendMessage`;
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                chat_id: telegramConfig.chatId,
+                text: fullMessage,
+                parse_mode: 'Markdown',
+                disable_notification: false // Всегда со звуком для критических
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.ok) {
+            console.log('Critical Telegram notification sent successfully');
+            return true;
+        } else {
+            console.error('Telegram API error:', data);
+            return false;
+        }
+    } catch (error) {
+        console.error('Failed to send critical Telegram notification:', error);
         return false;
     }
 }

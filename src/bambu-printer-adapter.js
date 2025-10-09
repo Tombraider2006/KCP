@@ -3,7 +3,7 @@
  * Использует MQTT протокол для связи с принтером
  */
 
-const PrinterAdapter = require('./printer-adapter.js');
+import PrinterAdapter from './printer-adapter.js';
 
 class BambuLabAdapter extends PrinterAdapter {
     constructor(printer, mqttClient = null) {
@@ -36,7 +36,8 @@ class BambuLabAdapter extends PrinterAdapter {
      */
     async testConnection() {
         try {
-            const mqtt = require('mqtt');
+            const mqttModule = await import('mqtt');
+            const mqtt = mqttModule.default || mqttModule;
             const { ip, accessCode, serialNumber } = this.printer;
 
             if (!ip || !accessCode || !serialNumber) {
@@ -659,7 +660,5 @@ class BambuLabAdapter extends PrinterAdapter {
 }
 
 // Экспорт для использования в других модулях
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = BambuLabAdapter;
-}
+export default BambuLabAdapter;
 

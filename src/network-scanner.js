@@ -3,9 +3,10 @@
  * Поддерживает Klipper (Moonraker) и Bambu Lab принтеры
  */
 
-const http = require('http');
-const https = require('https');
-const os = require('os');
+import http from 'http';
+import https from 'https';
+import os from 'os';
+import net from 'net';
 
 /**
  * Получает список IP адресов для сканирования на основе локальной сети
@@ -204,7 +205,6 @@ function checkWebInterface(ip, timeout = 1500) {
  */
 function checkBambuLab(ip, timeout = 2000) {
     return new Promise((resolve) => {
-        const net = require('net');
         const socket = new net.Socket();
         
         socket.setTimeout(timeout);
@@ -379,7 +379,7 @@ async function quickScan(progressCallback, foundCallback) {
     return foundPrinters;
 }
 
-module.exports = {
+export {
     scanNetwork,
     quickScan,
     getLocalNetworkIPs
