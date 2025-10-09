@@ -2430,10 +2430,15 @@ function renderAnalyticsSettings() {
             <div class="form-group">
                 <label>Currency:</label>
                 <select id="currencyInput">
-                    <option value="RUB" ${curr==='RUB'?'selected':''}>₽ RUB</option>
-                    <option value="USD" ${curr==='USD'?'selected':''}>$ USD</option>
-                    <option value="EUR" ${curr==='EUR'?'selected':''}>€ EUR</option>
-                    <option value="KZT" ${curr==='KZT'?'selected':''}>₸ KZT</option>
+                    <option value="RUB" ${curr==='RUB'?'selected':''}>₽ RUB (Россия)</option>
+                    <option value="USD" ${curr==='USD'?'selected':''}>$ USD (США)</option>
+                    <option value="EUR" ${curr==='EUR'?'selected':''}>€ EUR (Литва, Латвия, Эстония)</option>
+                    <option value="KZT" ${curr==='KZT'?'selected':''}>₸ KZT (Казахстан)</option>
+                    <option value="BYN" ${curr==='BYN'?'selected':''}>Br BYN (Беларусь)</option>
+                    <option value="KGS" ${curr==='KGS'?'selected':''}>с KGS (Кыргызстан)</option>
+                    <option value="MDL" ${curr==='MDL'?'selected':''}>L MDL (Молдова)</option>
+                    <option value="ILS" ${curr==='ILS'?'selected':''}>₪ ILS (Израиль)</option>
+                    <option value="MNT" ${curr==='MNT'?'selected':''}>₮ MNT (Монголия)</option>
                 </select>
             </div>
             <div class="form-group">
@@ -2517,6 +2522,11 @@ function getCurrencySymbol(code) {
         case 'USD': return '$';
         case 'EUR': return '€';
         case 'KZT': return '₸';
+        case 'BYN': return 'Br';
+        case 'KGS': return 'с';
+        case 'MDL': return 'L';
+        case 'ILS': return '₪';
+        case 'MNT': return '₮';
         default: return '';
     }
 }
