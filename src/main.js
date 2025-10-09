@@ -1543,15 +1543,17 @@ ipcMain.on('menu-test-all', () => {
 });
 
 ipcMain.on('show-telegram-help', () => {
-  const currentLang = getSavedLanguage();
-  const isRussian = currentLang === 'ru';
-  showTelegramHelp(isRussian);
+  // Отправляем сообщение в renderer для открытия модального окна
+  if (mainWindow) {
+    mainWindow.webContents.send('show-telegram-help-modal');
+  }
 });
 
 ipcMain.on('show-bambu-help', () => {
-  const currentLang = getSavedLanguage();
-  const isRussian = currentLang === 'ru';
-  showBambuLabHelp(isRussian);
+  // Отправляем сообщение в renderer для открытия модального окна
+  if (mainWindow) {
+    mainWindow.webContents.send('show-bambu-help-modal');
+  }
 });
 
 // Bambu Lab interface data handlers

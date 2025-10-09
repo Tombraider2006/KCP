@@ -82,6 +82,14 @@ async function initApp() {
             testAllConnections();
         });
         
+        window.electronAPI.onShowTelegramHelpModal(() => {
+            showTelegramHelpModal();
+        });
+        
+        window.electronAPI.onShowBambuHelpModal(() => {
+            showBambuLabHelpModal();
+        });
+        
         // Слушаем изменения языка
         if (window.electronAPI.onLanguageChanged) {
             window.electronAPI.onLanguageChanged(async (event, lang) => {
