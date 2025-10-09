@@ -1549,6 +1549,8 @@ ipcMain.on('menu-test-all', () => {
 ipcMain.on('show-telegram-help', () => {
   // Отправляем сообщение в renderer для открытия модального окна
   if (mainWindow) {
+    // Clear cache before opening modal
+    mainWindow.webContents.clearCache();
     mainWindow.webContents.send('show-telegram-help-modal');
   }
 });
@@ -1556,6 +1558,8 @@ ipcMain.on('show-telegram-help', () => {
 ipcMain.on('show-bambu-help', () => {
   // Отправляем сообщение в renderer для открытия модального окна
   if (mainWindow) {
+    // Clear cache before opening modal
+    mainWindow.webContents.clearCache();
     mainWindow.webContents.send('show-bambu-help-modal');
   }
 });

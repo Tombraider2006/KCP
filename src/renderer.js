@@ -703,6 +703,9 @@ async function showBambuLabHelpModal() {
     
     if (!modal || !content) return;
     
+    // Force refresh - clear any cached content
+    content.innerHTML = '';
+    
     // Set title
     title.textContent = t('bambu_help_title') || 'Bambu Lab Printer Setup';
     
@@ -4093,6 +4096,9 @@ async function showTelegramHelpModal() {
         console.error('Modal elements not found:', { modal, content });
         return;
     }
+    
+    // Force refresh - clear any cached content
+    content.innerHTML = '';
     
     // Set title
     const titleText = t('telegram_help_title') || 'Telegram Bot Setup Help';
