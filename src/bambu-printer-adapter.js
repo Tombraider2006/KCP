@@ -447,8 +447,8 @@ class BambuLabAdapter extends PrinterAdapter {
         const model = this.printerData.info?.model || this.printerData.info?.machine_type || this.printer.name || '';
         const modelLower = model.toLowerCase();
         
-        // Модели с камерой (обычно есть камера)
-        const modelsWithCamera = ['x1', 'x1c', 'x1-carbon', 'x1c-carbon', 'p1s', 'p1p'];
+        // bambu-js поддерживает камеру только для P1S и H2D
+        const bambuJsSupportedModels = ['p1s', 'h2d'];
         
         // Модели без камеры (обычно нет камеры)
         const modelsWithoutCamera = ['a1', 'a1-mini'];
@@ -456,15 +456,18 @@ class BambuLabAdapter extends PrinterAdapter {
         let hasCamera = false;
         
         if (modelsWithoutCamera.some(m => modelLower.includes(m))) {
-            console.log(`[CAMERA CHECK] Model ${model} - camera not typically available`);
+            console.log(`[CAMERA CHECK] Model ${model} - camera not typically available (A1 series)`);
             hasCamera = false;
-        } else if (modelsWithCamera.some(m => modelLower.includes(m))) {
-            console.log(`[CAMERA CHECK] Model ${model} - camera typically available`);
+        } else if (bambuJsSupportedModels.some(m => modelLower.includes(m))) {
+            console.log(`[CAMERA CHECK] Model ${model} - camera supported by bambu-js`);
             hasCamera = true;
+        } else if (modelLower.includes('x1') || modelLower.includes('carbon')) {
+            console.log(`[CAMERA CHECK] Model ${model} - camera not supported by bambu-js (X1 series)`);
+            hasCamera = false;
         } else {
-            // Неизвестная модель - пробуем показать камеру
-            console.log(`[CAMERA CHECK] Unknown model ${model} - trying camera anyway`);
-            hasCamera = true;
+            // Неизвестная модель - не показываем камеру
+            console.log(`[CAMERA CHECK] Unknown model ${model} - camera not supported`);
+            hasCamera = false;
         }
         
         return hasCamera;

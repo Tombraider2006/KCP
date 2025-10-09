@@ -1831,6 +1831,21 @@ const cameraControllers = new Map(); // printerId -> CameraController
  * Загрузка изображения с камеры Bambu Lab через bambu-js библиотеку
  */
 async function fetchBambuCamera(ip, accessCode, model = 'P1S') {
+  // Сначала проверяем, поддерживает ли bambu-js эту модель
+  try {
+    const { isSupportedModel } = await import('bambu-js');
+    
+    if (!isSupportedModel(model)) {
+      console.log(`[CAMERA] Model ${model} not supported by bambu-js, trying HTTP fallback`);
+      throw new Error(`Model ${model} not supported by bambu-js`);
+    }
+    
+    console.log(`[CAMERA] Model ${model} supported by bambu-js, attempting connection...`);
+  } catch (error) {
+    console.log(`[CAMERA] Error checking model support: ${error.message}`);
+    // Продолжаем с HTTP fallback
+  }
+  
   // Сначала пробуем bambu-js (TCP метод)
   try {
     console.log(`[CAMERA] Attempting bambu-js method from ${ip} (model: ${model})`);
@@ -1962,18 +1977,18 @@ function startCameraUpdates(printerId) {
     return;
   }
   
-  // Определяем модель для bambu-js
-  // Попробуем разные модели в зависимости от имени принтера
+  // Определяем модель для bambu-js (поддерживаются только P1S и H2D)
   let model = 'P1S';  // По умолчанию
   
   if (printerData.name) {
     const name = printerData.name.toLowerCase();
-    if (name.includes('x1') || name.includes('carbon')) {
-      model = 'X1C';
-    } else if (name.includes('a1')) {
-      model = 'A1';
-    } else if (name.includes('h2d')) {
+    if (name.includes('h2d')) {
       model = 'H2D';
+    } else if (name.includes('p1s')) {
+      model = 'P1S';
+    } else {
+      // Для всех остальных моделей (X1C, A1, etc.) используем P1S как fallback
+      model = 'P1S';
     }
   }
   
