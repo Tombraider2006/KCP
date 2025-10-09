@@ -1836,7 +1836,68 @@ function sendCameraLog(message, level = 'log') {
 /**
  * Загрузка изображения с камеры Bambu Lab через FTP
  */
+/**
+ * Попытка загрузить изображение через HTTP (разные порты)
+ */
+async function tryHttpCamera(ip, accessCode) {
+  const ports = [80, 8080, 8088, 6000];
+  const paths = ['/ipcam.jpg', '/snapshot.jpg', '/camera/snapshot', '/api/camera'];
+  
+  for (const port of ports) {
+    for (const path of paths) {
+      try {
+        const url = `http://${ip}:${port}${path}`;
+        console.log('[CAMERA HTTP] Trying:', url);
+        sendCameraLog(`[CAMERA HTTP] Trying: ${url}`, 'log');
+        
+        const response = await new Promise((resolve, reject) => {
+          const req = http.get(url, {
+            timeout: 3000,
+            headers: {
+              'Authorization': `Basic ${Buffer.from(`bblp:${accessCode}`).toString('base64')}`
+            }
+          }, (res) => {
+            if (res.statusCode === 200) {
+              const chunks = [];
+              res.on('data', chunk => chunks.push(chunk));
+              res.on('end', () => resolve(Buffer.concat(chunks)));
+            } else {
+              reject(new Error(`HTTP ${res.statusCode}`));
+            }
+          });
+          req.on('error', reject);
+          req.on('timeout', () => {
+            req.destroy();
+            reject(new Error('Timeout'));
+          });
+        });
+        
+        const base64 = response.toString('base64');
+        const dataUrl = `data:image/jpeg;base64,${base64}`;
+        
+        console.log('[CAMERA HTTP] ✅ SUCCESS! Port:', port, 'Path:', path, 'Size:', response.length);
+        sendCameraLog(`[CAMERA HTTP] ✅ SUCCESS! Port: ${port}, Path: ${path}, Size: ${response.length} bytes`, 'log');
+        
+        return dataUrl;
+      } catch (err) {
+        // Пробуем следующий вариант
+      }
+    }
+  }
+  
+  console.log('[CAMERA HTTP] All HTTP attempts failed');
+  sendCameraLog('[CAMERA HTTP] ❌ All HTTP attempts failed', 'error');
+  return null;
+}
+
 async function fetchBambuCamera(ip, accessCode) {
+  // Сначала пробуем HTTP (быстрее и проще)
+  const httpImage = await tryHttpCamera(ip, accessCode);
+  if (httpImage) {
+    return httpImage;
+  }
+  
+  // Если HTTP не сработал, пробуем FTPS
   const client = new ftp.Client();
   client.ftp.timeout = 10000;
   
@@ -1844,14 +1905,13 @@ async function fetchBambuCamera(ip, accessCode) {
     console.log('[CAMERA FTPS] Trying secure FTP connection to:', ip);
     sendCameraLog(`[CAMERA FTPS] Trying secure FTP (TLS) to: ${ip}`, 'log');
     
-    // Пробуем FTPS (FTP over TLS) - как MQTT, Bambu использует TLS
     await client.access({
       host: ip,
       user: 'bblp',
       password: accessCode,
-      secure: true,  // FTPS вместо FTP
+      secure: true,
       secureOptions: {
-        rejectUnauthorized: false  // Самоподписанный сертификат
+        rejectUnauthorized: false
       }
     });
     
