@@ -4070,20 +4070,28 @@ function showTelegramHelpModal() {
     const content = document.getElementById('telegramHelpContent');
     const title = document.getElementById('telegramHelpTitle');
     
-    if (!modal || !content) return;
+    console.log('Opening Telegram Help Modal:', { modal, content, title });
+    
+    if (!modal || !content) {
+        console.error('Modal elements not found:', { modal, content });
+        return;
+    }
     
     // Set title
-    title.textContent = t('telegram_help_title') || 'Telegram Bot Setup Help';
+    const titleText = t('telegram_help_title') || 'Telegram Bot Setup Help';
+    title.textContent = titleText;
     
     // Set content based on current language
     const isRussian = currentLanguage === 'ru';
     content.innerHTML = getTelegramHelpContent(isRussian);
     
+    console.log('Showing modal, isRussian:', isRussian);
     modal.style.display = 'block';
 }
 
 function closeTelegramHelpModal() {
     const modal = document.getElementById('telegramHelpModal');
+    console.log('Closing Telegram Help Modal:', modal);
     if (modal) modal.style.display = 'none';
 }
 
