@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain, shell, Menu } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
-const { version: APP_VERSION } = require('./package.json');
+const { version: APP_VERSION } = require('../package.json');
 
 const store = new Store();
 
@@ -25,7 +25,7 @@ function createMainWindow() {
     show: false
   });
 
-  mainWindow.loadFile('index.html');
+  mainWindow.loadFile('src/index.html');
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
@@ -48,11 +48,11 @@ function createMainWindow() {
 function getIconPath() {
   switch (process.platform) {
     case 'darwin':
-      return path.join(__dirname, 'icons/icon.icns');
+      return path.join(__dirname, '../icons/icon.icns');
     case 'win32':
-      return path.join(__dirname, 'icons/icon.ico');
+      return path.join(__dirname, '../icons/icon.ico');
     default:
-      return path.join(__dirname, 'icons/icon.png');
+      return path.join(__dirname, '../icons/icon.png');
   }
 }
 
@@ -1295,7 +1295,7 @@ function createTabsWindow() {
     autoHideMenuBar: true
   });
 
-  tabsWindow.loadFile('printer-tabs-window.html');
+  tabsWindow.loadFile('src/printer-tabs-window.html');
 
   tabsWindow.once('ready-to-show', () => {
     tabsWindow.show();

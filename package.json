@@ -2,7 +2,7 @@
   "name": "3d-printer-control-panel",
   "version": "1.5.2",
   "description": "3D Printer Control Panel with Smart Temperature Monitoring for Klipper and Bambu Lab",
-  "main": "main.js",
+  "main": "src/main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder",
@@ -39,10 +39,10 @@
       "output": "dist-electron"
     },
     "files": [
-      "**/*",
-      "!dist-electron",
-      "!build",
-      "!*.md"
+      "src/**/*",
+      "icons/**/*",
+      "node_modules/**/*",
+      "package.json"
     ],
     "win": {
       "target": "nsis",
