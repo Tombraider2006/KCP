@@ -1,10 +1,12 @@
-# 🖨️ 3D Printer Control Panel
-
 <div align="center">
+
+<img src="logo.png" alt="3D Printer Control Panel Logo" width="250">
+
+# 🖨️ 3D Printer Control Panel
 
 **[🇷🇺 Русский](README.md)** | **[🇬🇧 English](README_EN.md)**
 
-![3D Printer Control Panel](https://img.shields.io/badge/Версия-1.4.0-blue.svg)
+![3D Printer Control Panel](https://img.shields.io/badge/Версия-1.5.2-blue.svg)
 ![Electron](https://img.shields.io/badge/Electron-22.0+-green.svg)
 ![Node.js](https://img.shields.io/badge/Node.js-14.0+-green.svg)
 ![Платформа](https://img.shields.io/badge/Платформа-Windows%20%7C%20Linux%20%7C%20Mac-lightgrey.svg)
