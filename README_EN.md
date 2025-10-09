@@ -23,17 +23,37 @@
 
 ## 📑 Table of Contents
 
-- [👥 Who Is This For?](#-who-is-this-for)
-- [🌟 Key Features](#-key-features)
-- [🚀 Installation](#-installation)
-- [🎋 Bambu Lab Support](#-bambu-lab-support)
-- [📋 Adding Printers](#-adding-printers)
-- [🎯 System Features](#-system-features)
-- [🔧 Technical Details](#-technical-details)
-- [📋 Changelog](#-changelog)
-- [🆘 Troubleshooting](#-troubleshooting)
-- [🎉 Benefits](#-benefits)
-- [📚 Additional Documentation](#-additional-documentation)
+<table>
+<tr>
+<td width="50%">
+
+### 🚀 Quick Start
+- **[👥 Who Is This For?](#-who-is-this-for)**
+- **[🚀 Installation](#-installation)**
+- **[📋 Adding Printers](#-adding-printers)**
+- **[🎋 Bambu Lab Support](#-bambu-lab-support)**
+
+### 📚 Features
+- **[🌟 Key Features](#-key-features)**
+- **[🎯 System Features](#-system-features)**
+- **[🎉 Benefits](#-benefits)**
+
+</td>
+<td width="50%">
+
+### ⚙️ Help & Configuration
+- **[🆘 Troubleshooting](#-troubleshooting)**
+- **[🔧 Technical Details](#-technical-details)**
+- **[📚 Additional Documentation](#-additional-documentation)**
+
+### 📝 Information
+- **[📋 Changelog](#-changelog)**
+- **[📄 License](#-license)**
+- **[🤝 Contributing](#-contributing)**
+
+</td>
+</tr>
+</table>
 
 ---
 
