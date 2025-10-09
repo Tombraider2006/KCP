@@ -2490,13 +2490,26 @@ function computeAnalytics(periodKey, printerId, customRange) {
     let lastState = 'idle';
     for (const e of filtered) {
         const dur = Math.max(0, e.ts - lastTs);
-        if (lastState === 'printing') totalPrintMs += dur; else totalIdleMs += dur;
+        // Не считаем offline как idle для энергопотребления
+        if (lastState === 'printing') {
+            totalPrintMs += dur;
+        } else if (lastState !== 'offline') {
+            totalIdleMs += dur;
+        }
         lastTs = e.ts;
-        lastState = (e.to === 'printing') ? 'printing' : 'idle';
+        lastState = e.to;
     }
-    // tail until now
+    // tail until now - НЕ считаем если принтер offline
     const tail = Math.max(0, until - lastTs);
-    if (lastState === 'printing') totalPrintMs += tail; else totalIdleMs += tail;
+    if (lastState === 'printing') {
+        totalPrintMs += tail;
+        console.log(`Added tail time as printing: ${(tail / (1000 * 60 * 60)).toFixed(2)}h`);
+    } else if (lastState !== 'offline') {
+        totalIdleMs += tail;
+        console.log(`Added tail time as idle (state: ${lastState}): ${(tail / (1000 * 60 * 60)).toFixed(2)}h`);
+    } else {
+        console.log(`Skipped tail time for offline state: ${(tail / (1000 * 60 * 60)).toFixed(2)}h`);
+    }
 
     // kWh estimation
     let kwhTotal = 0;
@@ -2525,23 +2538,26 @@ function computeAnalytics(periodKey, printerId, customRange) {
             
             if (lastTsByPrinter[pid]) {
                 const dur = Math.max(0, e.ts - lastTsByPrinter[pid]);
-                if (lastStatByPrinter[pid] === 'printing') {
+                const prevState = lastStatByPrinter[pid];
+                // Не считаем offline как idle для энергопотребления
+                if (prevState === 'printing') {
                     printerTimes[pid].printMs += dur;
-                } else {
+                } else if (prevState !== 'offline') {
                     printerTimes[pid].idleMs += dur;
                 }
             }
             
             lastTsByPrinter[pid] = e.ts;
-            lastStatByPrinter[pid] = (e.to === 'printing') ? 'printing' : 'idle';
+            lastStatByPrinter[pid] = e.to;
         });
         
-        // Add tail time for each printer
+        // Add tail time for each printer - НЕ считаем offline
         Object.keys(lastTsByPrinter).forEach(pid => {
             const tailTime = Math.max(0, until - lastTsByPrinter[pid]);
-            if (lastStatByPrinter[pid] === 'printing') {
+            const finalState = lastStatByPrinter[pid];
+            if (finalState === 'printing') {
                 printerTimes[pid].printMs += tailTime;
-            } else {
+            } else if (finalState !== 'offline') {
                 printerTimes[pid].idleMs += tailTime;
             }
         });
