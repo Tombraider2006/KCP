@@ -441,6 +441,7 @@
             init() {
                 console.log('PrinterTabsManager initialized');
                 this.setupIPC();
+                this.setupPostMessageProxy();
                 this.renderTabs();
                 // ОБНОВЛЯЕМ ИНТЕРФЕЙС ПРИ ИНИЦИАЛИЗАЦИИ
                 updateInterfaceLanguage();
@@ -461,6 +462,21 @@
                 ipcRenderer.on('bambu-data-update', (event, printerId, data) => {
                     console.log('Received bambu-data-update for printer:', printerId, data);
                     this.sendDataToBambuInterface(printerId, data);
+                });
+            }
+
+            setupPostMessageProxy() {
+                // Обработчик postMessage от iframe Bambu Lab
+                window.addEventListener('message', (event) => {
+                    console.log('Received postMessage from iframe:', event.data);
+                    
+                    if (event.data.type === 'request-bambu-data') {
+                        const printerId = event.data.printerId;
+                        console.log('Proxying bambu data request to main process for printer:', printerId);
+                        
+                        // Проксируем запрос в main процесс через IPC
+                        ipcRenderer.send('request-bambu-data', printerId);
+                    }
                 });
             }
 

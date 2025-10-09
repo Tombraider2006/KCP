@@ -296,6 +296,84 @@
             background: rgba(0, 0, 0, 0.2);
             border-radius: 8px;
         }
+
+        /* Camera Stream Styles */
+        .camera-container {
+            position: relative;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            overflow: hidden;
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .camera-header {
+            background: rgba(0, 212, 255, 0.1);
+            padding: 15px;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .camera-title {
+            color: #00d4ff;
+            font-size: 18px;
+            font-weight: 600;
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+
+        .camera-stream {
+            width: 100%;
+            height: 300px;
+            background: #000;
+            display: block;
+        }
+
+        .camera-error {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 300px;
+            color: #ff6b6b;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .camera-error-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .camera-error-text {
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .camera-error-details {
+            font-size: 12px;
+            color: #7ea8c8;
+        }
+
+        .camera-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 300px;
+            color: #00d4ff;
+        }
+
+        .camera-loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(0, 212, 255, 0.2);
+            border-top: 3px solid #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
@@ -370,6 +448,20 @@
                 </div>
             </div>
 
+            <!-- Camera Stream (if available) -->
+            <div class="camera-container" id="cameraContainer" style="display: none;">
+                <div class="camera-header">
+                    <span class="card-icon">📹</span>
+                    <span class="camera-title">Live Camera</span>
+                </div>
+                <div id="cameraContent">
+                    <div class="camera-loading">
+                        <div class="camera-loading-spinner"></div>
+                        <div>Loading camera stream...</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Printer Info -->
             <div class="card">
                 <div class="card-title">
@@ -390,6 +482,10 @@
                         <span class="info-value">MQTT</span>
                     </div>
                     <div class="info-item">
+                        <span class="info-label">Camera:</span>
+                        <span class="info-value" id="cameraStatus">--</span>
+                    </div>
+                    <div class="info-item">
                         <span class="info-label">Last Update:</span>
                         <span class="info-value" id="lastUpdate">--</span>
                     </div>
@@ -403,31 +499,18 @@
     </div>
 
     <script>
-        const { ipcRenderer } = require('electron');
         let printerId = null;
 
         // Initialize
         window.addEventListener('DOMContentLoaded', () => {
-            console.log('Bambu Lab interface loaded');
-            setupIPC();
+            console.log('Bambu Lab interface loaded (iframe mode)');
             setupPostMessage();
-            requestInitialData();
-        });
-
-        function setupIPC() {
-            // Listen for printer data updates
-            ipcRenderer.on('bambu-data-update', (event, data) => {
-                console.log('Received bambu data update via IPC:', data);
-                updateInterface(data);
-            });
-
-            // Listen for printer ID
-            ipcRenderer.on('set-printer-id', (event, id) => {
-                console.log('Printer ID set via IPC:', id);
-                printerId = id;
+            
+            // Запрашиваем данные сразу при загрузке
+            setTimeout(() => {
                 requestInitialData();
-            });
-        }
+            }, 100);
+        });
 
         function setupPostMessage() {
             // Listen for messages from parent window
@@ -447,17 +530,44 @@
 
         function requestInitialData() {
             if (printerId) {
-                console.log('Requesting initial data for printer:', printerId);
-                ipcRenderer.send('request-bambu-data', printerId);
+                console.log('Requesting initial data for printer via postMessage:', printerId);
+                // Отправляем запрос в parent window через postMessage
+                window.parent.postMessage({
+                    type: 'request-bambu-data',
+                    printerId: printerId
+                }, '*');
+                
+                // Также запрашиваем данные несколько раз с интервалом для надежности
+                setTimeout(() => {
+                    window.parent.postMessage({
+                        type: 'request-bambu-data',
+                        printerId: printerId
+                    }, '*');
+                }, 500);
+                
+                setTimeout(() => {
+                    window.parent.postMessage({
+                        type: 'request-bambu-data',
+                        printerId: printerId
+                    }, '*');
+                }, 1000);
             }
         }
 
         function updateInterface(data) {
-            if (!data) return;
+            console.log('Updating interface with data:', data);
+            if (!data) {
+                console.log('No data provided to updateInterface');
+                return;
+            }
 
             // Hide loading, show content
             document.getElementById('loadingContainer').style.display = 'none';
             document.getElementById('contentContainer').style.display = 'block';
+            console.log('Interface content displayed');
+
+            // Update camera
+            updateCamera(data);
 
             // Update printer name
             if (data.name) {
@@ -497,10 +607,15 @@
                 document.getElementById('bedTemp').textContent = Math.round(data.temps.bed || 0) + '°C';
                 document.getElementById('bedTarget').textContent = 'Target: ' + Math.round(data.temps.bed_target || 0) + '°C';
                 
-                const chamberTemp = data.temps.chamber !== null && data.temps.chamber !== undefined 
-                    ? Math.round(data.temps.chamber) + '°C' 
-                    : '--°C';
-                document.getElementById('chamberTemp').textContent = chamberTemp;
+                // Отображаем temperature камеры только если она доступна на принтере
+                const chamberTempElement = document.getElementById('chamberTemp');
+                const chamberTempItem = chamberTempElement?.closest('.temp-item');
+                if (data.temps.chamber !== null && data.temps.chamber !== undefined) {
+                    chamberTempElement.textContent = Math.round(data.temps.chamber) + '°C';
+                    if (chamberTempItem) chamberTempItem.style.display = 'block';
+                } else {
+                    if (chamberTempItem) chamberTempItem.style.display = 'none';
+                }
             }
 
             // Update printer info
@@ -511,9 +626,79 @@
                 document.getElementById('serialNumber').textContent = data.serialNumber;
             }
 
+            // Update camera status
+            const cameraStatus = document.getElementById('cameraStatus');
+            if (cameraStatus) {
+                if (data.hasCamera) {
+                    cameraStatus.textContent = 'Available';
+                    cameraStatus.style.color = '#5dff8f';
+                } else {
+                    cameraStatus.textContent = 'Not available';
+                    cameraStatus.style.color = '#7ea8c8';
+                }
+            }
+
             // Update last update time
             const now = new Date();
             document.getElementById('lastUpdate').textContent = now.toLocaleTimeString();
+        }
+
+        function updateCamera(data) {
+            const cameraContainer = document.getElementById('cameraContainer');
+            const cameraContent = document.getElementById('cameraContent');
+            
+            if (!data.hasCamera) {
+                cameraContainer.style.display = 'none';
+                return;
+            }
+
+            cameraContainer.style.display = 'block';
+            
+            if (!data.cameraStreamUrl) {
+                showCameraError('Camera URL not available');
+                return;
+            }
+
+            // Create video element
+            const video = document.createElement('video');
+            video.className = 'camera-stream';
+            video.autoplay = true;
+            video.muted = true;
+            video.controls = true;
+            video.src = data.cameraStreamUrl;
+            
+            // Handle video events
+            video.addEventListener('loadstart', () => {
+                console.log('Camera stream loading started');
+            });
+            
+            video.addEventListener('loadeddata', () => {
+                console.log('Camera stream loaded successfully');
+                cameraContent.innerHTML = '';
+                cameraContent.appendChild(video);
+            });
+            
+            video.addEventListener('error', (e) => {
+                console.error('Camera stream error:', e);
+                showCameraError('Failed to load camera stream');
+            });
+            
+            video.addEventListener('canplay', () => {
+                console.log('Camera stream can play');
+            });
+        }
+
+        function showCameraError(message) {
+            const cameraContent = document.getElementById('cameraContent');
+            cameraContent.innerHTML = `
+                <div class="camera-error">
+                    <div class="camera-error-icon">📹</div>
+                    <div class="camera-error-text">${message}</div>
+                    <div class="camera-error-details">
+                        Camera stream is not available or printer is offline
+                    </div>
+                </div>
+            `;
         }
 
         function updateStatusBadge(status) {
@@ -535,7 +720,10 @@
         // Request data updates periodically
         setInterval(() => {
             if (printerId) {
-                ipcRenderer.send('request-bambu-data', printerId);
+                window.parent.postMessage({
+                    type: 'request-bambu-data',
+                    printerId: printerId
+                }, '*');
             }
         }, 5000); // Every 5 seconds
     </script>

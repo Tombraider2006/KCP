@@ -91,9 +91,6 @@ class KlipperAdapter extends PrinterAdapter {
 
                 this.updatePrinterStatus();
                 
-                // Отладка температурных сенсоров (можно убрать после диагностики)
-                this.debugTemperatureSensors();
-                
                 return this.printer.data;
             } else {
                 throw new Error(`HTTP ${response.status}`);
@@ -376,29 +373,6 @@ class KlipperAdapter extends PrinterAdapter {
 
         return temps;
     }
-    
-    /**
-     * Отладка: показать все доступные температурные сенсоры
-     */
-    debugTemperatureSensors() {
-        console.log('🔍 === DEBUG: Temperature Sensors ===');
-        console.log('Available objects:', this.availableObjects);
-        console.log('');
-        
-        for (const [key, value] of Object.entries(this.printer.data)) {
-            if (key.startsWith('temperature_sensor ') || 
-                key.startsWith('temperature_fan ') || 
-                key.startsWith('heater_generic ')) {
-                
-                const temp = value && (value.temperature ?? value.temp ?? value.value);
-                console.log(`📊 ${key}:`, {
-                    temperature: temp,
-                    fullData: value
-                });
-            }
-        }
-        console.log('🔍 === END DEBUG ===');
-    }
 
     /**
      * Получение температуры камеры
@@ -489,21 +463,31 @@ class KlipperAdapter extends PrinterAdapter {
     }
 
     /**
-     * Глубокое объединение объектов
+     * Глубокое объединение объектов (оптимизированная версия)
      */
     deepMerge(target, source) {
-        for (const key in source) {
-            if (source.hasOwnProperty(key)) {
-                if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-                    if (!target[key] || typeof target[key] !== 'object') {
-                        target[key] = {};
-                    }
-                    this.deepMerge(target[key], source[key]);
-                } else {
-                    if (source[key] !== undefined && source[key] !== null) {
-                        target[key] = source[key];
-                    }
+        // Используем Object.keys() вместо for...in для лучшей производительности
+        const keys = Object.keys(source);
+        const len = keys.length;
+        
+        for (let i = 0; i < len; i++) {
+            const key = keys[i];
+            const value = source[key];
+            
+            // Пропускаем undefined и null значения
+            if (value === undefined || value === null) {
+                continue;
+            }
+            
+            // Проверяем, является ли значение объектом (но не массивом)
+            if (typeof value === 'object' && !Array.isArray(value)) {
+                // Инициализируем целевой ключ если необходимо
+                if (!target[key] || typeof target[key] !== 'object' || Array.isArray(target[key])) {
+                    target[key] = {};
                 }
+                this.deepMerge(target[key], value);
+            } else {
+                target[key] = value;
             }
         }
         return target;

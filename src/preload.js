@@ -21,6 +21,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Bambu Lab data transmission
   sendBambuData: (printerId, data) => ipcRenderer.send('send-bambu-data', printerId, data),
   
+  // Bambu Lab MQTT connection management
+  testBambuConnection: (printerData) => ipcRenderer.invoke('test-bambu-connection', printerData),
+  closeBambuConnection: (printerId) => ipcRenderer.invoke('close-bambu-connection', printerId),
+  getBambuPrinterData: (printerId) => ipcRenderer.invoke('get-bambu-printer-data', printerId),
+  requestBambuStatus: (printerId) => ipcRenderer.invoke('request-bambu-status', printerId),
+  onBambuPrinterUpdate: (callback) => ipcRenderer.on('bambu-printer-update', (event, ...args) => callback(...args)),
+  removeBambuUpdateListener: () => ipcRenderer.removeAllListeners('bambu-printer-update'),
+  
   // Network Scanner
   scanNetwork: (scanType) => ipcRenderer.invoke('scan-network', scanType),
   onScanProgress: (callback) => ipcRenderer.on('scan-progress', (event, ...args) => callback(...args)),

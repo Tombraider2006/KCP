@@ -9,6 +9,10 @@ let mainWindow;
 let tabsWindow = null;
 const printerTabs = new Map();
 
+// Bambu Lab MQTT Manager
+const BambuLabAdapter = require('./bambu-printer-adapter.js');
+const bambuConnections = new Map(); // printerId -> BambuLabAdapter instance
+
 // Блокировка запуска нескольких экземпляров приложения
 const gotTheLock = app.requestSingleInstanceLock();
 
@@ -1409,6 +1413,13 @@ function addPrinterTab(printerData) {
   const sendData = () => {
     if (window && !window.isDestroyed()) {
       window.webContents.send('add-printer-tab', printerData);
+      
+      // Для Bambu Lab принтеров сразу отправляем данные
+      if (printerData.type === 'bambu') {
+        setTimeout(async () => {
+          await sendBambuDataToInterface(printerData.id);
+        }, 200);
+      }
     }
   };
   
@@ -1427,9 +1438,124 @@ function focusPrinterTab(printerId) {
   if (tabsWindow && !tabsWindow.isDestroyed() && printerTabs.has(printerId)) {
     tabsWindow.webContents.send('focus-printer-tab', printerId);
     tabsWindow.focus();
+    
+    // Для Bambu Lab принтеров отправляем данные при фокусе
+    const printerData = printerTabs.get(printerId);
+    if (printerData && printerData.type === 'bambu') {
+      setTimeout(async () => {
+        await sendBambuDataToInterface(printerId);
+      }, 100);
+    }
+    
     return true;
   }
   return false;
+}
+
+// ===== BAMBU LAB MQTT CONNECTION MANAGEMENT =====
+
+/**
+ * Test connection to Bambu Lab printer
+ */
+async function testBambuConnection(printerData) {
+  try {
+    console.log(`Testing Bambu Lab connection for: ${printerData.name}`);
+    
+    // Create adapter instance
+    const adapter = new BambuLabAdapter(printerData);
+    
+    // Try to connect
+    const success = await adapter.testConnection();
+    
+    if (success) {
+      // Store the connection
+      bambuConnections.set(printerData.id, adapter);
+      
+      // Setup message handler to send updates to renderer
+      await adapter.setupRealtimeConnection();
+      
+      // Set up data update callback
+      printerData.onDataUpdate = (updatedPrinter) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('bambu-printer-update', {
+            id: printerData.id,
+            data: updatedPrinter.data,
+            status: adapter.getStatus(),
+            lastUpdate: new Date().toISOString()
+          });
+        }
+      };
+      
+      console.log(`✅ Bambu Lab connection successful for: ${printerData.name}`);
+      return {
+        success: true,
+        protocol: adapter.usedProtocol,
+        data: adapter.printerData
+      };
+    }
+    
+    return { success: false, error: 'Connection failed' };
+  } catch (error) {
+    console.error(`❌ Bambu Lab connection error for ${printerData.name}:`, error.message);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Close Bambu Lab connection
+ */
+async function closeBambuConnection(printerId) {
+  if (bambuConnections.has(printerId)) {
+    const adapter = bambuConnections.get(printerId);
+    await adapter.closeConnection();
+    bambuConnections.delete(printerId);
+    console.log(`Closed Bambu Lab connection for printer: ${printerId}`);
+  }
+}
+
+/**
+ * Get Bambu Lab printer data
+ */
+async function getBambuPrinterData(printerId) {
+  console.log('getBambuPrinterData called for printer:', printerId);
+  
+  if (!bambuConnections.has(printerId)) {
+    console.log('No adapter found for printer:', printerId);
+    return null;
+  }
+  
+  const adapter = bambuConnections.get(printerId);
+  console.log('Found adapter for printer:', printerId);
+  console.log('Adapter printerData:', adapter.printerData);
+  
+  const result = {
+    status: adapter.getStatus(),
+    stateText: adapter.getStateText(),
+    progress: adapter.getProgress(),
+    fileName: adapter.getFileName(),
+    temperatures: adapter.getTemperatures(),
+    data: adapter.printerData,
+    connectionType: 'MQTT',
+    protocol: adapter.usedProtocol,
+    hasCamera: adapter.hasCamera(),
+    cameraStreamUrl: adapter.getCameraStreamUrl()
+  };
+  
+  console.log('Returning printer data:', result);
+  return result;
+}
+
+/**
+ * Request status update for Bambu printer
+ */
+function requestBambuStatus(printerId) {
+  if (bambuConnections.has(printerId)) {
+    const adapter = bambuConnections.get(printerId);
+    adapter.requestStatus();
+  }
 }
 
 // IPC handlers
@@ -1533,6 +1659,38 @@ ipcMain.handle('scan-network', async (event, scanType) => {
   }
 });
 
+// ===== BAMBU LAB IPC HANDLERS =====
+
+/**
+ * Test Bambu Lab printer connection
+ */
+ipcMain.handle('test-bambu-connection', async (event, printerData) => {
+  return await testBambuConnection(printerData);
+});
+
+/**
+ * Close Bambu Lab printer connection
+ */
+ipcMain.handle('close-bambu-connection', async (event, printerId) => {
+  await closeBambuConnection(printerId);
+  return { success: true };
+});
+
+/**
+ * Get Bambu Lab printer data
+ */
+ipcMain.handle('get-bambu-printer-data', async (event, printerId) => {
+  return await getBambuPrinterData(printerId);
+});
+
+/**
+ * Request status update for Bambu printer
+ */
+ipcMain.handle('request-bambu-status', (event, printerId) => {
+  requestBambuStatus(printerId);
+  return { success: true };
+});
+
 // Menu events
 ipcMain.on('menu-add-printer', () => {
   if (mainWindow) {
@@ -1565,27 +1723,64 @@ ipcMain.on('show-bambu-help', () => {
 });
 
 // Bambu Lab interface data handlers
-ipcMain.on('bambu-interface-ready', (event, printerId) => {
+ipcMain.on('bambu-interface-ready', async (event, printerId) => {
   console.log('Bambu Lab interface ready for printer:', printerId);
   // Отправляем начальные данные
-  sendBambuDataToInterface(printerId);
+  await sendBambuDataToInterface(printerId);
 });
 
-ipcMain.on('request-bambu-data', (event, printerId) => {
+ipcMain.on('request-bambu-data', async (event, printerId) => {
   console.log('Bambu data requested for printer:', printerId);
-  sendBambuDataToInterface(printerId);
+  await sendBambuDataToInterface(printerId);
 });
 
-function sendBambuDataToInterface(printerId) {
-  if (!tabsWindow || !printerTabs.has(printerId)) {
+async function sendBambuDataToInterface(printerId) {
+  if (!tabsWindow || tabsWindow.isDestroyed()) {
+    console.log('Tabs window not available for printer:', printerId);
     return;
   }
 
-  const printerData = printerTabs.get(printerId);
+  console.log('Sending Bambu data to interface for printer:', printerId);
   
-  // Получаем данные принтера из главного окна через IPC
-  if (mainWindow) {
-    mainWindow.webContents.send('get-printer-data', printerId);
+  try {
+    // Получаем данные напрямую из адаптера MQTT
+    const adapter = bambuConnections.get(printerId);
+    if (adapter) {
+      const printerData = await adapter.getPrinterData();
+      console.log('Got printer data from adapter:', printerData);
+      
+      // Отправляем данные в окно вкладок
+      if (tabsWindow && !tabsWindow.isDestroyed()) {
+        tabsWindow.webContents.send('bambu-data-update', printerId, printerData);
+        console.log('Data sent to tabs window for printer:', printerId);
+      }
+    } else {
+      console.log('No MQTT adapter found for printer:', printerId);
+      // Отправляем сообщение об отсутствии данных
+      if (tabsWindow && !tabsWindow.isDestroyed()) {
+        tabsWindow.webContents.send('bambu-data-update', printerId, {
+          status: 'offline',
+          name: 'Unknown Printer',
+          ip: 'Unknown',
+          progress: 0,
+          fileName: 'No file',
+          temps: { nozzle: 0, bed: 0, chamber: 0, nozzle_target: 0, bed_target: 0 }
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error getting printer data for interface:', error);
+    // Отправляем сообщение об ошибке
+    if (tabsWindow && !tabsWindow.isDestroyed()) {
+      tabsWindow.webContents.send('bambu-data-update', printerId, {
+        status: 'error',
+        name: 'Error',
+        ip: 'Unknown',
+        progress: 0,
+        fileName: 'No file',
+        temps: { nozzle: 0, bed: 0, chamber: 0, nozzle_target: 0, bed_target: 0 }
+      });
+    }
   }
 }
 
@@ -1614,7 +1809,18 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('before-quit', () => {
+app.on('before-quit', async () => {
+  // Close all Bambu Lab connections
+  for (const [printerId, adapter] of bambuConnections.entries()) {
+    try {
+      await adapter.closeConnection();
+      console.log(`Closed Bambu Lab connection for printer: ${printerId}`);
+    } catch (error) {
+      console.error(`Error closing Bambu connection for ${printerId}:`, error);
+    }
+  }
+  bambuConnections.clear();
+  
   if (tabsWindow && !tabsWindow.isDestroyed()) {
     tabsWindow.destroy();
   }
