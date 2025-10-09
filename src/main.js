@@ -9,6 +9,22 @@ let mainWindow;
 let tabsWindow = null;
 const printerTabs = new Map();
 
+// Блокировка запуска нескольких экземпляров приложения
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    // Если пользователь попытается запустить второй экземпляр,
+    // мы фокусируемся на существующем окне
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+}
+
 function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,

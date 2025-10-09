@@ -84,13 +84,18 @@ jobs:
       - name: Display structure of downloaded files
         run: ls -R ./artifacts
       
+      - name: Prepare release files
+        run: |
+          mkdir -p ./release-files
+          find ./artifacts/linux-build -name "*.AppImage" ! -name "*.blockmap" -exec cp {} ./release-files/ \;
+          find ./artifacts/mac-build -name "*.dmg" ! -name "*.blockmap" -exec cp {} ./release-files/ \;
+          find ./artifacts/windows-build -name "*Setup*.exe" ! -name "*.blockmap" -exec cp {} ./release-files/ \;
+          ls -lh ./release-files
+      
       - name: Upload files to existing release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            ./artifacts/linux-build/*.AppImage
-            ./artifacts/mac-build/*.dmg
-            ./artifacts/windows-build/*.exe
+          files: ./release-files/*
           draft: false
           prerelease: false
           fail_on_unmatched_files: false
