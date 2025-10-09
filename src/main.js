@@ -1838,21 +1838,25 @@ function sendCameraLog(message, level = 'log') {
  */
 async function fetchBambuCamera(ip, accessCode) {
   const client = new ftp.Client();
-  client.ftp.timeout = 5000;
+  client.ftp.timeout = 10000;
   
   try {
-    console.log('[CAMERA FTP] Connecting to:', ip);
-    sendCameraLog(`[CAMERA FTP] Connecting to: ${ip}`, 'log');
+    console.log('[CAMERA FTPS] Trying secure FTP connection to:', ip);
+    sendCameraLog(`[CAMERA FTPS] Trying secure FTP (TLS) to: ${ip}`, 'log');
     
+    // Пробуем FTPS (FTP over TLS) - как MQTT, Bambu использует TLS
     await client.access({
       host: ip,
       user: 'bblp',
       password: accessCode,
-      secure: false
+      secure: true,  // FTPS вместо FTP
+      secureOptions: {
+        rejectUnauthorized: false  // Самоподписанный сертификат
+      }
     });
     
-    console.log('[CAMERA FTP] Connected, downloading ipcam.jpg');
-    sendCameraLog('[CAMERA FTP] Connected, downloading ipcam.jpg', 'log');
+    console.log('[CAMERA FTPS] Connected, downloading ipcam.jpg');
+    sendCameraLog('[CAMERA FTPS] Connected, downloading ipcam.jpg', 'log');
     
     const chunks = [];
     await client.downloadTo({
@@ -1865,13 +1869,13 @@ async function fetchBambuCamera(ip, accessCode) {
     const base64 = buffer.toString('base64');
     const dataUrl = `data:image/jpeg;base64,${base64}`;
     
-    console.log('[CAMERA FTP] Image downloaded, size:', buffer.length, 'bytes');
-    sendCameraLog(`[CAMERA FTP] ✅ Image downloaded, size: ${buffer.length} bytes`, 'log');
+    console.log('[CAMERA FTPS] Image downloaded, size:', buffer.length, 'bytes');
+    sendCameraLog(`[CAMERA FTPS] ✅ Image downloaded, size: ${buffer.length} bytes`, 'log');
     
     return dataUrl;
   } catch (error) {
-    console.error('[CAMERA FTP] Error:', error.message);
-    sendCameraLog(`[CAMERA FTP] ❌ Error: ${error.message}`, 'error');
+    console.error('[CAMERA FTPS] Error:', error.message);
+    sendCameraLog(`[CAMERA FTPS] ❌ Error: ${error.message}`, 'error');
     client.close();
     return null;
   }
