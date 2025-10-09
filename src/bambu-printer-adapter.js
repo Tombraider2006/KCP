@@ -215,16 +215,57 @@ class BambuLabAdapter extends PrinterAdapter {
     handlePrinterMessage(data) {
         console.log('Bambu Lab MQTT message received:', JSON.stringify(data, null, 2));
         
-        // Логируем ВСЕ ключи верхнего уровня для поиска данных камеры
+        // Логируем ВСЕ ключи верхнего уровня для поиска данных камеры и модели
         console.log('[MQTT] Top level keys:', Object.keys(data));
+        
+        // Ищем информацию о модели принтера во всех возможных полях
         if (data.print) {
             console.log('[MQTT] Print keys:', Object.keys(data.print));
+            
+            // Проверяем поля которые могут содержать информацию о модели
+            const modelFields = ['machine_type', 'model', 'printer_type', 'device_type', 'hw_ver', 'sw_ver'];
+            modelFields.forEach(field => {
+                if (data.print[field] !== undefined) {
+                    console.log(`[MODEL INFO] ${field}:`, data.print[field]);
+                }
+            });
         }
+        
+        // Проверяем другие возможные поля с информацией о модели
+        const possibleModelFields = ['info', 'device', 'printer', 'system'];
+        possibleModelFields.forEach(field => {
+            if (data[field] && typeof data[field] === 'object') {
+                console.log(`[MODEL INFO] ${field} keys:`, Object.keys(data[field]));
+                const modelFields = ['machine_type', 'model', 'printer_type', 'device_type', 'hw_ver', 'sw_ver'];
+                modelFields.forEach(modelField => {
+                    if (data[field][modelField] !== undefined) {
+                        console.log(`[MODEL INFO] ${field}.${modelField}:`, data[field][modelField]);
+                    }
+                });
+            }
+        });
         
         // Обновляем данные принтера
         if (data.print) {
             this.printerData.print = { ...this.printerData.print, ...data.print };
             console.log('Updated print data:', this.printerData.print);
+            
+            // Сохраняем информацию о модели принтера, если найдена
+            if (data.print.machine_type) {
+                this.printerData.info = this.printerData.info || {};
+                this.printerData.info.machine_type = data.print.machine_type;
+                console.log('[MODEL SAVED] machine_type:', data.print.machine_type);
+            }
+            if (data.print.model) {
+                this.printerData.info = this.printerData.info || {};
+                this.printerData.info.model = data.print.model;
+                console.log('[MODEL SAVED] model:', data.print.model);
+            }
+            if (data.print.hw_ver) {
+                this.printerData.info = this.printerData.info || {};
+                this.printerData.info.hw_ver = data.print.hw_ver;
+                console.log('[MODEL SAVED] hw_ver:', data.print.hw_ver);
+            }
             
             // Проверяем поля камеры
             if (data.print.ipcam_dev !== undefined) {
@@ -443,9 +484,28 @@ class BambuLabAdapter extends PrinterAdapter {
      * Проверка наличия камеры у принтера
      */
     hasCamera() {
-        // Проверяем модель принтера для определения наличия камеры
-        const model = this.printerData.info?.model || this.printerData.info?.machine_type || this.printer.name || '';
-        const modelLower = model.toLowerCase();
+        // Получаем реальную модель принтера из MQTT данных, а не из названия
+        const realModel = this.printerData.info?.machine_type || this.printerData.info?.model || '';
+        const printerName = this.printer.name || '';
+        
+        console.log(`[CAMERA CHECK] Real model from MQTT: "${realModel}", Printer name: "${printerName}"`);
+        
+        // Если есть реальная модель из MQTT, используем её
+        let modelToCheck = realModel;
+        
+        // Если реальной модели нет, пытаемся определить по названию принтера
+        if (!modelToCheck) {
+            const nameLower = printerName.toLowerCase();
+            if (nameLower.includes('p1s')) modelToCheck = 'P1S';
+            else if (nameLower.includes('h2d')) modelToCheck = 'H2D';
+            else if (nameLower.includes('x1') || nameLower.includes('carbon')) modelToCheck = 'X1C';
+            else if (nameLower.includes('a1')) modelToCheck = 'A1';
+            else modelToCheck = 'UNKNOWN';
+            
+            console.log(`[CAMERA CHECK] No MQTT model, guessing from name: "${modelToCheck}"`);
+        }
+        
+        const modelLower = modelToCheck.toLowerCase();
         
         // bambu-js поддерживает камеру только для P1S и H2D
         const bambuJsSupportedModels = ['p1s', 'h2d'];
@@ -456,17 +516,17 @@ class BambuLabAdapter extends PrinterAdapter {
         let hasCamera = false;
         
         if (modelsWithoutCamera.some(m => modelLower.includes(m))) {
-            console.log(`[CAMERA CHECK] Model ${model} - camera not typically available (A1 series)`);
+            console.log(`[CAMERA CHECK] Model ${modelToCheck} - camera not typically available (A1 series)`);
             hasCamera = false;
         } else if (bambuJsSupportedModels.some(m => modelLower.includes(m))) {
-            console.log(`[CAMERA CHECK] Model ${model} - camera supported by bambu-js`);
+            console.log(`[CAMERA CHECK] Model ${modelToCheck} - camera supported by bambu-js`);
             hasCamera = true;
         } else if (modelLower.includes('x1') || modelLower.includes('carbon')) {
-            console.log(`[CAMERA CHECK] Model ${model} - camera not supported by bambu-js (X1 series)`);
+            console.log(`[CAMERA CHECK] Model ${modelToCheck} - camera not supported by bambu-js (X1 series)`);
             hasCamera = false;
         } else {
             // Неизвестная модель - не показываем камеру
-            console.log(`[CAMERA CHECK] Unknown model ${model} - camera not supported`);
+            console.log(`[CAMERA CHECK] Unknown model ${modelToCheck} - camera not supported`);
             hasCamera = false;
         }
         

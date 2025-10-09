@@ -1980,19 +1980,37 @@ function startCameraUpdates(printerId) {
   // Определяем модель для bambu-js (поддерживаются только P1S и H2D)
   let model = 'P1S';  // По умолчанию
   
-  if (printerData.name) {
-    const name = printerData.name.toLowerCase();
-    if (name.includes('h2d')) {
+  // Сначала пытаемся получить реальную модель из MQTT данных
+  const realModel = printerData.info?.machine_type || printerData.info?.model || '';
+  const printerName = printerData.name || '';
+  
+  console.log(`[CAMERA] Real model from MQTT: "${realModel}", Printer name: "${printerName}"`);
+  
+  if (realModel) {
+    // Используем реальную модель из MQTT
+    const modelLower = realModel.toLowerCase();
+    if (modelLower.includes('h2d')) {
       model = 'H2D';
-    } else if (name.includes('p1s')) {
+    } else if (modelLower.includes('p1s')) {
+      model = 'P1S';
+    } else {
+      // Для неподдерживаемых моделей используем P1S как fallback
+      model = 'P1S';
+    }
+    console.log(`[CAMERA] Using real MQTT model: ${model} (from: ${realModel})`);
+  } else {
+    // Fallback: пытаемся определить по названию принтера
+    const nameLower = printerName.toLowerCase();
+    if (nameLower.includes('h2d')) {
+      model = 'H2D';
+    } else if (nameLower.includes('p1s')) {
       model = 'P1S';
     } else {
       // Для всех остальных моделей (X1C, A1, etc.) используем P1S как fallback
       model = 'P1S';
     }
+    console.log(`[CAMERA] Using guessed model: ${model} (from name: ${printerName})`);
   }
-  
-  console.log(`[CAMERA] Using model: ${model} for printer: ${printerData.name}`);
   
   // Загружаем камеру каждые 3 секунды (чтобы не нагружать принтер)
   const interval = setInterval(async () => {
