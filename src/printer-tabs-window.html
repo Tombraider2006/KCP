@@ -482,6 +482,12 @@
                         
                         // Проксируем запрос в main процесс через IPC
                         ipcRenderer.send('request-bambu-data', printerId);
+                    } else if (event.data.type === 'start-camera') {
+                        const printerId = event.data.printerId;
+                        console.log('[CAMERA PROXY] Proxying camera start request for printer:', printerId);
+                        
+                        // Проксируем запрос камеры в main процесс через IPC
+                        ipcRenderer.send('start-camera-updates', printerId);
                     }
                 });
             }

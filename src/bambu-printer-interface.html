@@ -613,6 +613,8 @@
             document.getElementById('lastUpdate').textContent = now.toLocaleTimeString();
         }
 
+        let cameraStarted = false;
+        
         function updateCamera(data) {
             console.log('[CAMERA] updateCamera called');
             console.log('[CAMERA] data.hasCamera:', data.hasCamera);
@@ -627,6 +629,16 @@
 
             console.log('[CAMERA] Printer has camera, showing container');
             cameraContainer.style.display = 'block';
+            
+            // Запускаем загрузку камеры (один раз)
+            if (!cameraStarted && printerId) {
+                cameraStarted = true;
+                console.log('[CAMERA] Requesting camera start from iframe for printer:', printerId);
+                window.parent.postMessage({
+                    type: 'start-camera',
+                    printerId: printerId
+                }, '*');
+            }
             
             // Изображения будут загружаться через main процесс (FTP) и приходить через postMessage
             console.log('[CAMERA] Waiting for camera updates from main process...');
