@@ -522,8 +522,9 @@
                 
                 if (isBambu) {
                     // Для Bambu Lab используем локальный интерфейс
-                    printerUrl = 'src/bambu-printer-interface.html';
-                    console.log('Loading Bambu Lab interface:', printerData.name);
+                    // ИСПРАВЛЕНО: убрали src/ т.к. мы уже в папке src/
+                    printerUrl = 'bambu-printer-interface.html';
+                    console.log('Loading Bambu Lab interface:', printerData.name, 'URL:', printerUrl);
                 } else {
                     // Для Klipper используем веб-интерфейс принтера
                     const webPortRaw = printerData.webPort;
