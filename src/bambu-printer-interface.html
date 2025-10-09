@@ -499,33 +499,54 @@
     </div>
 
     <script>
+        console.log('[BAMBU IFRAME] Script tag executed!');
+        console.log('[BAMBU IFRAME] Window location:', window.location.href);
+        console.log('[BAMBU IFRAME] Parent exists?:', window.parent !== window);
+        
+        // Глобальный обработчик ошибок
+        window.addEventListener('error', (e) => {
+            console.error('[BAMBU IFRAME] Global error:', e.error, e.message, e.filename, e.lineno);
+        });
+        
+        window.addEventListener('unhandledrejection', (e) => {
+            console.error('[BAMBU IFRAME] Unhandled promise rejection:', e.reason);
+        });
+        
         let printerId = null;
 
         // Initialize
         window.addEventListener('DOMContentLoaded', () => {
-            console.log('Bambu Lab interface loaded (iframe mode)');
+            console.log('[BAMBU IFRAME] DOMContentLoaded event fired');
+            console.log('[BAMBU IFRAME] Bambu Lab interface loaded (iframe mode)');
             setupPostMessage();
             
             // Запрашиваем данные сразу при загрузке
             setTimeout(() => {
+                console.log('[BAMBU IFRAME] Calling requestInitialData');
                 requestInitialData();
             }, 100);
         });
+        
+        console.log('[BAMBU IFRAME] Setting up load event listener');
 
         function setupPostMessage() {
+            console.log('[BAMBU IFRAME] setupPostMessage called');
             // Listen for messages from parent window
             window.addEventListener('message', (event) => {
-                console.log('Received postMessage:', event.data);
+                console.log('[BAMBU IFRAME] Received postMessage:', event.data);
                 
                 if (event.data.type === 'set-printer-id') {
                     printerId = event.data.printerId;
-                    console.log('Printer ID set via postMessage:', printerId);
+                    console.log('[BAMBU IFRAME] Printer ID set via postMessage:', printerId);
                     requestInitialData();
                 } else if (event.data.type === 'bambu-data-update') {
-                    console.log('Received bambu data update via postMessage:', event.data.data);
+                    console.log('[BAMBU IFRAME] Received bambu data update via postMessage:', event.data.data);
                     updateInterface(event.data.data);
+                } else {
+                    console.log('[BAMBU IFRAME] Unknown message type:', event.data.type);
                 }
             });
+            console.log('[BAMBU IFRAME] Message listener attached');
         }
 
         function requestInitialData() {
