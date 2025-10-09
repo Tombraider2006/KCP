@@ -571,6 +571,12 @@
                             
                             // Также отправляем через IPC для связи с main process
                             ipcRenderer.send('bambu-interface-ready', tabId);
+                            
+                            // Запускаем обновления камеры после загрузки iframe
+                            console.log('[CAMERA] Requesting camera start for:', tabId);
+                            setTimeout(() => {
+                                ipcRenderer.send('start-camera-updates', tabId);
+                            }, 500);
                         } catch (error) {
                             console.error('Error sending printer ID to iframe:', error);
                         }
@@ -615,12 +621,6 @@
 
                 // Скрываем сообщение "нет вкладок"
                 document.getElementById('noTabsMessage').style.display = 'none';
-                
-                // Для Bambu Lab запускаем обновления камеры
-                if (isBambu) {
-                    console.log('[CAMERA] Starting camera updates for Bambu printer:', tabId);
-                    ipcRenderer.send('start-camera-updates', tabId);
-                }
                 
                 console.log('Tab added successfully:', tabId);
             }
