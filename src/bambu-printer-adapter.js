@@ -431,14 +431,25 @@ class BambuLabAdapter extends PrinterAdapter {
     hasCamera() {
         // Bambu Lab принтеры с камерой
         const modelsWithCamera = [
-            'x1', 'x1c', 'x1 carbon', 'p1p', 'p1s'
+            'x1', 'x1c', 'x1 carbon', 'p1p', 'p1s', 'a1', 'a1 mini', 'combo'
         ];
         
         // Получаем модель из данных принтера
         const model = this.printerData.info?.model?.toLowerCase() || 
                      this.printerData.info?.machine_type?.toLowerCase() || '';
         
-        return modelsWithCamera.some(cameraModel => model.includes(cameraModel));
+        console.log('[CAMERA CHECK] Model from data:', model);
+        console.log('[CAMERA CHECK] Printer info:', this.printerData.info);
+        console.log('[CAMERA CHECK] Printer name:', this.printer.name);
+        
+        // Если модель не определена из MQTT, пробуем определить по имени принтера
+        const nameToCheck = model || this.printer.name?.toLowerCase() || '';
+        
+        console.log('[CAMERA CHECK] Checking against:', nameToCheck);
+        const hasCamera = modelsWithCamera.some(cameraModel => nameToCheck.includes(cameraModel));
+        console.log('[CAMERA CHECK] Has camera:', hasCamera);
+        
+        return hasCamera;
     }
 
     /**
