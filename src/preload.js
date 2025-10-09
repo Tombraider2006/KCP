@@ -44,5 +44,30 @@ contextBridge.exposeInMainWorld('electronAPI', {
     if (validChannels.includes(channel)) {
       ipcRenderer.send(channel, ...args);
     }
-  }
+  },
+  
+  // Shift Management & User System
+  onBeforeQuit: (callback) => ipcRenderer.on('before-quit-check', callback),
+  removeBeforeQuitListener: () => ipcRenderer.removeAllListeners('before-quit-check'),
+  confirmQuit: (canQuit) => ipcRenderer.send('confirm-quit', canQuit),
+  
+  // Authentication & User Management
+  logout: (endShift = true) => ipcRenderer.invoke('logout', endShift),
+  quitApp: () => ipcRenderer.invoke('quit-app'),
+  isSystemInitialized: () => ipcRenderer.invoke('is-system-initialized'),
+  createAdministrator: (username, password) => ipcRenderer.invoke('create-administrator', username, password),
+  authenticateUser: (username, password) => ipcRenderer.invoke('authenticate-user', username, password),
+  getUsers: () => ipcRenderer.invoke('get-users'),
+  getCurrentShift: () => ipcRenderer.invoke('get-current-shift'),
+  startShift: (userId, username, displayName, role) => ipcRenderer.invoke('start-shift', userId, username, displayName, role),
+  endShift: (userId) => ipcRenderer.invoke('end-shift', userId),
+  transferShift: (fromUserId, toUserId, toUsername, toDisplayName, toRole) => ipcRenderer.invoke('transfer-shift', fromUserId, toUserId, toUsername, toDisplayName, toRole),
+  
+  // User Management (Admin only)
+  addOperator: (adminId, username, password, displayName) => ipcRenderer.invoke('add-operator', adminId, username, password, displayName),
+  removeOperator: (adminId, operatorId) => ipcRenderer.invoke('remove-operator', adminId, operatorId),
+  resetOperatorPassword: (adminId, operatorId, newPassword) => ipcRenderer.invoke('reset-operator-password', adminId, operatorId, newPassword),
+  updateOperatorDisplayName: (adminId, operatorId, displayName) => ipcRenderer.invoke('update-operator-display-name', adminId, operatorId, displayName),
+  toggleOperatorStatus: (adminId, operatorId) => ipcRenderer.invoke('toggle-operator-status', adminId, operatorId),
+  getAllOperators: () => ipcRenderer.invoke('get-all-operators')
 });

@@ -1,18 +1,33 @@
-const { app, BrowserWindow, ipcMain, shell, Menu } = require('electron');
-const path = require('path');
-const Store = require('electron-store');
-const { version: APP_VERSION } = require('../package.json');
-const { encrypt, decrypt } = require('./encryption');
-// bambu-js will be imported dynamically as ES module
+import { app, BrowserWindow, ipcMain, shell, Menu, dialog } from 'electron';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import Store from 'electron-store';
+import { readFileSync } from 'fs';
+import { encrypt, decrypt } from './encryption.js';
+import UserManager from './user-manager.js';
+import ShiftManager from './shift-manager.js';
+import BambuLabAdapter from './bambu-printer-adapter.js';
+
+// Получаем __dirname для ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Читаем версию из package.json
+const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
+const APP_VERSION = packageJson.version;
 
 const store = new Store();
+
+// Система управления пользователями и сменами
+const userManager = new UserManager();
+const shiftManager = new ShiftManager();
 
 let mainWindow;
 let tabsWindow = null;
 const printerTabs = new Map();
 
 // Bambu Lab MQTT Manager
-const BambuLabAdapter = require('./bambu-printer-adapter.js');
 const bambuConnections = new Map(); // printerId -> BambuLabAdapter instance
 
 // Блокировка запуска нескольких экземпляров приложения
@@ -32,6 +47,9 @@ if (!gotTheLock) {
 }
 
 function createMainWindow() {
+  // Очищаем флаг пропуска подтверждения при запуске
+  store.delete('skipQuitConfirmation');
+  
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -47,7 +65,24 @@ function createMainWindow() {
     show: false
   });
 
-  mainWindow.loadFile('src/index.html');
+  // Проверяем инициализацию системы и показываем нужный экран
+  if (!userManager.isInitialized()) {
+    // Система не инициализирована - показываем экран создания администратора
+    console.log('System not initialized, showing admin setup screen');
+    mainWindow.loadFile('src/setup-admin.html');
+  } else {
+    // Проверяем, авторизован ли пользователь
+    const isAuthenticated = store.get('isAuthenticated', false);
+    if (!isAuthenticated) {
+      // Пользователь не авторизован - показываем экран входа
+      console.log('User not authenticated, showing login screen');
+      mainWindow.loadFile('src/login.html');
+    } else {
+      // Пользователь авторизован - показываем главный экран
+      console.log('User authenticated, showing main screen');
+      mainWindow.loadFile('src/index.html');
+    }
+  }
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
@@ -58,6 +93,26 @@ function createMainWindow() {
   }
 
   createApplicationMenu();
+
+  // Защита от закрытия без подтверждения
+  let canClose = false;
+  
+  mainWindow.on('close', async (event) => {
+    if (!canClose && !store.get('skipQuitConfirmation', false)) {
+      event.preventDefault();
+      
+      // Отправляем запрос на подтверждение закрытия
+      mainWindow.webContents.send('before-quit-check');
+      
+      // Ждем подтверждения
+      ipcMain.once('confirm-quit', (e, confirmed) => {
+        if (confirmed) {
+          canClose = true;
+          mainWindow.close();
+        }
+      });
+    }
+  });
 
   mainWindow.on('closed', () => {
     if (tabsWindow && !tabsWindow.isDestroyed()) {
@@ -110,7 +165,6 @@ function setLanguage(lang) {
   
   // Показываем уведомление
   const isRussian = lang === 'ru';
-  const { dialog } = require('electron');
   dialog.showMessageBox(mainWindow, {
     type: 'info',
     title: isRussian ? 'Язык изменен' : 'Language Changed',
@@ -1236,8 +1290,7 @@ function showBambuLabHelp(isRussian) {
 }
 
 async function checkForUpdates(isRussian) {
-  const { dialog } = require('electron');
-  const https = require('https');
+  const https = await import('https');
   
   const currentVersion = APP_VERSION;
   const repoOwner = 'Tombraider2006';
@@ -1262,7 +1315,8 @@ async function checkForUpdates(isRussian) {
         }
       };
       
-      const req = https.request(options, (res) => {
+      const httpsModule = https.default || https;
+      const req = httpsModule.request(options, (res) => {
         let data = '';
         
         res.on('data', (chunk) => {
@@ -1648,17 +1702,17 @@ ipcMain.handle('store-set', (event, key, value) => {
 });
 
 // Encryption handlers for secure credential storage
-ipcMain.handle('encrypt-data', (event, text) => {
-  return encrypt(text);
+ipcMain.handle('encrypt-data', async (event, text) => {
+  return await encrypt(text);
 });
 
-ipcMain.handle('decrypt-data', (event, encryptedText) => {
-  return decrypt(encryptedText);
+ipcMain.handle('decrypt-data', async (event, encryptedText) => {
+  return await decrypt(encryptedText);
 });
 
 // Network Scanner
 ipcMain.handle('scan-network', async (event, scanType) => {
-  const networkScanner = require('./network-scanner');
+  const networkScanner = await import('./network-scanner.js');
   
   try {
     let scanFunction;
@@ -1719,6 +1773,225 @@ ipcMain.handle('get-bambu-printer-data', async (event, printerId) => {
 ipcMain.handle('request-bambu-status', (event, printerId) => {
   requestBambuStatus(printerId);
   return { success: true };
+});
+
+// Auth handlers
+ipcMain.handle('logout', async (event, endShift = true) => {
+  try {
+    const currentUser = store.get('currentUser', null);
+    
+    // Завершаем текущую смену если есть и требуется
+    if (endShift) {
+      const currentShift = shiftManager.getCurrentShift();
+      if (currentShift && currentUser) {
+        shiftManager.endShift(currentUser.id);
+      }
+    }
+    
+    // Очищаем данные сессии
+    store.set('isAuthenticated', false);
+    store.delete('currentUser');
+    
+    // Перезагружаем окно на экран входа
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.loadFile('src/login.html');
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Logout error:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('quit-app', async (event) => {
+  try {
+    const currentUser = store.get('currentUser', null);
+    
+    // Завершаем текущую смену если есть
+    const currentShift = shiftManager.getCurrentShift();
+    if (currentShift && currentUser) {
+      shiftManager.endShift(currentUser.id);
+    }
+    
+    // Очищаем данные сессии
+    store.set('isAuthenticated', false);
+    store.delete('currentUser');
+    
+    // Устанавливаем флаг, чтобы пропустить подтверждение закрытия
+    store.set('skipQuitConfirmation', true);
+    
+    // Закрываем все Bambu Lab соединения
+    for (const [printerId, adapter] of bambuConnections.entries()) {
+      try {
+        await adapter.closeConnection();
+      } catch (error) {
+        console.error(`Error closing Bambu connection for ${printerId}:`, error);
+      }
+    }
+    bambuConnections.clear();
+    
+    // Закрываем приложение
+    app.quit();
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Quit app error:', error);
+    store.set('skipQuitConfirmation', true); // Устанавливаем флаг даже при ошибке
+    app.quit(); // Закрываем в любом случае
+    return { success: false, error: error.message };
+  }
+});
+
+// User Management handlers
+ipcMain.handle('is-system-initialized', () => {
+  return userManager.isInitialized();
+});
+
+ipcMain.handle('create-administrator', (event, username, password) => {
+  try {
+    return userManager.createAdministrator(username, password);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('authenticate-user', (event, username, password) => {
+  return userManager.authenticate(username, password);
+});
+
+ipcMain.handle('get-users', () => {
+  const admins = userManager.getAdministrators();
+  const operators = userManager.getActiveOperators();
+  return { admins, operators };
+});
+
+ipcMain.handle('get-current-shift', () => {
+  shiftManager.loadCurrentShift();
+  const shift = shiftManager.getCurrentShift();
+  return shift;
+});
+
+ipcMain.handle('start-shift', (event, userId, username, displayName, role) => {
+  try {
+    shiftManager.startShift(userId, username, displayName, role);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('end-shift', (event, userId) => {
+  try {
+    shiftManager.endShift(userId);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('transfer-shift', (event, fromUserId, toUserId, toUsername, toDisplayName, toRole) => {
+  try {
+    const currentShift = shiftManager.getCurrentShift();
+    if (!currentShift) {
+      throw new Error('No active shift to transfer');
+    }
+
+    // Завершаем текущую смену
+    shiftManager.endShift(fromUserId);
+    
+    // Начинаем новую смену для нового пользователя
+    shiftManager.startShift(toUserId, toUsername, toDisplayName, toRole);
+    
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// User Management handlers (Admin and SuperAdmin only)
+ipcMain.handle('add-operator', (event, adminId, username, password, displayName) => {
+  try {
+    // Проверяем, суперадмин ли это
+    const currentUser = store.get('currentUser', null);
+    if (currentUser && currentUser.isSuperAdmin) {
+      // Суперадмин может все - используем первого админа или создаем от имени system
+      const admins = userManager.getAdministrators();
+      const actualAdminId = admins.length > 0 ? admins[0].id : 'system';
+      return userManager.addOperator(actualAdminId, username, password, displayName);
+    }
+    return userManager.addOperator(adminId, username, password, displayName);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('remove-operator', (event, adminId, operatorId) => {
+  try {
+    // Проверяем, суперадмин ли это
+    const currentUser = store.get('currentUser', null);
+    if (currentUser && currentUser.isSuperAdmin) {
+      const admins = userManager.getAdministrators();
+      const actualAdminId = admins.length > 0 ? admins[0].id : 'system';
+      return userManager.removeOperator(actualAdminId, operatorId);
+    }
+    return userManager.removeOperator(adminId, operatorId);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('reset-operator-password', (event, adminId, operatorId, newPassword) => {
+  try {
+    // Проверяем, суперадмин ли это
+    const currentUser = store.get('currentUser', null);
+    if (currentUser && currentUser.isSuperAdmin) {
+      const admins = userManager.getAdministrators();
+      const actualAdminId = admins.length > 0 ? admins[0].id : 'system';
+      return userManager.resetOperatorPassword(actualAdminId, operatorId, newPassword);
+    }
+    return userManager.resetOperatorPassword(adminId, operatorId, newPassword);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('update-operator-display-name', (event, adminId, operatorId, displayName) => {
+  try {
+    // Проверяем, суперадмин ли это
+    const currentUser = store.get('currentUser', null);
+    if (currentUser && currentUser.isSuperAdmin) {
+      const admins = userManager.getAdministrators();
+      const actualAdminId = admins.length > 0 ? admins[0].id : 'system';
+      return userManager.updateOperatorDisplayName(actualAdminId, operatorId, displayName);
+    }
+    return userManager.updateOperatorDisplayName(adminId, operatorId, displayName);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('toggle-operator-status', (event, adminId, operatorId) => {
+  try {
+    // Проверяем, суперадмин ли это
+    const currentUser = store.get('currentUser', null);
+    if (currentUser && currentUser.isSuperAdmin) {
+      const admins = userManager.getAdministrators();
+      const actualAdminId = admins.length > 0 ? admins[0].id : 'system';
+      return userManager.toggleOperatorStatus(actualAdminId, operatorId);
+    }
+    return userManager.toggleOperatorStatus(adminId, operatorId);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-all-operators', () => {
+  try {
+    return userManager.getAllOperators();
+  } catch (error) {
+    return [];
+  }
 });
 
 // Menu events
@@ -1892,8 +2165,8 @@ async function fetchBambuCamera(ip, accessCode, model = 'P1S') {
     try {
       console.log(`[CAMERA] Trying HTTP method for ${ip}`);
       
-      const https = require('https');
-      const http = require('http');
+      const https = await import('https');
+      const http = await import('http');
       
       // Пробуем разные HTTP URL для камеры
       const urls = [
@@ -1910,7 +2183,7 @@ async function fetchBambuCamera(ip, accessCode, model = 'P1S') {
           console.log(`[CAMERA] Trying HTTP URL: ${url}`);
           
           const response = await new Promise((resolve, reject) => {
-            const client = url.startsWith('https') ? https : http;
+            const client = url.startsWith('https') ? (https.default || https) : (http.default || http);
             const req = client.get(url, {
               timeout: 3000,
               headers: {

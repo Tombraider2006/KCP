@@ -3,8 +3,8 @@
  * Использует встроенный модуль crypto Node.js с AES-256-GCM
  */
 
-const crypto = require('crypto');
-const { app } = require('electron');
+import crypto from 'crypto';
+import Store from 'electron-store';
 
 // Алгоритм шифрования
 const ALGORITHM = 'aes-256-gcm';
@@ -16,13 +16,15 @@ const AUTH_TAG_LENGTH = 16; // 128 bits
  * Получает или создаёт уникальный ключ шифрования для этой установки
  * Ключ привязан к конкретной машине и пользователю
  */
-function getEncryptionKey() {
-    const Store = require('electron-store');
+async function getEncryptionKey() {
     const store = new Store({ name: 'security' });
     
     let key = store.get('encryptionKey');
     
     if (!key) {
+        // Динамически импортируем app только когда нужно
+        const { app } = await import('electron');
+        
         // Создаём новый ключ на основе уникальных данных машины
         const machineId = app.getPath('userData');
         const randomBytes = crypto.randomBytes(32);
@@ -45,11 +47,11 @@ function getEncryptionKey() {
  * @param {string} text - Текст для шифрования
  * @returns {string} - Зашифрованный текст в формате: iv:authTag:encryptedData (все в hex)
  */
-function encrypt(text) {
+async function encrypt(text) {
     if (!text) return text;
     
     try {
-        const key = getEncryptionKey();
+        const key = await getEncryptionKey();
         const iv = crypto.randomBytes(IV_LENGTH);
         
         const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
@@ -72,7 +74,7 @@ function encrypt(text) {
  * @param {string} encryptedText - Зашифрованный текст в формате: iv:authTag:encryptedData
  * @returns {string} - Расшифрованный текст
  */
-function decrypt(encryptedText) {
+async function decrypt(encryptedText) {
     if (!encryptedText) return encryptedText;
     
     try {
@@ -85,7 +87,7 @@ function decrypt(encryptedText) {
         
         const [ivHex, authTagHex, encrypted] = parts;
         
-        const key = getEncryptionKey();
+        const key = await getEncryptionKey();
         const iv = Buffer.from(ivHex, 'hex');
         const authTag = Buffer.from(authTagHex, 'hex');
         
@@ -114,7 +116,7 @@ function isEncrypted(text) {
     return parts.length === 3 && parts[0].length === IV_LENGTH * 2 && parts[1].length === AUTH_TAG_LENGTH * 2;
 }
 
-module.exports = {
+export {
     encrypt,
     decrypt,
     isEncrypted
