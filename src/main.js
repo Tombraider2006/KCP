@@ -1390,9 +1390,8 @@ function createTabsWindow() {
 
   tabsWindow.loadFile('src/printer-tabs-window.html');
 
-  if (process.argv.includes('--dev')) {
-    tabsWindow.webContents.openDevTools();
-  }
+  // Открываем DevTools для отладки (временно)
+  tabsWindow.webContents.openDevTools();
 
   tabsWindow.on('closed', () => {
     tabsWindow = null;
@@ -1411,31 +1410,38 @@ function addPrinterTab(printerData) {
   const window = createTabsWindow();
   const isNewWindow = wasWindowNull; // Новое окно если раньше его не было
   
+  console.log('Adding printer tab:', printerData.name, 'isNewWindow:', isNewWindow);
+  
   // Сохраняем данные принтера
   printerTabs.set(printerData.id, printerData);
   
   // Отправляем данные в окно вкладок
   const sendData = () => {
     if (window && !window.isDestroyed()) {
+      console.log('Sending add-printer-tab event for:', printerData.name);
       window.webContents.send('add-printer-tab', printerData);
       
       // Для Bambu Lab принтеров сразу отправляем данные
       if (printerData.type === 'bambu') {
+        console.log('Scheduling Bambu data send for:', printerData.name);
         setTimeout(async () => {
           await sendBambuDataToInterface(printerData.id);
-        }, 200);
+        }, 500); // Увеличил задержку до 500мс
       }
     }
   };
   
   // Если это новое окно (первый принтер) - ждем dom-ready
   if (isNewWindow) {
+    console.log('Waiting for dom-ready event...');
     window.webContents.once('dom-ready', () => {
-      setTimeout(sendData, 100); // Даем время на инициализацию табов менеджера
+      console.log('dom-ready event fired');
+      setTimeout(sendData, 300); // Увеличил задержку до 300мс
     });
   } else {
     // Окно уже существует - отправляем сразу
-    setTimeout(sendData, 10);
+    console.log('Window already exists, sending data immediately');
+    setTimeout(sendData, 50); // Увеличил задержку до 50мс
   }
 }
 

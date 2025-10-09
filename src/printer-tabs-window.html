@@ -688,18 +688,27 @@
             }
 
             sendDataToBambuInterface(printerId, data) {
+                console.log('[sendDataToBambuInterface] Called for printer:', printerId);
+                console.log('[sendDataToBambuInterface] Has tabs:', this.tabs.has(printerId));
+                
                 if (!this.tabs.has(printerId)) {
-                    console.log('Tab not found for Bambu data:', printerId);
+                    console.log('[sendDataToBambuInterface] Tab not found for Bambu data:', printerId);
+                    console.log('[sendDataToBambuInterface] Available tabs:', Array.from(this.tabs.keys()));
                     return;
                 }
 
                 const tab = this.tabs.get(printerId);
+                console.log('[sendDataToBambuInterface] Tab found:', tab);
+                console.log('[sendDataToBambuInterface] Is Bambu?:', tab.isBambu);
+                
                 if (!tab.isBambu) {
-                    console.log('Tab is not Bambu type:', printerId);
+                    console.log('[sendDataToBambuInterface] Tab is not Bambu type:', printerId);
                     return;
                 }
 
-                console.log('Sending data to Bambu interface:', printerId, data);
+                console.log('[sendDataToBambuInterface] Sending data to Bambu interface:', printerId, data);
+                console.log('[sendDataToBambuInterface] Iframe exists?:', !!tab.iframe);
+                console.log('[sendDataToBambuInterface] ContentWindow exists?:', !!(tab.iframe && tab.iframe.contentWindow));
                 
                 try {
                     // Отправляем данные в iframe через postMessage
@@ -708,9 +717,12 @@
                             type: 'bambu-data-update',
                             data: data
                         }, '*');
+                        console.log('[sendDataToBambuInterface] postMessage sent successfully');
+                    } else {
+                        console.error('[sendDataToBambuInterface] iframe or contentWindow not available');
                     }
                 } catch (error) {
-                    console.error('Error sending data to Bambu interface:', error);
+                    console.error('[sendDataToBambuInterface] Error sending data to Bambu interface:', error);
                 }
             }
 
