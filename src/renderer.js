@@ -144,6 +144,7 @@ async function initApp() {
     
     // Обновляем интерфейс один раз
     updateInterfaceLanguage();
+    updateHelpButtons();
     updatePrintersDisplay();
     
     addConsoleMessage(t('panel_started'), 'info');
@@ -245,12 +246,42 @@ function debugPrinterData(printer, source) {
     console.log('================================');
 }
 
+// Функция для обновления кнопок помощи
+async function updateHelpButtons() {
+    // Get current language
+    let currentLang = 'en'; // default
+    if (window.electronAPI && window.electronAPI.storeGet) {
+        currentLang = await window.electronAPI.storeGet('appLanguage', 'en');
+    }
+    
+    // Check if interface is in Russian
+    const testElement = document.querySelector('[data-i18n="add_printer"]');
+    const isInterfaceRussian = testElement && testElement.textContent.includes('Добавить');
+    
+    const isRussian = isInterfaceRussian || currentLang === 'ru' || document.documentElement.lang === 'ru';
+    
+    // Update Telegram Help button
+    const telegramHelpButton = document.querySelector('button[onclick="showTelegramHelpModal()"]');
+    if (telegramHelpButton) {
+        telegramHelpButton.textContent = isRussian ? '❓ Помощь' : '❓ Help';
+    }
+    
+    // Update Bambu Lab Help button
+    const bambuHelpButton = document.querySelector('button[onclick="showBambuLabHelpModal()"]');
+    if (bambuHelpButton) {
+        bambuHelpButton.textContent = isRussian ? '❓ Помощь' : '❓ Help';
+    }
+}
+
 // Функция для обновления языка интерфейса
 function updateInterfaceLanguage() {
     document.title = t('title');
     
     const headerTitle = document.querySelector('header h1');
     if (headerTitle) headerTitle.textContent = t('title');
+    
+    // Update help buttons
+    updateHelpButtons();
     
     const addPrinterBtn = document.querySelector('[onclick="openAddPrinterModal()"]');
     if (addPrinterBtn) addPrinterBtn.textContent = t('add_printer');
