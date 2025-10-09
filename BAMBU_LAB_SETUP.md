@@ -77,20 +77,11 @@ You'll need:
 
 ## ⚠️ Known Limitations
 
-1. **MQTT Connection**: Full MQTT support requires the application to be restarted after `npm install`
-2. **Web Interface**: Bambu Lab printers don't have a local web interface like Klipper (use Bambu Handy app or Bambu Studio instead)
-3. **January 2025 Firmware**: Latest Bambu Lab firmware requires Developer Mode for any third-party software
+1. **Web Interface**: Bambu Lab printers don't have a local web interface like Klipper (use Bambu Handy app or Bambu Studio instead)
+2. **January 2025 Firmware**: Latest Bambu Lab firmware requires Developer Mode for any third-party software
+3. **Camera**: Direct camera streaming not yet supported
 
 ## 🔍 Troubleshooting
-
-### "MQTT support requires npm install"
-
-**Solution**: 
-```bash
-cd path/to/3DC
-npm install
-# Then restart the application
-```
 
 ### "Developer mode must be enabled in printer settings"
 
@@ -107,7 +98,7 @@ npm install
 - ✅ Correct Access Code entered
 - ✅ Correct Serial Number entered
 - ✅ Firewall not blocking port 8883
-- ✅ `npm install` completed successfully
+- ✅ Application installed from official installer
 
 ## 📚 Related Resources
 
@@ -123,7 +114,7 @@ If you encounter issues:
 1. Check the **Event Log** in the application for error messages
 2. Verify all prerequisites are met
 3. Try removing and re-adding the printer
-4. Ensure `npm install` was run and application restarted
+4. Restart the application
 
 ## 🔄 Version History
 
