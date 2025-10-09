@@ -2476,6 +2476,13 @@ function computeAnalytics(periodKey, printerId, customRange) {
     });
     
     console.log(`computeAnalytics: filtering by printerId="${printerIdStr}", found ${filtered.length} events out of ${analytics.events.length}`);
+    
+    // Если нет событий - возвращаем нулевые метрики (не считаем период как простой)
+    if (filtered.length === 0) {
+        console.log('No analytics events found - returning zero metrics');
+        return { totalPrintMs: 0, totalIdleMs: 0, kwhTotal: 0, energyCost: 0, efficiency: 0, kwhDailyAvg: 0 };
+    }
+    
     // Approximate by summing durations between transitions: printing vs not printing
     let totalPrintMs = 0;
     let totalIdleMs = 0;

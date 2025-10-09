@@ -769,7 +769,7 @@ function showBambuLabHelp(isRussian) {
             .checklist li:before { content: "✅ "; margin-right: 8px; }
             strong { color: #2d3436; }
             .close-btn {
-                background: #00b894;
+                background: #0088cc;
                 color: white;
                 border: none;
                 padding: 12px 30px;
@@ -777,17 +777,17 @@ function showBambuLabHelp(isRussian) {
                 font-size: 16px;
                 font-weight: 600;
                 cursor: pointer;
-                box-shadow: 0 2px 8px rgba(0,184,148,0.3);
+                box-shadow: 0 2px 8px rgba(0,136,204,0.3);
                 transition: all 0.3s ease;
             }
             .close-btn:hover {
-                background: #00d2a0;
+                background: #0099dd;
                 transform: translateY(-2px);
-                box-shadow: 0 4px 12px rgba(0,184,148,0.5);
+                box-shadow: 0 4px 12px rgba(0,136,204,0.5);
             }
             .close-btn:active {
                 transform: translateY(0);
-                box-shadow: 0 2px 6px rgba(0,184,148,0.4);
+                box-shadow: 0 2px 6px rgba(0,136,204,0.4);
             }
         </style>
     </head>
@@ -1032,7 +1032,7 @@ function showBambuLabHelp(isRussian) {
             .checklist li:before { content: "✅ "; margin-right: 8px; }
             strong { color: #2d3436; }
             .close-btn {
-                background: #00b894;
+                background: #0088cc;
                 color: white;
                 border: none;
                 padding: 12px 30px;
@@ -1040,17 +1040,17 @@ function showBambuLabHelp(isRussian) {
                 font-size: 16px;
                 font-weight: 600;
                 cursor: pointer;
-                box-shadow: 0 2px 8px rgba(0,184,148,0.3);
+                box-shadow: 0 2px 8px rgba(0,136,204,0.3);
                 transition: all 0.3s ease;
             }
             .close-btn:hover {
-                background: #00d2a0;
+                background: #0099dd;
                 transform: translateY(-2px);
-                box-shadow: 0 4px 12px rgba(0,184,148,0.5);
+                box-shadow: 0 4px 12px rgba(0,136,204,0.5);
             }
             .close-btn:active {
                 transform: translateY(0);
-                box-shadow: 0 2px 6px rgba(0,184,148,0.4);
+                box-shadow: 0 2px 6px rgba(0,136,204,0.4);
             }
         </style>
     </head>
