@@ -35,78 +35,101 @@ class BambuLabAdapter extends PrinterAdapter {
                 throw new Error('IP, Access Code и Serial Number обязательны для Bambu Lab');
             }
 
-            // MQTT подключение к принтеру Bambu Lab
-            // Bambu Lab использует MQTTS (MQTT over TLS) на порту 8883
-            const mqttUrl = `mqtts://${ip}:8883`;
-            
-            const client = mqtt.connect(mqttUrl, {
-                username: 'bblp',
-                password: accessCode,
-                clientId: `3DPC_${Date.now()}`,
-                reconnectPeriod: 0,
-                connectTimeout: 10000, // Увеличен таймаут до 10 секунд
-                rejectUnauthorized: false, // Принимаем самоподписанные сертификаты
-                protocol: 'mqtts'
-            });
-
-            return new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => {
-                    client.end();
-                    reject(new Error('Connection timeout - превышено время ожидания подключения (10 сек)'));
-                }, 10000);
-
-                client.on('connect', () => {
-                    clearTimeout(timeout);
-                    this.mqttClient = client;
-                    this.isConnected = true;
-                    
-                    // Подписываемся на топик статуса принтера
-                    const topic = `device/${serialNumber}/report`;
-                    client.subscribe(topic, (err) => {
-                        if (err) {
-                            console.error('Subscribe error:', err);
-                        }
-                    });
-
-                    // Запрашиваем текущий статус
-                    this.requestStatus();
-                    
-                    resolve(true);
+            // Пробуем сначала MQTTS (новые прошивки 1.09+), потом MQTT (старые прошивки)
+            return await this.tryConnect(mqtt, ip, accessCode, serialNumber, true)
+                .catch(() => {
+                    console.log('MQTTS failed, trying plain MQTT for older firmware...');
+                    return this.tryConnect(mqtt, ip, accessCode, serialNumber, false);
                 });
-
-                client.on('error', (error) => {
-                    clearTimeout(timeout);
-                    client.end();
-                    
-                    // Улучшенная диагностика ошибок
-                    let errorMessage = 'Ошибка подключения к Bambu Lab: ';
-                    
-                    if (error.code === 'ECONNREFUSED') {
-                        errorMessage += 'Принтер недоступен. Проверьте IP адрес и убедитесь, что принтер включен.';
-                    } else if (error.code === 'ETIMEDOUT' || error.code === 'ESOCKETTIMEDOUT') {
-                        errorMessage += 'Превышено время ожидания. Проверьте сетевое подключение и firewall.';
-                    } else if (error.code === 'ENOTFOUND') {
-                        errorMessage += 'Неверный IP адрес.';
-                    } else if (error.toString().includes('Not authorized') || error.toString().includes('auth')) {
-                        errorMessage += 'Неверный Access Code. Проверьте код в настройках принтера.';
-                    } else {
-                        errorMessage += error.message || error.toString();
-                    }
-                    
-                    console.error('Bambu Lab connection error:', {
-                        ip,
-                        error: error.message,
-                        code: error.code,
-                        fullError: error
-                    });
-                    
-                    reject(new Error(errorMessage));
-                });
-            });
         } catch (error) {
             console.error('Bambu Lab connection error:', error);
             throw error;
         }
+    }
+
+    /**
+     * Попытка подключения через MQTT/MQTTS
+     */
+    async tryConnect(mqtt, ip, accessCode, serialNumber, useSecure) {
+        const protocol = useSecure ? 'mqtts' : 'mqtt';
+        const mqttUrl = `${protocol}://${ip}:8883`;
+        
+        console.log(`Trying ${protocol.toUpperCase()} connection to ${ip}...`);
+        
+        const options = {
+            username: 'bblp',
+            password: accessCode,
+            clientId: `3DPC_${Date.now()}`,
+            reconnectPeriod: 0,
+            connectTimeout: 10000,
+        };
+        
+        // Для MQTTS добавляем параметры TLS
+        if (useSecure) {
+            options.rejectUnauthorized = false;
+            options.protocol = 'mqtts';
+        }
+        
+        const client = mqtt.connect(mqttUrl, options);
+
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                client.end();
+                reject(new Error(`${protocol.toUpperCase()} connection timeout - превышено время ожидания подключения (10 сек)`));
+            }, 10000);
+
+            client.on('connect', () => {
+                clearTimeout(timeout);
+                this.mqttClient = client;
+                this.isConnected = true;
+                this.usedProtocol = protocol;
+                
+                console.log(`✅ Connected via ${protocol.toUpperCase()} to Bambu Lab printer`);
+                
+                // Подписываемся на топик статуса принтера
+                const topic = `device/${serialNumber}/report`;
+                client.subscribe(topic, (err) => {
+                    if (err) {
+                        console.error('Subscribe error:', err);
+                    }
+                });
+
+                // Запрашиваем текущий статус
+                this.requestStatus();
+                
+                resolve(true);
+            });
+
+            client.on('error', (error) => {
+                clearTimeout(timeout);
+                client.end();
+                
+                // Улучшенная диагностика ошибок
+                let errorMessage = `Ошибка подключения к Bambu Lab (${protocol.toUpperCase()}): `;
+                
+                if (error.code === 'ECONNREFUSED') {
+                    errorMessage += 'Принтер недоступен. Проверьте IP адрес и убедитесь, что принтер включен.';
+                } else if (error.code === 'ETIMEDOUT' || error.code === 'ESOCKETTIMEDOUT') {
+                    errorMessage += 'Превышено время ожидания. Проверьте сетевое подключение и firewall.';
+                } else if (error.code === 'ENOTFOUND') {
+                    errorMessage += 'Неверный IP адрес.';
+                } else if (error.toString().includes('Not authorized') || error.toString().includes('auth')) {
+                    errorMessage += 'Неверный Access Code. Проверьте код в настройках принтера.';
+                } else {
+                    errorMessage += error.message || error.toString();
+                }
+                
+                console.error('Bambu Lab connection error:', {
+                    protocol,
+                    ip,
+                    error: error.message,
+                    code: error.code,
+                    fullError: error
+                });
+                
+                reject(new Error(errorMessage));
+            });
+        });
     }
 
     /**

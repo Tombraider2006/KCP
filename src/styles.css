@@ -1126,3 +1126,79 @@ body::after {
         -30px 20px 0 rgba(0, 212, 255, 0.15);
     pointer-events: none;
 }
+
+/* ===== NETWORK SCANNER STYLES ===== */
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.spinner {
+    display: inline-block;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Scan result item */
+.scan-result-item {
+    background: rgba(13, 27, 42, 0.6);
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.scan-result-item:hover {
+    background: rgba(0, 212, 255, 0.1);
+    border-color: rgba(0, 212, 255, 0.4);
+    transform: translateX(5px);
+}
+
+.scan-result-info {
+    flex: 1;
+}
+
+.scan-result-name {
+    font-size: 16px;
+    font-weight: bold;
+    color: #00d4ff;
+    margin-bottom: 5px;
+}
+
+.scan-result-details {
+    font-size: 13px;
+    color: #888;
+}
+
+.scan-result-type {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-right: 10px;
+}
+
+.scan-result-type.klipper {
+    background: rgba(0, 150, 255, 0.2);
+    color: #0096ff;
+}
+
+.scan-result-type.bambu {
+    background: rgba(0, 184, 148, 0.2);
+    color: #00b894;
+}
+
+.scan-result-actions {
+    display: flex;
+    gap: 10px;
+}

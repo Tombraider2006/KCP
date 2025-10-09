@@ -16,7 +16,8 @@
             </div>
             <div class="controls">
                 <button class="btn btn-primary" onclick="openAddPrinterModal()">➕ Add Printer</button>
-                <button class="btn btn-secondary" onclick="testAllConnections()">🔍 Test All Connections</button>
+                <button class="btn btn-secondary" onclick="startNetworkScan()">🔍 <span id="scanNetworkBtnText">Scan Network</span></button>
+                <button class="btn btn-secondary" onclick="testAllConnections()">🔗 Test All Connections</button>
                 <button class="btn btn-telegram" onclick="openTelegramSettingsModal()">🤖 Telegram</button>
                 <button class="btn btn-secondary" onclick="openAnalyticsModal()">📈 <span id="analyticsBtnText">Analytics</span></button>
                 <div class="interval-selector">
@@ -389,6 +390,63 @@
                 <div class="modal-footer" style="margin-top: 20px;">
                     <button class="btn btn-help" onclick="openBambuLabHelpFromModal()" style="margin-right: auto;">❓ <span id="bambuInfoHelpBtn">Help</span></button>
                     <button class="btn btn-primary" onclick="closeBambuInfoModal()">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Network Scan Modal -->
+    <div id="networkScanModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 id="networkScanModalTitle">🔍 Network Scanner</h3>
+                <span class="close" onclick="closeNetworkScanModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <!-- Scan Options -->
+                <div id="scanOptions" class="form-group" style="display: flex; gap: 15px; align-items: center; margin-bottom: 20px;">
+                    <button class="btn btn-primary" onclick="executeScan('quick')">
+                        <span id="quickScanBtn">⚡ Quick Scan</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="executeScan('full')">
+                        <span id="fullScanBtn">🌐 Full Scan</span>
+                    </button>
+                    <small id="scanHint" style="color: #888;">Quick scan checks common IP addresses (~150), Full scan checks entire subnet (~250)</small>
+                </div>
+
+                <!-- Scan Progress -->
+                <div id="scanProgress" style="display: none; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                        <div class="spinner" style="width: 20px; height: 20px; border: 3px solid #333; border-top-color: #00d4ff; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                        <span id="scanProgressText">Scanning network...</span>
+                    </div>
+                    <div style="background: #2a2a2a; border-radius: 5px; overflow: hidden; height: 8px;">
+                        <div id="scanProgressBar" style="background: linear-gradient(90deg, #00d4ff, #0088ff); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                    </div>
+                    <div style="margin-top: 5px; font-size: 12px; color: #666;">
+                        <span id="scanProgressDetails">0 / 0 IPs checked</span>
+                    </div>
+                </div>
+
+                <!-- Scan Results -->
+                <div id="scanResults" style="display: none;">
+                    <h4 id="scanResultsTitle" style="margin-bottom: 15px;">Found Printers (<span id="foundPrintersCount">0</span>)</h4>
+                    <div id="scanResultsList" style="max-height: 400px; overflow-y: auto;">
+                        <!-- Results will be dynamically added here -->
+                    </div>
+                </div>
+
+                <!-- No Results Message -->
+                <div id="scanNoResults" style="display: none; text-align: center; padding: 40px 20px;">
+                    <div style="font-size: 48px; margin-bottom: 15px;">🔍</div>
+                    <p id="noResultsMessage" style="font-size: 16px; color: #888;">No printers found on the network</p>
+                    <small id="noResultsTip" style="color: #666;">Make sure printers are powered on and connected to the same network</small>
+                </div>
+
+                <div class="modal-footer" style="margin-top: 20px;">
+                    <button class="btn btn-secondary" onclick="closeNetworkScanModal()">
+                        <span id="scanCloseBtn">Close</span>
+                    </button>
                 </div>
             </div>
         </div>

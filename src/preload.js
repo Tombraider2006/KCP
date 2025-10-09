@@ -19,6 +19,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Bambu Lab data transmission
   sendBambuData: (printerId, data) => ipcRenderer.send('send-bambu-data', printerId, data),
   
+  // Network Scanner
+  scanNetwork: (scanType) => ipcRenderer.invoke('scan-network', scanType),
+  onScanProgress: (callback) => ipcRenderer.on('scan-progress', (event, ...args) => callback(...args)),
+  removeScanProgressListener: () => ipcRenderer.removeAllListeners('scan-progress'),
+  
   // Send IPC messages
   send: (channel, ...args) => {
     const validChannels = ['show-telegram-help', 'show-bambu-help'];

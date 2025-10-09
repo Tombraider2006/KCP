@@ -8,7 +8,7 @@ If your Bambu Lab printer won't connect despite entering all data correctly and 
 
 ## ✅ Checklist (check in order)
 
-### 1️⃣ **Verify Developer Mode**
+### 1️⃣ **Verify Developer Mode / LAN Mode**
 
 **On printer's touchscreen:**
 1. Navigate to: **Settings** → **Network** → **LAN Only Mode** (or **Developer Mode**)
@@ -19,6 +19,11 @@ If your Bambu Lab printer won't connect despite entering all data correctly and 
 - After enabling developer mode, **reboot the printer** (power off and on)
 - Access Code must be **exactly 8 digits**
 - Case sensitive? **NO** - numbers only
+
+📌 **For older firmware (before 1.09.00):**
+- In firmware 1.08.x and earlier this mode is simply called **"LAN Mode"**
+- The app will automatically try both protocols (MQTTS and MQTT) for compatibility
+- Same functionality - just different name
 
 ### 2️⃣ **Verify IP Address**
 
@@ -310,7 +315,10 @@ Most issues are solved like this:
 ## 🎓 Additional Information
 
 ### MQTT Connection Technical Details:
-- **Protocol**: MQTTS (MQTT over TLS/SSL)
+- **Protocol**: 
+  - MQTTS (MQTT over TLS/SSL) - for firmware 1.09.00+
+  - MQTT (no encryption) - for firmware 1.08.x and earlier
+  - App automatically tries both protocols
 - **Port**: 8883
 - **Username**: `bblp` (standard for all printers)
 - **Password**: Access Code (8 digits)

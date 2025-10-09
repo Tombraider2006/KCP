@@ -27,11 +27,10 @@ let analytics = {
     energyCostPerKwh: 7.0,
     currency: 'RUB',
     // optional wattage per printerId
-    wattageByPrinter: {}
+    wattageByPrinter: {},
+    // Track last inefficiency periods to avoid duplicate notifications (persistent)
+    lastInefficiencyCheck: {}
 };
-
-// Track last inefficiency periods to avoid duplicate notifications
-let lastInefficiencyCheck = {};
 
 // Chart.js instances storage for proper cleanup
 let chartInstances = {};
@@ -158,6 +157,26 @@ async function loadAnalytics() {
             const data = await window.electronAPI.storeGet('analytics', null);
             if (data) {
                 analytics = { ...analytics, ...data };
+                
+                // Ensure lastInefficiencyCheck exists
+                if (!analytics.lastInefficiencyCheck) {
+                    analytics.lastInefficiencyCheck = {};
+                }
+                
+                // Clean old entries (older than 30 days) to prevent memory bloat
+                const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+                const cleanedCheck = {};
+                for (const key in analytics.lastInefficiencyCheck) {
+                    // Key format: "printerId:fromTimestamp:toTimestamp"
+                    const parts = key.split(':');
+                    if (parts.length >= 3) {
+                        const toTimestamp = parseInt(parts[parts.length - 1], 10);
+                        if (toTimestamp >= thirtyDaysAgo) {
+                            cleanedCheck[key] = analytics.lastInefficiencyCheck[key];
+                        }
+                    }
+                }
+                analytics.lastInefficiencyCheck = cleanedCheck;
             }
         }
     } catch {}
@@ -366,6 +385,40 @@ function updateModalTranslations() {
         if (message) message.innerHTML = `ℹ️ ${t('bambu_info_message')}`;
         if (noWeb) noWeb.textContent = t('bambu_info_no_web');
         if (helpBtn) helpBtn.textContent = t('bambu_info_help');
+    }
+    
+    // Обновляем модальное окно Network Scanner
+    const networkScanModal = document.getElementById('networkScanModal');
+    if (networkScanModal) {
+        const title = networkScanModal.querySelector('#networkScanModalTitle');
+        const quickScanBtn = networkScanModal.querySelector('#quickScanBtn');
+        const fullScanBtn = networkScanModal.querySelector('#fullScanBtn');
+        const scanHint = networkScanModal.querySelector('#scanHint');
+        const scanProgressText = networkScanModal.querySelector('#scanProgressText');
+        const scanResultsTitle = networkScanModal.querySelector('#scanResultsTitle');
+        const noResultsMessage = networkScanModal.querySelector('#noResultsMessage');
+        const noResultsTip = networkScanModal.querySelector('#noResultsTip');
+        const scanCloseBtn = networkScanModal.querySelector('#scanCloseBtn');
+        
+        if (title) title.textContent = t('network_scanner');
+        if (quickScanBtn) quickScanBtn.textContent = t('quick_scan');
+        if (fullScanBtn) fullScanBtn.textContent = t('full_scan');
+        if (scanHint) scanHint.textContent = t('scan_hint');
+        if (scanProgressText) scanProgressText.textContent = t('scanning_network');
+        if (scanResultsTitle) {
+            const count = document.getElementById('foundPrintersCount')?.textContent || '0';
+            scanResultsTitle.innerHTML = `${t('found_printers')} (<span id="foundPrintersCount">${count}</span>)`;
+        }
+        if (noResultsMessage) noResultsMessage.textContent = t('no_printers_found');
+        if (noResultsTip) noResultsTip.textContent = t('scan_tip');
+        if (scanCloseBtn) scanCloseBtn.textContent = t('close');
+    }
+    
+    // Обновляем кнопку сканирования в header
+    const scanNetworkBtn = document.querySelector('[onclick="startNetworkScan()"]');
+    if (scanNetworkBtn) {
+        const scanText = scanNetworkBtn.querySelector('#scanNetworkBtnText');
+        if (scanText) scanText.textContent = t('scan_network').replace('🔍 ', '');
     }
     
     // Обновляем модальное окно Clear Analytics
@@ -1059,13 +1112,19 @@ function checkForNewInefficiency(printerId) {
     const since = now - 24 * 60 * 60 * 1000; // последние 24 часа
     const periods = findInefficiencyPeriods(printerId, since, now);
     
+    // Ensure lastInefficiencyCheck exists
+    if (!analytics.lastInefficiencyCheck) {
+        analytics.lastInefficiencyCheck = {};
+    }
+    
     // Проверяем каждый период
     periods.forEach(period => {
         const periodKey = `${period.printerId}:${period.from}:${period.to}`;
         
         // Если этот период еще не был отправлен
-        if (!lastInefficiencyCheck[periodKey]) {
-            lastInefficiencyCheck[periodKey] = true;
+        if (!analytics.lastInefficiencyCheck[periodKey]) {
+            analytics.lastInefficiencyCheck[periodKey] = Date.now(); // Save timestamp when notification was sent
+            saveAnalytics(); // Persist the change
             
             const printer = printers.find(p => p.id === period.printerId);
             if (printer) {
@@ -2507,29 +2566,37 @@ function computeAnalytics(periodKey, printerId, customRange) {
     // Approximate by summing durations between transitions: printing vs not printing
     let totalPrintMs = 0;
     let totalIdleMs = 0;
-    let lastTs = since;
-    let lastState = 'idle';
+    let lastTs = null;
+    let lastState = null;
+    
     for (const e of filtered) {
-        const dur = Math.max(0, e.ts - lastTs);
-        // Не считаем offline как idle для энергопотребления
-        if (lastState === 'printing') {
-            totalPrintMs += dur;
-        } else if (lastState !== 'offline') {
-            totalIdleMs += dur;
+        // Только считаем время между реальными событиями, не с начала периода
+        if (lastTs !== null && lastState !== null) {
+            const dur = Math.max(0, e.ts - lastTs);
+            // Не считаем offline как idle для энергопотребления
+            if (lastState === 'printing') {
+                totalPrintMs += dur;
+            } else if (lastState !== 'offline') {
+                totalIdleMs += dur;
+            }
         }
         lastTs = e.ts;
         lastState = e.to;
     }
+    
     // tail until now - НЕ считаем если принтер offline
-    const tail = Math.max(0, until - lastTs);
-    if (lastState === 'printing') {
-        totalPrintMs += tail;
-        console.log(`Added tail time as printing: ${(tail / (1000 * 60 * 60)).toFixed(2)}h`);
-    } else if (lastState !== 'offline') {
-        totalIdleMs += tail;
-        console.log(`Added tail time as idle (state: ${lastState}): ${(tail / (1000 * 60 * 60)).toFixed(2)}h`);
-    } else {
-        console.log(`Skipped tail time for offline state: ${(tail / (1000 * 60 * 60)).toFixed(2)}h`);
+    // И только если есть хотя бы одно событие
+    if (lastTs !== null && lastState !== null) {
+        const tail = Math.max(0, until - lastTs);
+        if (lastState === 'printing') {
+            totalPrintMs += tail;
+            console.log(`Added tail time as printing: ${(tail / (1000 * 60 * 60)).toFixed(2)}h`);
+        } else if (lastState !== 'offline') {
+            totalIdleMs += tail;
+            console.log(`Added tail time as idle (state: ${lastState}): ${(tail / (1000 * 60 * 60)).toFixed(2)}h`);
+        } else {
+            console.log(`Skipped tail time for offline state: ${(tail / (1000 * 60 * 60)).toFixed(2)}h`);
+        }
     }
 
     // kWh estimation
@@ -4124,6 +4191,178 @@ function saveTempSensorsSelection() {
     updatePrinterDisplay(printer);
 }
 
+// ===== NETWORK SCANNER FUNCTIONS =====
+
+let scanInProgress = false;
+let foundPrintersInScan = [];
+
+function startNetworkScan() {
+    const modal = document.getElementById('networkScanModal');
+    modal.style.display = 'block';
+    
+    // Сбрасываем состояние
+    scanInProgress = false;
+    foundPrintersInScan = [];
+    
+    // Показываем опции сканирования
+    document.getElementById('scanOptions').style.display = 'flex';
+    document.getElementById('scanProgress').style.display = 'none';
+    document.getElementById('scanResults').style.display = 'none';
+    document.getElementById('scanNoResults').style.display = 'none';
+    
+    addConsoleMessage(t('scan_modal_opened') || '🔍 Network scanner opened', 'info');
+}
+
+function closeNetworkScanModal() {
+    const modal = document.getElementById('networkScanModal');
+    modal.style.display = 'none';
+    scanInProgress = false;
+}
+
+async function executeScan(scanType) {
+    if (scanInProgress) {
+        addConsoleMessage(t('scan_already_running') || '⚠️ Scan is already in progress', 'warning');
+        return;
+    }
+    
+    if (!window.electronAPI || !window.electronAPI.scanNetwork) {
+        addConsoleMessage(t('scan_not_available') || '❌ Network scanner is not available', 'error');
+        return;
+    }
+    
+    scanInProgress = true;
+    foundPrintersInScan = [];
+    
+    // Скрываем опции, показываем прогресс
+    document.getElementById('scanOptions').style.display = 'none';
+    document.getElementById('scanProgress').style.display = 'block';
+    document.getElementById('scanResults').style.display = 'none';
+    document.getElementById('scanNoResults').style.display = 'none';
+    
+    // Устанавливаем начальные значения
+    document.getElementById('scanProgressBar').style.width = '0%';
+    document.getElementById('scanProgressDetails').textContent = '0 / 0 IPs checked';
+    
+    const scanTypeText = scanType === 'quick' ? (t('quick_scan') || 'Quick Scan') : (t('full_scan') || 'Full Scan');
+    addConsoleMessage(`🔍 ${t('scan_started') || 'Network scan started'}: ${scanTypeText}`, 'info');
+    
+    // Подписываемся на события прогресса
+    if (window.electronAPI.onScanProgress) {
+        window.electronAPI.onScanProgress((ip, current, total) => {
+            // Обновляем прогресс
+            const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
+            document.getElementById('scanProgressBar').style.width = `${percentage}%`;
+            document.getElementById('scanProgressDetails').textContent = `${current} / ${total} IPs checked`;
+        });
+    }
+    
+    try {
+        const result = await window.electronAPI.scanNetwork(scanType);
+        
+        foundPrintersInScan = result;
+        
+        // Скрываем прогресс
+        document.getElementById('scanProgress').style.display = 'none';
+        
+        if (foundPrintersInScan.length > 0) {
+            // Показываем результаты
+            document.getElementById('scanResults').style.display = 'block';
+            document.getElementById('foundPrintersCount').textContent = foundPrintersInScan.length;
+            displayScanResults(foundPrintersInScan);
+            
+            addConsoleMessage(`✅ ${t('scan_complete') || 'Scan complete'}: ${foundPrintersInScan.length} ${t('printers_found') || 'printer(s) found'}`, 'success');
+        } else {
+            // Показываем сообщение об отсутствии результатов
+            document.getElementById('scanNoResults').style.display = 'block';
+            addConsoleMessage(t('scan_no_results') || '🔍 No printers found on the network', 'info');
+        }
+    } catch (error) {
+        console.error('Scan error:', error);
+        addConsoleMessage(`❌ ${t('scan_error') || 'Scan error'}: ${error.message}`, 'error');
+        
+        // Показываем опции снова
+        document.getElementById('scanProgress').style.display = 'none';
+        document.getElementById('scanOptions').style.display = 'flex';
+    } finally {
+        scanInProgress = false;
+        // Отписываемся от событий прогресса
+        if (window.electronAPI.removeScanProgressListener) {
+            window.electronAPI.removeScanProgressListener();
+        }
+    }
+}
+
+function displayScanResults(scanResults) {
+    const resultsList = document.getElementById('scanResultsList');
+    resultsList.innerHTML = '';
+    
+    scanResults.forEach(printer => {
+        const item = document.createElement('div');
+        item.className = 'scan-result-item';
+        
+        const typeLabel = printer.type === 'klipper' ? 'Klipper' : 'Bambu Lab';
+        const typeClass = printer.type === 'klipper' ? 'klipper' : 'bambu';
+        
+        // Проверяем, не добавлен ли уже этот принтер (проверяем в глобальном массиве printers)
+        const alreadyAdded = printers.some(p => p.ip === printer.ip);
+        const isExisting = alreadyAdded ? ` <span style="color: #888;">(${t('already_added') || 'already added'})</span>` : '';
+        
+        let detailsHTML = `<span class="scan-result-type ${typeClass}">${typeLabel}</span> IP: ${printer.ip}`;
+        
+        if (printer.type === 'klipper') {
+            detailsHTML += `, Port: ${printer.port || 7125}`;
+            if (printer.webPort) {
+                detailsHTML += `, Web: ${printer.webPort}`;
+            }
+        } else {
+            detailsHTML += ` <span style="color: #888;">(${t('requires_credentials') || 'requires access code & serial'})</span>`;
+        }
+        
+        const addButtonHTML = alreadyAdded 
+            ? `<button class="btn btn-secondary btn-small" disabled style="opacity: 0.5; cursor: not-allowed;">
+                   ✓ ${t('already_added') || 'Already Added'}
+               </button>`
+            : `<button class="btn btn-primary btn-small" onclick="addPrinterFromScan(${JSON.stringify(printer).replace(/"/g, '&quot;')})">
+                   ➕ ${t('add') || 'Add'}
+               </button>`;
+        
+        item.innerHTML = `
+            <div class="scan-result-info">
+                <div class="scan-result-name">${printer.name}${isExisting}</div>
+                <div class="scan-result-details">${detailsHTML}</div>
+            </div>
+            <div class="scan-result-actions">
+                ${addButtonHTML}
+            </div>
+        `;
+        
+        resultsList.appendChild(item);
+    });
+}
+
+function addPrinterFromScan(printerData) {
+    // Закрываем модальное окно сканирования
+    closeNetworkScanModal();
+    
+    // Открываем модальное окно добавления принтера
+    openAddPrinterModal();
+    
+    // Заполняем поля данными из сканирования
+    document.getElementById('printerType').value = printerData.type || 'klipper';
+    togglePrinterTypeFields('add');
+    
+    document.getElementById('printerName').value = printerData.name || '';
+    document.getElementById('printerIP').value = printerData.ip || '';
+    
+    if (printerData.type === 'klipper') {
+        if (printerData.webPort) {
+            document.getElementById('webInterfacePort').value = printerData.webPort;
+        }
+    }
+    
+    addConsoleMessage(`📝 ${t('printer_info_filled') || 'Printer information filled from scan'}`, 'info');
+}
+
 // ===== ОБРАБОТЧИКИ СОБЫТИЙ =====
 
 window.onclick = function(event) {
@@ -4134,6 +4373,7 @@ window.onclick = function(event) {
     const clearAnalyticsModal = document.getElementById('clearAnalyticsModal');
     const ineffCommentModal = document.getElementById('inefficiencyCommentModal');
     const tempSensorsModal = document.getElementById('tempSensorsModal');
+    const networkScanModal = document.getElementById('networkScanModal');
     
     if (event.target === addModal) closeAddPrinterModal();
     if (event.target === editModal) closeEditPrinterModal();
@@ -4142,6 +4382,7 @@ window.onclick = function(event) {
     if (event.target === clearAnalyticsModal) closeClearAnalyticsModal();
     if (event.target === ineffCommentModal) closeInefficiencyCommentModal();
     if (event.target === tempSensorsModal) closeTempSensorsModal();
+    if (event.target === networkScanModal) closeNetworkScanModal();
 }
 
 document.addEventListener('keypress', function(event) {

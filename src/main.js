@@ -1496,6 +1496,39 @@ ipcMain.handle('store-set', (event, key, value) => {
   return true;
 });
 
+// Network Scanner
+ipcMain.handle('scan-network', async (event, scanType) => {
+  const networkScanner = require('./network-scanner');
+  
+  try {
+    let scanFunction;
+    
+    if (scanType === 'quick') {
+      scanFunction = networkScanner.quickScan;
+    } else {
+      scanFunction = networkScanner.scanNetwork;
+    }
+    
+    const foundPrinters = [];
+    
+    const result = await scanFunction(
+      // Progress callback
+      (ip, current, total) => {
+        event.sender.send('scan-progress', ip, current, total);
+      },
+      // Found printer callback
+      (printer) => {
+        foundPrinters.push(printer);
+      }
+    );
+    
+    return result;
+  } catch (error) {
+    console.error('Network scan error:', error);
+    throw error;
+  }
+});
+
 // Menu events
 ipcMain.on('menu-add-printer', () => {
   if (mainWindow) {
