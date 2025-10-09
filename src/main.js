@@ -1771,6 +1771,12 @@ async function sendBambuDataToInterface(printerId) {
       const printerData = await adapter.getPrinterData();
       console.log('Got printer data from adapter:', printerData);
       
+      // Добавляем информацию о камере
+      printerData.hasCamera = adapter.hasCamera();
+      printerData.cameraStreamUrl = adapter.getCameraStreamUrl();
+      
+      console.log('[CAMERA] Added to data - hasCamera:', printerData.hasCamera, 'URL:', printerData.cameraStreamUrl);
+      
       // Отправляем данные в окно вкладок
       if (tabsWindow && !tabsWindow.isDestroyed()) {
         tabsWindow.webContents.send('bambu-data-update', printerId, printerData);
