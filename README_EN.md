@@ -6,7 +6,7 @@
 
 **[🇷🇺 Русский](README.md)** | **[🇬🇧 English](README_EN.md)**
 
-![3D Printer Control Panel](https://img.shields.io/badge/Version-1.5.6-blue.svg)
+![3D Printer Control Panel](https://img.shields.io/badge/Version-1.5.7-blue.svg)
 ![Electron](https://img.shields.io/badge/Electron-22.0+-green.svg)
 ![Node.js](https://img.shields.io/badge/Node.js-14.0+-green.svg)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20Mac-lightgrey.svg)
