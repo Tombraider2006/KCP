@@ -784,6 +784,20 @@ header {
     flex-shrink: 0;
 }
 
+/* Кнопки в модальных окнах - увеличенные и одинаковой высоты */
+.modal-footer .btn,
+.modal-body .btn {
+    padding: 10px 16px;
+    font-size: 14px;
+    min-height: 40px;
+    height: 40px;
+    line-height: 1.4;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
 /* ===== ФОРМЫ ===== */
 .form-group {
     margin-bottom: 20px;
@@ -804,9 +818,40 @@ header {
     font-size: 14px;
     background: rgba(10, 22, 40, 0.5);
     color: #b8d4e8;
+    min-height: 40px;
+    height: 40px;
+    box-sizing: border-box;
 }
 
-.form-group input:focus {
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 8px;
+    font-size: 14px;
+    background: rgba(10, 22, 40, 0.5);
+    color: #b8d4e8;
+    min-height: 40px;
+    height: 40px;
+    box-sizing: border-box;
+}
+
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 8px;
+    font-size: 14px;
+    background: rgba(10, 22, 40, 0.5);
+    color: #b8d4e8;
+    box-sizing: border-box;
+    min-height: 80px;
+    resize: vertical;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
     outline: none;
     border-color: rgba(0, 212, 255, 0.6);
     box-shadow: 0 0 10px rgba(0, 212, 255, 0.2);
