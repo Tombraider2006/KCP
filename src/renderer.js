@@ -4111,7 +4111,7 @@ async function exportAnalytics() {
                 appVersion: appVersion,
                 exportDate: new Date().toISOString(),
                 exportTimestamp: Date.now(),
-                language: currentLanguage
+                language: BROWSER_LANGUAGE || 'en'
             },
             filters: {
                 period: period,

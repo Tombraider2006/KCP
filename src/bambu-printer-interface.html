@@ -552,23 +552,7 @@
             // Update camera
             updateCamera(data);
 
-            // Update printer name
-            if (data.name) {
-                document.getElementById('printerName').textContent = data.name;
-            }
-
-            // Update connection status
-            const isOnline = data.status !== 'offline';
-            const indicator = document.getElementById('connectionIndicator');
-            const statusText = document.getElementById('connectionStatus');
-            
-            if (isOnline) {
-                indicator.className = 'status-indicator status-online';
-                statusText.textContent = 'Connected (MQTT)';
-            } else {
-                indicator.className = 'status-indicator status-offline';
-                statusText.textContent = 'Offline';
-            }
+            // Printer name и connection status удалены (были в header)
 
             // Update status badge
             updateStatusBadge(data.status);
