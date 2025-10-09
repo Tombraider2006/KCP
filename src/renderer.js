@@ -12,6 +12,12 @@ let connectionRetries = {};
 let previousStatuses = {};
 let retryAttempts = {};
 let nextRetryAt = {};
+let updateInterval = null;
+let retryInterval = null;
+
+// Debounce для оптимизации частых вызовов
+let sortDebounceTimer = null;
+let counterDebounceTimer = null;
 
 // ===== ANALYTICS STATE =====
 let analytics = {
@@ -1486,9 +1492,8 @@ async function testBambuLabConnection(printer, isManualCheck = false) {
         printer.connectionType = 'MQTT (not configured)';
         printer.lastUpdate = new Date();
         updatePrinterDisplay(printer);
-        sortPrinters();
+        debouncedSortPrinters();
         updatePrintersDisplay();
-        updatePrintersCounter();
         
         return false;
     } catch (error) {
@@ -1497,9 +1502,8 @@ async function testBambuLabConnection(printer, isManualCheck = false) {
         addConsoleMessage(`❌ ${printer.name} - ${t('mqtt_failed')}`, 'error');
         printer.lastUpdate = new Date();
         updatePrinterDisplay(printer);
-        sortPrinters();
+        debouncedSortPrinters();
         updatePrintersDisplay();
-        updatePrintersCounter();
         return false;
     }
 }
@@ -1580,9 +1584,8 @@ async function testKlipperConnection(printer, isManualCheck = false) {
 
     printer.lastUpdate = new Date();
     updatePrinterDisplay(printer);
-    sortPrinters();
+    debouncedSortPrinters();
     updatePrintersDisplay();
-    updatePrintersCounter();
     
     debugPrinterData(printer, 'test connection');
     
@@ -1752,7 +1755,7 @@ function handleWebSocketMessage(printer, data) {
         updatePrinterStatus(printer);
         
         if (oldStatus !== printer.status) {
-            sortPrinters();
+            debouncedSortPrinters();
         }
         
         // Telegram: notify on print start
@@ -1761,7 +1764,7 @@ function handleWebSocketMessage(printer, data) {
             sendEventNotification(printer, t('event_print_start'), `${t('printer')}: ${printer.name}, ${t('file')}: ${fn}`);
         }
         updatePrinterDisplay(printer);
-        updatePrintersCounter();
+        debouncedUpdatePrintersCounter();
         
         debugPrinterData(printer, 'websocket');
     }
@@ -1794,8 +1797,8 @@ async function updatePrinterData(printer) {
             updatePrinterStatus(printer);
             
             updatePrinterDisplay(printer);
-            sortPrinters();
-            updatePrintersCounter();
+            debouncedSortPrinters();
+            debouncedUpdatePrintersCounter();
             
             debugPrinterData(printer, 'HTTP update');
         }
@@ -1805,8 +1808,8 @@ async function updatePrinterData(printer) {
             printer.connectionType = null;
             printer.lastUpdate = new Date();
             updatePrinterDisplay(printer);
-            sortPrinters();
-            updatePrintersCounter();
+            debouncedSortPrinters();
+            debouncedUpdatePrintersCounter();
         }
         retryAttempts[printer.id] = (retryAttempts[printer.id] || 0) + 1;
         const delay = getBackoffDelayMs(retryAttempts[printer.id]);
@@ -3451,6 +3454,8 @@ async function testAllConnections() {
 function updatePollingInterval(seconds) {
     currentPollingInterval = parseInt(seconds);
     addConsoleMessage(`${t('interval_changed')} ${seconds/1000} ${t('seconds')}`, 'info');
+    // Перезапускаем интервалы с новым значением
+    startPeriodicUpdates();
 }
 
 async function savePrintersToStorage() {
@@ -3527,7 +3532,12 @@ async function loadPrintersFromStorage() {
 }
 
 function startPeriodicUpdates() {
-    setInterval(() => {
+    // Очищаем старые интервалы, если они существуют
+    if (updateInterval) clearInterval(updateInterval);
+    if (retryInterval) clearInterval(retryInterval);
+    
+    // Создаем новые интервалы и сохраняем ссылки
+    updateInterval = setInterval(() => {
         printers.forEach(printer => {
             if (printer.status === 'offline' || printer.connectionType === 'HTTP') {
                 updatePrinterData(printer);
@@ -3535,7 +3545,7 @@ function startPeriodicUpdates() {
         });
     }, currentPollingInterval);
     
-    setInterval(() => {
+    retryInterval = setInterval(() => {
         printers.forEach(printer => {
             if (printer.status === 'offline') {
                 const dueAt = nextRetryAt[printer.id] || 0;
@@ -3545,6 +3555,22 @@ function startPeriodicUpdates() {
             }
         });
     }, CONFIG.RETRY_INTERVAL);
+}
+
+// Debounced версия sortPrinters для избежания множественных вызовов
+function debouncedSortPrinters() {
+    if (sortDebounceTimer) clearTimeout(sortDebounceTimer);
+    sortDebounceTimer = setTimeout(() => {
+        sortPrinters();
+    }, 100);
+}
+
+// Debounced версия updatePrintersCounter для избежания множественных вызовов
+function debouncedUpdatePrintersCounter() {
+    if (counterDebounceTimer) clearTimeout(counterDebounceTimer);
+    counterDebounceTimer = setTimeout(() => {
+        updatePrintersCounter();
+    }, 100);
 }
 
 // ===== TELEGRAM BOT FUNCTIONS =====
