@@ -28,6 +28,7 @@
     "electron-builder": "^24.0.0"
   },
   "dependencies": {
+    "bambu-js": "^3.0.1",
     "basic-ftp": "^5.0.5",
     "chart.js": "^4.5.0",
     "electron-store": "^8.1.0",

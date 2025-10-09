@@ -2,9 +2,7 @@ const { app, BrowserWindow, ipcMain, shell, Menu } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 const { version: APP_VERSION } = require('../package.json');
-const ftp = require('basic-ftp');
-const http = require('http');
-const https = require('https');
+const { CameraController } = require('bambu-js');
 
 const store = new Store();
 
@@ -1833,110 +1831,49 @@ function sendCameraLog(message, level = 'log') {
   }
 }
 
-/**
- * Загрузка изображения с камеры Bambu Lab через FTP
- */
-/**
- * Попытка загрузить изображение через HTTP (разные порты)
- */
-async function tryHttpCamera(ip, accessCode) {
-  const ports = [80, 8080, 8088, 6000];
-  const paths = ['/ipcam.jpg', '/snapshot.jpg', '/camera/snapshot', '/api/camera'];
-  
-  for (const port of ports) {
-    for (const path of paths) {
-      try {
-        const url = `http://${ip}:${port}${path}`;
-        console.log('[CAMERA HTTP] Trying:', url);
-        sendCameraLog(`[CAMERA HTTP] Trying: ${url}`, 'log');
-        
-        const response = await new Promise((resolve, reject) => {
-          const req = http.get(url, {
-            timeout: 3000,
-            headers: {
-              'Authorization': `Basic ${Buffer.from(`bblp:${accessCode}`).toString('base64')}`
-            }
-          }, (res) => {
-            if (res.statusCode === 200) {
-              const chunks = [];
-              res.on('data', chunk => chunks.push(chunk));
-              res.on('end', () => resolve(Buffer.concat(chunks)));
-            } else {
-              reject(new Error(`HTTP ${res.statusCode}`));
-            }
-          });
-          req.on('error', reject);
-          req.on('timeout', () => {
-            req.destroy();
-            reject(new Error('Timeout'));
-          });
-        });
-        
-        const base64 = response.toString('base64');
-        const dataUrl = `data:image/jpeg;base64,${base64}`;
-        
-        console.log('[CAMERA HTTP] ✅ SUCCESS! Port:', port, 'Path:', path, 'Size:', response.length);
-        sendCameraLog(`[CAMERA HTTP] ✅ SUCCESS! Port: ${port}, Path: ${path}, Size: ${response.length} bytes`, 'log');
-        
-        return dataUrl;
-      } catch (err) {
-        // Пробуем следующий вариант
-      }
-    }
-  }
-  
-  console.log('[CAMERA HTTP] All HTTP attempts failed');
-  sendCameraLog('[CAMERA HTTP] ❌ All HTTP attempts failed', 'error');
-  return null;
-}
+// Хранилище CameraController для каждого принтера
+const cameraControllers = new Map(); // printerId -> CameraController
 
-async function fetchBambuCamera(ip, accessCode) {
-  // Сначала пробуем HTTP (быстрее и проще)
-  const httpImage = await tryHttpCamera(ip, accessCode);
-  if (httpImage) {
-    return httpImage;
-  }
-  
-  // Если HTTP не сработал, пробуем FTPS
-  const client = new ftp.Client();
-  client.ftp.timeout = 10000;
-  
+/**
+ * Загрузка изображения с камеры Bambu Lab через bambu-js библиотеку
+ */
+async function fetchBambuCamera(ip, accessCode, model = 'P1S') {
   try {
-    console.log('[CAMERA FTPS] Trying secure FTP connection to:', ip);
-    sendCameraLog(`[CAMERA FTPS] Trying secure FTP (TLS) to: ${ip}`, 'log');
+    console.log('[CAMERA bambu-js] Creating camera controller for:', ip, 'model:', model);
+    sendCameraLog(`[CAMERA bambu-js] Connecting to ${ip} (model: ${model})`, 'log');
     
-    await client.access({
+    // Создаем camera controller (используем P1S для всех моделей как базовую конфигурацию)
+    const camera = CameraController.create({
+      model: model,  // P1S или H2D
       host: ip,
-      user: 'bblp',
-      password: accessCode,
-      secure: true,
-      secureOptions: {
-        rejectUnauthorized: false
+      accessCode: accessCode,
+      options: {
+        connectionTimeout: 10000,
+        maxFrameSize: 2 * 1024 * 1024  // 2MB
       }
     });
     
-    console.log('[CAMERA FTPS] Connected, downloading ipcam.jpg');
-    sendCameraLog('[CAMERA FTPS] Connected, downloading ipcam.jpg', 'log');
+    console.log('[CAMERA bambu-js] Capturing frame...');
+    sendCameraLog('[CAMERA bambu-js] Capturing frame...', 'log');
     
-    const chunks = [];
-    await client.downloadTo({
-      write: (chunk) => chunks.push(chunk)
-    }, 'ipcam.jpg');
+    // Захватываем кадр
+    const frame = await camera.captureFrame();
     
-    client.close();
+    console.log('[CAMERA bambu-js] Frame captured:', {
+      frameNumber: frame.frameNumber,
+      size: frame.size,
+      timestamp: frame.timestamp
+    });
+    sendCameraLog(`[CAMERA bambu-js] ✅ Frame captured! Size: ${frame.size} bytes, Frame #${frame.frameNumber}`, 'log');
     
-    const buffer = Buffer.concat(chunks);
-    const base64 = buffer.toString('base64');
+    // Конвертируем Buffer в base64 Data URL
+    const base64 = frame.imageData.toString('base64');
     const dataUrl = `data:image/jpeg;base64,${base64}`;
-    
-    console.log('[CAMERA FTPS] Image downloaded, size:', buffer.length, 'bytes');
-    sendCameraLog(`[CAMERA FTPS] ✅ Image downloaded, size: ${buffer.length} bytes`, 'log');
     
     return dataUrl;
   } catch (error) {
-    console.error('[CAMERA FTPS] Error:', error.message);
-    sendCameraLog(`[CAMERA FTPS] ❌ Error: ${error.message}`, 'error');
-    client.close();
+    console.error('[CAMERA bambu-js] Error:', error.message);
+    sendCameraLog(`[CAMERA bambu-js] ❌ Error: ${error.message}`, 'error');
     return null;
   }
 }
@@ -1982,20 +1919,27 @@ function startCameraUpdates(printerId) {
   console.log('[CAMERA START] ✅ All checks passed, starting camera updates for:', printerData.name);
   sendCameraLog(`[CAMERA START] ✅ All checks passed, starting for: ${printerData.name}`, 'log');
   
-  // Загружаем камеру каждые 2 секунды
+  // Определяем модель для bambu-js (используем P1S как базовую для всех моделей)
+  // bambu-js поддерживает только P1S и H2D, используем P1S для большинства принтеров
+  const model = 'P1S';  // TCP_STREAM на порту 6000
+  
+  console.log('[CAMERA START] Using model:', model, 'for camera access');
+  sendCameraLog(`[CAMERA START] Using model: ${model} (TCP port 6000)`, 'log');
+  
+  // Загружаем камеру каждые 3 секунды (чтобы не нагружать принтер)
   const interval = setInterval(async () => {
-    const imageDataUrl = await fetchBambuCamera(cleanIp, accessCode);
+    const imageDataUrl = await fetchBambuCamera(cleanIp, accessCode, model);
     
     if (imageDataUrl && tabsWindow && !tabsWindow.isDestroyed()) {
       tabsWindow.webContents.send('bambu-camera-update', printerId, imageDataUrl);
     }
-  }, 2000);
+  }, 3000);
   
   cameraIntervals.set(printerId, interval);
   
   // Первая загрузка сразу
   (async () => {
-    const imageDataUrl = await fetchBambuCamera(cleanIp, accessCode);
+    const imageDataUrl = await fetchBambuCamera(cleanIp, accessCode, model);
     if (imageDataUrl && tabsWindow && !tabsWindow.isDestroyed()) {
       tabsWindow.webContents.send('bambu-camera-update', printerId, imageDataUrl);
     }
