@@ -4090,8 +4090,19 @@ async function showTelegramHelpModal() {
     let currentLang = 'en'; // default
     if (window.electronAPI && window.electronAPI.storeGet) {
         currentLang = await window.electronAPI.storeGet('appLanguage', 'en');
+        console.log('Retrieved language from store:', currentLang);
     }
     const isRussian = currentLang === 'ru';
+    
+    // Debug: check what language we're using
+    const allKeys = await window.electronAPI?.storeGet?.('allKeys', []);
+    console.log('Language debug:', {
+        currentLang,
+        isRussian,
+        appLanguage: await window.electronAPI?.storeGet?.('appLanguage', 'not found'),
+        allStoreKeys: allKeys,
+        interfaceLanguage: document.documentElement.lang || 'not set'
+    });
     
     content.innerHTML = getTelegramHelpContent(isRussian);
     
