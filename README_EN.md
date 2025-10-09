@@ -378,9 +378,9 @@ Send Telegram Stars to [@Tom_Tomich](https://t.me/Tom_Tomich)
 
 ### ₿ Cryptocurrency
 Support via crypto (no card needed):
-- **Bitcoin (BTC)**: `(your BTC address)`
-- **USDT (TRC20)**: `(your USDT address)`
-- **TON**: `(your TON address)` - Telegram's cryptocurrency
+- **Bitcoin (BTC)**: `1BbmWrors1aT1Dzaxr7mZ1wAPrW742hpx4`
+- **USDT (TRC20)**: `TK4dBymE4aZbXVQ8XRwxojh7i4JRamnfz6`
+- **ETH/USDT (ERC20)**: `0xb041D2F44b79453DFB4344f8350a4Fd9Ba82D977`
 
 > 💡 Any support motivates me to keep developing and adding new features!
 
