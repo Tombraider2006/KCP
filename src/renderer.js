@@ -976,14 +976,29 @@ function findInefficiencyPeriods(printerId, since, until) {
     let lastPrintEnd = null;
     let lastPauseStart = null;
 
+    // Helper: check if printer was offline during period
+    const wasOfflineDuring = (from, to) => {
+        return events.some(e => 
+            e.to === 'offline' && 
+            e.ts >= from && 
+            e.ts <= to
+        );
+    };
+    
     // infer from transitions
     for (const e of events) {
         if (e.to === 'printing') {
             if (lastPrintEnd && (e.ts - lastPrintEnd) > MAX_GAP) {
-                // Проверяем, не существует ли уже такой период
-                const isDuplicate = periods.some(p => p.type === 'gap' && p.from === lastPrintEnd && p.to === e.ts);
-                if (!isDuplicate) {
-                    periods.push({ type: 'gap', from: lastPrintEnd, to: e.ts, duration: e.ts - lastPrintEnd, reason: getSavedReason(lastPrintEnd, e.ts), printerId: e.printerId });
+                // НЕ считаем gap неэффективностью если принтер был offline
+                const hadOffline = wasOfflineDuring(lastPrintEnd, e.ts);
+                if (!hadOffline) {
+                    // Проверяем, не существует ли уже такой период
+                    const isDuplicate = periods.some(p => p.type === 'gap' && p.from === lastPrintEnd && p.to === e.ts);
+                    if (!isDuplicate) {
+                        periods.push({ type: 'gap', from: lastPrintEnd, to: e.ts, duration: e.ts - lastPrintEnd, reason: getSavedReason(lastPrintEnd, e.ts), printerId: e.printerId });
+                    }
+                } else {
+                    console.log(`Skipping gap as inefficiency (printer was offline): ${new Date(lastPrintEnd).toLocaleString()} - ${new Date(e.ts).toLocaleString()}`);
                 }
                 // Обновляем lastPrintEnd чтобы следующие события не создавали дубликаты
                 lastPrintEnd = e.ts;
@@ -996,10 +1011,16 @@ function findInefficiencyPeriods(printerId, since, until) {
         if (e.from === 'paused' && lastPauseStart) {
             const dur = e.ts - lastPauseStart;
             if (dur > MAX_PAUSE) {
-                // Проверяем, не существует ли уже такой период
-                const isDuplicate = periods.some(p => p.type === 'pause' && p.from === lastPauseStart && p.to === e.ts);
-                if (!isDuplicate) {
-                    periods.push({ type: 'pause', from: lastPauseStart, to: e.ts, duration: dur, reason: getSavedReason(lastPauseStart, e.ts), printerId: e.printerId });
+                // НЕ считаем паузу неэффективностью если принтер ушел в offline
+                const hadOffline = wasOfflineDuring(lastPauseStart, e.ts);
+                if (!hadOffline) {
+                    // Проверяем, не существует ли уже такой период
+                    const isDuplicate = periods.some(p => p.type === 'pause' && p.from === lastPauseStart && p.to === e.ts);
+                    if (!isDuplicate) {
+                        periods.push({ type: 'pause', from: lastPauseStart, to: e.ts, duration: dur, reason: getSavedReason(lastPauseStart, e.ts), printerId: e.printerId });
+                    }
+                } else {
+                    console.log(`Skipping pause as inefficiency (printer went offline): ${new Date(lastPauseStart).toLocaleString()} - ${new Date(e.ts).toLocaleString()}`);
                 }
             }
             lastPauseStart = null;
@@ -2647,7 +2668,7 @@ function aggregateDailyEnergy(periodKey, printerId, customRange, withRaw) {
             
             while (cursor <= until) {
                 while (idx < printerEvents.length && printerEvents[idx].ts <= cursor) {
-                    state = (printerEvents[idx].to === 'printing') ? 'printing' : (printerEvents[idx].to === 'paused' ? 'paused' : 'idle');
+                    state = printerEvents[idx].to;
                     idx++;
                 }
                 
@@ -2655,9 +2676,11 @@ function aggregateDailyEnergy(periodKey, printerId, customRange, withRaw) {
                 if (!bucketsByPrinter[pid]) bucketsByPrinter[pid] = {};
                 if (!bucketsByPrinter[pid][day]) bucketsByPrinter[pid][day] = { printMs: 0, idleMs: 0 };
                 
+                // Не учитываем offline в статистике энергопотребления
                 if (state === 'printing') {
                     bucketsByPrinter[pid][day].printMs += 60000;
-                } else {
+                } else if (state !== 'offline') {
+                    // idle, paused, ready, complete и т.д. - считаем как idle, но НЕ offline
                     bucketsByPrinter[pid][day].idleMs += 60000;
                 }
                 
@@ -2700,10 +2723,13 @@ function aggregateDailyEnergy(periodKey, printerId, customRange, withRaw) {
         
         while (cursor <= until) {
             while (idx < events.length && events[idx].ts <= cursor) {
-                state = (events[idx].to === 'printing') ? 'printing' : (events[idx].to === 'paused' ? 'paused' : 'idle');
+                state = events[idx].to;
                 idx++;
             }
-            push(cursor, state === 'printing');
+            // Не учитываем offline время в энергопотреблении
+            if (state !== 'offline') {
+                push(cursor, state === 'printing');
+            }
             cursor += 60000;
         }
         
