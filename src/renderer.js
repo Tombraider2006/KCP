@@ -2563,39 +2563,87 @@ function computeAnalytics(periodKey, printerId, customRange) {
         return { totalPrintMs: 0, totalIdleMs: 0, kwhTotal: 0, energyCost: 0, efficiency: 0, kwhDailyAvg: 0 };
     }
     
-    // Approximate by summing durations between transitions: printing vs not printing
+    // Calculate print/idle time separately for each printer, then sum (for "all") or use single printer data
     let totalPrintMs = 0;
     let totalIdleMs = 0;
-    let lastTs = null;
-    let lastState = null;
     
-    for (const e of filtered) {
-        // Только считаем время между реальными событиями, не с начала периода
-        if (lastTs !== null && lastState !== null) {
-            const dur = Math.max(0, e.ts - lastTs);
-            // Не считаем offline как idle для энергопотребления
-            if (lastState === 'printing') {
-                totalPrintMs += dur;
-            } else if (lastState !== 'offline') {
-                totalIdleMs += dur;
+    if (printerIdStr === 'all') {
+        // For "all printers" - calculate time for each printer separately and sum
+        const printerTimes = {};
+        
+        // Initialize time tracking for each printer
+        filtered.forEach(e => {
+            const pid = String(e.printerId);
+            if (!printerTimes[pid]) {
+                printerTimes[pid] = { printMs: 0, idleMs: 0, lastTs: null, lastState: null };
             }
+        });
+        
+        // Calculate time for each printer
+        filtered.forEach(e => {
+            const pid = String(e.printerId);
+            const pdata = printerTimes[pid];
+            
+            if (pdata.lastTs !== null && pdata.lastState !== null) {
+                const dur = Math.max(0, e.ts - pdata.lastTs);
+                if (pdata.lastState === 'printing') {
+                    pdata.printMs += dur;
+                } else if (pdata.lastState !== 'offline') {
+                    pdata.idleMs += dur;
+                }
+            }
+            
+            pdata.lastTs = e.ts;
+            pdata.lastState = e.to;
+        });
+        
+        // Add tail time for each printer
+        Object.keys(printerTimes).forEach(pid => {
+            const pdata = printerTimes[pid];
+            if (pdata.lastTs !== null && pdata.lastState !== null) {
+                const tail = Math.max(0, until - pdata.lastTs);
+                if (pdata.lastState === 'printing') {
+                    pdata.printMs += tail;
+                } else if (pdata.lastState !== 'offline') {
+                    pdata.idleMs += tail;
+                }
+            }
+            // Sum up times from all printers
+            totalPrintMs += pdata.printMs;
+            totalIdleMs += pdata.idleMs;
+        });
+        
+        console.log(`Total for all printers: Print=${(totalPrintMs / (1000 * 60 * 60)).toFixed(2)}h, Idle=${(totalIdleMs / (1000 * 60 * 60)).toFixed(2)}h`);
+    } else {
+        // For single printer - calculate directly
+        let lastTs = null;
+        let lastState = null;
+        
+        for (const e of filtered) {
+            if (lastTs !== null && lastState !== null) {
+                const dur = Math.max(0, e.ts - lastTs);
+                if (lastState === 'printing') {
+                    totalPrintMs += dur;
+                } else if (lastState !== 'offline') {
+                    totalIdleMs += dur;
+                }
+            }
+            lastTs = e.ts;
+            lastState = e.to;
         }
-        lastTs = e.ts;
-        lastState = e.to;
-    }
-    
-    // tail until now - НЕ считаем если принтер offline
-    // И только если есть хотя бы одно событие
-    if (lastTs !== null && lastState !== null) {
-        const tail = Math.max(0, until - lastTs);
-        if (lastState === 'printing') {
-            totalPrintMs += tail;
-            console.log(`Added tail time as printing: ${(tail / (1000 * 60 * 60)).toFixed(2)}h`);
-        } else if (lastState !== 'offline') {
-            totalIdleMs += tail;
-            console.log(`Added tail time as idle (state: ${lastState}): ${(tail / (1000 * 60 * 60)).toFixed(2)}h`);
-        } else {
-            console.log(`Skipped tail time for offline state: ${(tail / (1000 * 60 * 60)).toFixed(2)}h`);
+        
+        // tail until now - НЕ считаем если принтер offline
+        if (lastTs !== null && lastState !== null) {
+            const tail = Math.max(0, until - lastTs);
+            if (lastState === 'printing') {
+                totalPrintMs += tail;
+                console.log(`Added tail time as printing: ${(tail / (1000 * 60 * 60)).toFixed(2)}h`);
+            } else if (lastState !== 'offline') {
+                totalIdleMs += tail;
+                console.log(`Added tail time as idle (state: ${lastState}): ${(tail / (1000 * 60 * 60)).toFixed(2)}h`);
+            } else {
+                console.log(`Skipped tail time for offline state: ${(tail / (1000 * 60 * 60)).toFixed(2)}h`);
+            }
         }
     }
 
