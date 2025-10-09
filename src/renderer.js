@@ -688,6 +688,294 @@ function openBambuLabHelpFromModal() {
     }
 }
 
+function showBambuLabHelpModal() {
+    const modal = document.getElementById('bambuLabHelpModal');
+    const content = document.getElementById('bambuLabHelpContent');
+    const title = document.getElementById('bambuLabHelpTitle');
+    
+    if (!modal || !content) return;
+    
+    // Set title
+    title.textContent = t('bambu_help_title') || 'Bambu Lab Printer Setup';
+    
+    // Set content based on current language
+    const isRussian = currentLanguage === 'ru';
+    content.innerHTML = getBambuLabHelpContent(isRussian);
+    
+    modal.style.display = 'block';
+}
+
+function closeBambuLabHelpModal() {
+    const modal = document.getElementById('bambuLabHelpModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function getTelegramHelpContent(isRussian) {
+    if (isRussian) {
+        return `
+            <h3 style="color: #00d4ff; margin-bottom: 20px;">🤖 Помощь по настройке Telegram бота</h3>
+            
+            <div style="margin-bottom: 25px;">
+                <h4 style="color: #7ea8c8; margin-bottom: 10px;">📋 Шаг 1: Создание бота в Telegram</h4>
+                <div style="background: rgba(0, 212, 255, 0.1); padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <p><strong>1.</strong> Откройте Telegram и найдите <strong>@BotFather</strong></p>
+                    <p><strong>2.</strong> Отправьте команду: <code style="background: #2d2d2d; color: #fff; padding: 4px 8px; border-radius: 4px;">/newbot</code></p>
+                    <p><strong>3.</strong> Следуйте инструкциям чтобы выбрать имя и username для вашего бота</p>
+                    <p><strong>4.</strong> После создания вы получите <strong>Токен бота</strong> - сохраните его!</p>
+                    <div style="background: rgba(0, 212, 255, 0.2); padding: 10px; border-radius: 6px; margin-top: 10px;">
+                        <strong>💡 Пример токена:</strong> <code style="background: #2d2d2d; color: #fff; padding: 4px 8px; border-radius: 4px;">1234567890:ABCdefGHIjklMNopQRstUVwxyz</code>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 25px;">
+                <h4 style="color: #7ea8c8; margin-bottom: 10px;">🆔 Шаг 2: Получение вашего Chat ID</h4>
+                <div style="background: rgba(0, 212, 255, 0.1); padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <p><strong>Способ 1 (простой):</strong></p>
+                    <p><strong>1.</strong> Найдите бота <strong>@userinfobot</strong> в Telegram</p>
+                    <p><strong>2.</strong> Отправьте ему команду <code style="background: #2d2d2d; color: #fff; padding: 4px 8px; border-radius: 4px;">/start</code></p>
+                    <p><strong>3.</strong> Он покажет ваш Chat ID - скопируйте его</p>
+                    
+                    <p style="margin-top: 15px;"><strong>Способ 2 (через API):</strong></p>
+                    <p><strong>1.</strong> Начните диалог с вашим новым ботом</p>
+                    <p><strong>2.</strong> Отправьте команду: <code style="background: #2d2d2d; color: #fff; padding: 4px 8px; border-radius: 4px;">/start</code></p>
+                    <p><strong>3.</strong> Откройте этот URL в браузере (замените YOUR_BOT_TOKEN):</p>
+                    <code style="background: #2d2d2d; color: #fff; padding: 8px; display: block; border-radius: 4px; margin: 8px 0; font-size: 12px;">https://api.telegram.org/botYOUR_BOT_TOKEN/getUpdates</code>
+                    <p><strong>4.</strong> Найдите объект "chat" и скопируйте значение "id"</p>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 25px;">
+                <h4 style="color: #7ea8c8; margin-bottom: 10px;">⚙️ Шаг 3: Настройка в программе</h4>
+                <div style="background: rgba(0, 212, 255, 0.1); padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <p><strong>1.</strong> Откройте настройки Telegram в программе</p>
+                    <p><strong>2.</strong> Вставьте ваш <strong>Токен бота</strong> в соответствующее поле</p>
+                    <p><strong>3.</strong> Вставьте ваш <strong>Chat ID</strong> в соответствующее поле</p>
+                    <p><strong>4.</strong> Нажмите "Test Connection" для проверки подключения</p>
+                    <p><strong>5.</strong> Нажмите "Save" для сохранения настроек</p>
+                </div>
+            </div>
+
+            <div style="background: rgba(255, 193, 7, 0.2); padding: 15px; border-radius: 8px; margin: 15px 0;">
+                <h4 style="color: #ffc107; margin-bottom: 10px;">⚠️ Важные замечания</h4>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Никогда не делитесь токеном бота с другими людьми</li>
+                    <li>Chat ID может быть отрицательным для групп и каналов</li>
+                    <li>Для каналов добавьте бота как администратора</li>
+                    <li>Убедитесь что бот может отправлять сообщения</li>
+                </ul>
+            </div>
+        `;
+    } else {
+        return `
+            <h3 style="color: #00d4ff; margin-bottom: 20px;">🤖 Telegram Bot Setup Help</h3>
+            
+            <div style="margin-bottom: 25px;">
+                <h4 style="color: #7ea8c8; margin-bottom: 10px;">📋 Step 1: Create a bot in Telegram</h4>
+                <div style="background: rgba(0, 212, 255, 0.1); padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <p><strong>1.</strong> Open Telegram and find <strong>@BotFather</strong></p>
+                    <p><strong>2.</strong> Send command: <code style="background: #2d2d2d; color: #fff; padding: 4px 8px; border-radius: 4px;">/newbot</code></p>
+                    <p><strong>3.</strong> Follow instructions to choose name and username for your bot</p>
+                    <p><strong>4.</strong> After creation you will get <strong>Bot Token</strong> - save it!</p>
+                    <div style="background: rgba(0, 212, 255, 0.2); padding: 10px; border-radius: 6px; margin-top: 10px;">
+                        <strong>💡 Example token:</strong> <code style="background: #2d2d2d; color: #fff; padding: 4px 8px; border-radius: 4px;">1234567890:ABCdefGHIjklMNopQRstUVwxyz</code>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 25px;">
+                <h4 style="color: #7ea8c8; margin-bottom: 10px;">🆔 Step 2: Get your Chat ID</h4>
+                <div style="background: rgba(0, 212, 255, 0.1); padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <p><strong>Method 1 (simple):</strong></p>
+                    <p><strong>1.</strong> Find bot <strong>@userinfobot</strong> in Telegram</p>
+                    <p><strong>2.</strong> Send command <code style="background: #2d2d2d; color: #fff; padding: 4px 8px; border-radius: 4px;">/start</code></p>
+                    <p><strong>3.</strong> It will show your Chat ID - copy it</p>
+                    
+                    <p style="margin-top: 15px;"><strong>Method 2 (via API):</strong></p>
+                    <p><strong>1.</strong> Start conversation with your new bot</p>
+                    <p><strong>2.</strong> Send command: <code style="background: #2d2d2d; color: #fff; padding: 4px 8px; border-radius: 4px;">/start</code></p>
+                    <p><strong>3.</strong> Open this URL in browser (replace YOUR_BOT_TOKEN):</p>
+                    <code style="background: #2d2d2d; color: #fff; padding: 8px; display: block; border-radius: 4px; margin: 8px 0; font-size: 12px;">https://api.telegram.org/botYOUR_BOT_TOKEN/getUpdates</code>
+                    <p><strong>4.</strong> Find "chat" object and copy "id" value</p>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 25px;">
+                <h4 style="color: #7ea8c8; margin-bottom: 10px;">⚙️ Step 3: Setup in program</h4>
+                <div style="background: rgba(0, 212, 255, 0.1); padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <p><strong>1.</strong> Open Telegram settings in program</p>
+                    <p><strong>2.</strong> Paste your <strong>Bot Token</strong> in corresponding field</p>
+                    <p><strong>3.</strong> Paste your <strong>Chat ID</strong> in corresponding field</p>
+                    <p><strong>4.</strong> Click "Test Connection" to check connection</p>
+                    <p><strong>5.</strong> Click "Save" to save settings</p>
+                </div>
+            </div>
+
+            <div style="background: rgba(255, 193, 7, 0.2); padding: 15px; border-radius: 8px; margin: 15px 0;">
+                <h4 style="color: #ffc107; margin-bottom: 10px;">⚠️ Important notes</h4>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Never share bot token with other people</li>
+                    <li>Chat ID can be negative for groups and channels</li>
+                    <li>For channels add bot as administrator</li>
+                    <li>Make sure bot can send messages</li>
+                </ul>
+            </div>
+        `;
+    }
+}
+
+function getBambuLabHelpContent(isRussian) {
+    if (isRussian) {
+        return `
+            <h3 style="color: #00d4ff; margin-bottom: 20px;">🎋 Настройка принтеров Bambu Lab</h3>
+            
+            <div style="margin-bottom: 25px;">
+                <h4 style="color: #7ea8c8; margin-bottom: 10px;">📋 Шаг 1: Подготовка принтера</h4>
+                <div style="background: rgba(0, 212, 255, 0.1); padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <p><strong>1.</strong> Включите принтер Bambu Lab</p>
+                    <p><strong>2.</strong> Убедитесь что принтер подключен к Wi-Fi</p>
+                    <p><strong>3.</strong> На экране принтера найдите IP адрес</p>
+                    <p><strong>4.</strong> Запомните или запишите IP адрес</p>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 25px;">
+                <h4 style="color: #7ea8c8; margin-bottom: 10px;">🔐 Шаг 2: Получение Access Code</h4>
+                <div style="background: rgba(0, 212, 255, 0.1); padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <p><strong>1.</strong> Откройте мобильное приложение <strong>Bambu Handy</strong></p>
+                    <p><strong>2.</strong> Подключитесь к принтеру (если еще не подключены)</p>
+                    <p><strong>3.</strong> Перейдите в настройки принтера</p>
+                    <p><strong>4.</strong> Найдите раздел <strong>"LAN Mode"</strong> или <strong>"Access Code"</strong></p>
+                    <p><strong>5.</strong> Скопируйте код доступа</p>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 25px;">
+                <h4 style="color: #7ea8c8; margin-bottom: 10px;">🆔 Шаг 3: Получение Serial Number</h4>
+                <div style="background: rgba(0, 212, 255, 0.1); padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <p><strong>1.</strong> В приложении Bambu Handy перейдите в настройки принтера</p>
+                    <p><strong>2.</strong> Найдите раздел <strong>"Device Info"</strong> или <strong>"Информация об устройстве"</strong></p>
+                    <p><strong>3.</strong> Скопируйте Serial Number (обычно начинается с букв, например: 01S00A1234567890)</p>
+                    <div style="background: rgba(0, 212, 255, 0.2); padding: 10px; border-radius: 6px; margin-top: 10px;">
+                        <strong>💡 Пример Serial Number:</strong> <code style="background: #2d2d2d; color: #fff; padding: 4px 8px; border-radius: 4px;">01S00A1234567890</code>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 25px;">
+                <h4 style="color: #7ea8c8; margin-bottom: 10px;">⚙️ Шаг 4: Настройка в программе</h4>
+                <div style="background: rgba(0, 212, 255, 0.1); padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <p><strong>1.</strong> Нажмите кнопку "Добавить принтер" в программе</p>
+                    <p><strong>2.</strong> Выберите тип "Bambu Lab"</p>
+                    <p><strong>3.</strong> Введите IP адрес принтера</p>
+                    <p><strong>4.</strong> Введите Access Code</p>
+                    <p><strong>5.</strong> Введите Serial Number</p>
+                    <p><strong>6.</strong> Нажмите "Test Connection" для проверки</p>
+                    <p><strong>7.</strong> Нажмите "Save" для сохранения</p>
+                </div>
+            </div>
+
+            <div style="background: rgba(255, 193, 7, 0.2); padding: 15px; border-radius: 8px; margin: 15px 0;">
+                <h4 style="color: #ffc107; margin-bottom: 10px;">⚠️ Важные замечания</h4>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Принтер должен быть в одной сети с компьютером</li>
+                    <li>Access Code может изменяться при перезагрузке принтера</li>
+                    <li>Serial Number остается постоянным</li>
+                    <li>Убедитесь что принтер включен и подключен к Wi-Fi</li>
+                    <li>Для старых прошивок (1.08.x) используется обычный MQTT</li>
+                    <li>Для новых прошивок (1.09+) используется MQTTS (зашифрованный)</li>
+                </ul>
+            </div>
+
+            <div style="background: rgba(40, 167, 69, 0.2); padding: 15px; border-radius: 8px; margin: 15px 0;">
+                <h4 style="color: #28a745; margin-bottom: 10px;">✅ Режим "LAN Only"</h4>
+                <p>Если у вас проблемы с подключением, попробуйте включить режим "LAN Only" в настройках принтера:</p>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Откройте Bambu Handy</li>
+                    <li>Перейдите в настройки принтера</li>
+                    <li>Найдите "LAN Only Mode"</li>
+                    <li>Включите этот режим</li>
+                    <li>Перезагрузите принтер</li>
+                </ul>
+            </div>
+        `;
+    } else {
+        return `
+            <h3 style="color: #00d4ff; margin-bottom: 20px;">🎋 Bambu Lab Printer Setup</h3>
+            
+            <div style="margin-bottom: 25px;">
+                <h4 style="color: #7ea8c8; margin-bottom: 10px;">📋 Step 1: Prepare printer</h4>
+                <div style="background: rgba(0, 212, 255, 0.1); padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <p><strong>1.</strong> Turn on Bambu Lab printer</p>
+                    <p><strong>2.</strong> Make sure printer is connected to Wi-Fi</p>
+                    <p><strong>3.</strong> Find IP address on printer screen</p>
+                    <p><strong>4.</strong> Remember or write down the IP address</p>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 25px;">
+                <h4 style="color: #7ea8c8; margin-bottom: 10px;">🔐 Step 2: Get Access Code</h4>
+                <div style="background: rgba(0, 212, 255, 0.1); padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <p><strong>1.</strong> Open mobile app <strong>Bambu Handy</strong></p>
+                    <p><strong>2.</strong> Connect to printer (if not already connected)</p>
+                    <p><strong>3.</strong> Go to printer settings</p>
+                    <p><strong>4.</strong> Find <strong>"LAN Mode"</strong> or <strong>"Access Code"</strong> section</p>
+                    <p><strong>5.</strong> Copy the access code</p>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 25px;">
+                <h4 style="color: #7ea8c8; margin-bottom: 10px;">🆔 Step 3: Get Serial Number</h4>
+                <div style="background: rgba(0, 212, 255, 0.1); padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <p><strong>1.</strong> In Bambu Handy app go to printer settings</p>
+                    <p><strong>2.</strong> Find <strong>"Device Info"</strong> section</p>
+                    <p><strong>3.</strong> Copy Serial Number (usually starts with letters, e.g.: 01S00A1234567890)</p>
+                    <div style="background: rgba(0, 212, 255, 0.2); padding: 10px; border-radius: 6px; margin-top: 10px;">
+                        <strong>💡 Example Serial Number:</strong> <code style="background: #2d2d2d; color: #fff; padding: 4px 8px; border-radius: 4px;">01S00A1234567890</code>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 25px;">
+                <h4 style="color: #7ea8c8; margin-bottom: 10px;">⚙️ Step 4: Setup in program</h4>
+                <div style="background: rgba(0, 212, 255, 0.1); padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <p><strong>1.</strong> Click "Add Printer" button in program</p>
+                    <p><strong>2.</strong> Select "Bambu Lab" type</p>
+                    <p><strong>3.</strong> Enter printer IP address</p>
+                    <p><strong>4.</strong> Enter Access Code</p>
+                    <p><strong>5.</strong> Enter Serial Number</p>
+                    <p><strong>6.</strong> Click "Test Connection" to verify</p>
+                    <p><strong>7.</strong> Click "Save" to save</p>
+                </div>
+            </div>
+
+            <div style="background: rgba(255, 193, 7, 0.2); padding: 15px; border-radius: 8px; margin: 15px 0;">
+                <h4 style="color: #ffc107; margin-bottom: 10px;">⚠️ Important notes</h4>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Printer must be on the same network as computer</li>
+                    <li>Access Code may change when printer reboots</li>
+                    <li>Serial Number remains constant</li>
+                    <li>Make sure printer is on and connected to Wi-Fi</li>
+                    <li>For old firmware (1.08.x) uses plain MQTT</li>
+                    <li>For new firmware (1.09+) uses MQTTS (encrypted)</li>
+                </ul>
+            </div>
+
+            <div style="background: rgba(40, 167, 69, 0.2); padding: 15px; border-radius: 8px; margin: 15px 0;">
+                <h4 style="color: #28a745; margin-bottom: 10px;">✅ "LAN Only" Mode</h4>
+                <p>If you have connection issues, try enabling "LAN Only" mode in printer settings:</p>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Open Bambu Handy</li>
+                    <li>Go to printer settings</li>
+                    <li>Find "LAN Only Mode"</li>
+                    <li>Enable this mode</li>
+                    <li>Reboot printer</li>
+                </ul>
+            </div>
+        `;
+    }
+}
+
 function openClearAnalyticsModal() {
     const modal = document.getElementById('clearAnalyticsModal');
     if (modal) {
@@ -3767,6 +4055,28 @@ function openTelegramHelp() {
     if (window.electronAPI && window.electronAPI.send) {
         window.electronAPI.send('show-telegram-help');
     }
+}
+
+function showTelegramHelpModal() {
+    const modal = document.getElementById('telegramHelpModal');
+    const content = document.getElementById('telegramHelpContent');
+    const title = document.getElementById('telegramHelpTitle');
+    
+    if (!modal || !content) return;
+    
+    // Set title
+    title.textContent = t('telegram_help_title') || 'Telegram Bot Setup Help';
+    
+    // Set content based on current language
+    const isRussian = currentLanguage === 'ru';
+    content.innerHTML = getTelegramHelpContent(isRussian);
+    
+    modal.style.display = 'block';
+}
+
+function closeTelegramHelpModal() {
+    const modal = document.getElementById('telegramHelpModal');
+    if (modal) modal.style.display = 'none';
 }
 
 async function loadTelegramSettings() {

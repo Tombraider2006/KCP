@@ -292,6 +292,8 @@ const TRANSLATIONS = {
         // Analytics Help
         'analytics_help': '❓ Помощь',
         'analytics_help_title': 'Справка по разделу Аналитика',
+        'telegram_help_title': 'Помощь по настройке Telegram бота',
+        'bambu_help_title': 'Настройка принтеров Bambu Lab',
         'analytics_help_content': `
             <div class="help-section">
                 <h4>📊 Общее описание</h4>
@@ -708,6 +710,8 @@ const TRANSLATIONS = {
         // Analytics Help
         'analytics_help': '❓ Help',
         'analytics_help_title': 'Analytics Section Help',
+        'telegram_help_title': 'Telegram Bot Setup Help',
+        'bambu_help_title': 'Bambu Lab Printer Setup',
         'analytics_help_content': `
             <div class="help-section">
                 <h4>📊 Overview</h4>

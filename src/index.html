@@ -219,7 +219,7 @@
                     <label><input type="checkbox" id="notifyProgramStart" checked> <span id="labelProgramStart">Program start</span></label>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-help" onclick="openTelegramHelp()" style="margin-right: auto;">❓ Help</button>
+                    <button class="btn btn-help" onclick="showTelegramHelpModal()" style="margin-right: auto;">❓ Help</button>
                     <button class="btn btn-primary" onclick="saveTelegramSettings()">Save</button>
                     <button class="btn btn-secondary" onclick="testTelegramConnection()">Test Connection</button>
                     <button class="btn" onclick="closeTelegramSettingsModal()">Cancel</button>
@@ -388,7 +388,7 @@
                     There is no local web interface available for this printer type.
                 </p>
                 <div class="modal-footer" style="margin-top: 20px;">
-                    <button class="btn btn-help" onclick="openBambuLabHelpFromModal()" style="margin-right: auto;">❓ <span id="bambuInfoHelpBtn">Help</span></button>
+                    <button class="btn btn-help" onclick="showBambuLabHelpModal()" style="margin-right: auto;">❓ <span id="bambuInfoHelpBtn">Help</span></button>
                     <button class="btn btn-primary" onclick="closeBambuInfoModal()">OK</button>
                 </div>
             </div>
@@ -477,6 +477,46 @@
                     <button class="btn btn-primary" onclick="saveTempSensorsSelection()"><span id="tempSensorsSaveBtn"></span></button>
                     <button class="btn" onclick="closeTempSensorsModal()"><span id="tempSensorsSkipBtn"></span></button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Telegram Help Modal -->
+    <div id="telegramHelpModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2 id="telegramHelpTitle">Telegram Bot Setup Help</h2>
+                <span class="close" onclick="closeTelegramHelpModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="analytics-card" style="margin: 0;">
+                    <div class="analytics-help-content" id="telegramHelpContent">
+                        <!-- Content will be filled by JavaScript -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="closeTelegramHelpModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bambu Lab Help Modal -->
+    <div id="bambuLabHelpModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2 id="bambuLabHelpTitle">Bambu Lab Printer Setup</h2>
+                <span class="close" onclick="closeBambuLabHelpModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="analytics-card" style="margin: 0;">
+                    <div class="analytics-help-content" id="bambuLabHelpContent">
+                        <!-- Content will be filled by JavaScript -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="closeBambuLabHelpModal()">Close</button>
             </div>
         </div>
     </div>

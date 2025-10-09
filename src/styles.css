@@ -806,6 +806,119 @@ header {
     box-sizing: border-box !important;
 }
 
+/* Стили для модальных окон помощи в стиле аналитики */
+.analytics-help-content {
+    line-height: 1.6;
+    color: #b8d4e8;
+    font-size: 14px;
+}
+
+.analytics-help-content h3 {
+    color: #00d4ff;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.analytics-help-content h4 {
+    color: #7ea8c8;
+    margin-bottom: 10px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.analytics-help-content p {
+    margin: 8px 0;
+    line-height: 1.6;
+}
+
+.analytics-help-content ul {
+    margin: 10px 0;
+    padding-left: 20px;
+}
+
+.analytics-help-content li {
+    margin: 6px 0;
+    line-height: 1.5;
+}
+
+.analytics-help-content code {
+    background: #2d2d2d;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+}
+
+.analytics-help-content code[style*="display: block"] {
+    padding: 8px;
+    margin: 8px 0;
+    font-size: 12px;
+    display: block;
+    overflow-x: auto;
+}
+
+/* Стили для блоков помощи */
+.analytics-help-content > div {
+    margin-bottom: 25px;
+}
+
+.analytics-help-content > div > div {
+    background: rgba(0, 212, 255, 0.1);
+    padding: 15px;
+    border-radius: 8px;
+    margin: 10px 0;
+    border-left: 3px solid rgba(0, 212, 255, 0.3);
+}
+
+/* Стили для предупреждений и заметок */
+.analytics-help-content div[style*="background: rgba(255, 193, 7, 0.2)"] {
+    background: rgba(255, 193, 7, 0.2) !important;
+    border-left: 3px solid #ffc107 !important;
+}
+
+.analytics-help-content div[style*="background: rgba(40, 167, 69, 0.2)"] {
+    background: rgba(40, 167, 69, 0.2) !important;
+    border-left: 3px solid #28a745 !important;
+}
+
+.analytics-help-content div[style*="background: rgba(0, 212, 255, 0.2)"] {
+    background: rgba(0, 212, 255, 0.2) !important;
+    border-left: 3px solid #00d4ff !important;
+}
+
+/* Стили для заголовков в блоках */
+.analytics-help-content div h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+/* Улучшенная прокрутка для модальных окон помощи */
+.modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: rgba(0, 212, 255, 0.3);
+    border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 212, 255, 0.5);
+}
+
 /* ===== ФОРМЫ ===== */
 .form-group {
     margin-bottom: 20px;
