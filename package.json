@@ -47,23 +47,27 @@
     "win": {
       "target": "nsis",
       "icon": "icons/icon.ico",
-      "artifactName": "${productName}-${version}-Windows-Setup.${ext}"
+      "artifactName": "${productName}-${version}-Windows-Setup.${ext}",
+      "publish": null
     },
     "mac": {
       "target": "dmg",
       "icon": "icons/icon.icns",
-      "artifactName": "${productName}-${version}-macOS-Universal.${ext}"
+      "artifactName": "${productName}-${version}-macOS-Universal.${ext}",
+      "publish": null
     },
     "linux": {
       "target": "AppImage",
       "icon": "icons/icon.png",
       "category": "Utility",
-      "artifactName": "${productName}-${version}-Linux.${ext}"
+      "artifactName": "${productName}-${version}-Linux.${ext}",
+      "publish": null
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "artifactName": "${productName}-${version}-Windows-Setup.${ext}"
-    }
+    },
+    "publish": null
   }
 }
