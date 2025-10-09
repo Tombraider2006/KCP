@@ -207,15 +207,19 @@ function createApplicationMenu() {
       label: isRussian ? 'Помощь' : 'Help',
       submenu: [
         {
-          label: isRussian ? 'Помощь по настройке Telegram бота' : 'Telegram Bot Setup Help',
+          label: isRussian ? 'Помощь' : 'Help',
           click: () => {
-            showTelegramHelp(isRussian);
+            if (mainWindow) {
+              mainWindow.webContents.send('show-telegram-help-modal');
+            }
           }
         },
         {
           label: isRussian ? 'Настройка принтеров Bambu Lab' : 'Bambu Lab Printer Setup',
           click: () => {
-            showBambuLabHelp(isRussian);
+            if (mainWindow) {
+              mainWindow.webContents.send('show-bambu-help-modal');
+            }
           }
         },
         { type: 'separator' },
