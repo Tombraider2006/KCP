@@ -48,6 +48,7 @@
 
 ### 📝 Information
 - **[📋 Changelog](#-changelog)**
+- **[💝 Support the Project](#-support-the-project)**
 - **[📄 License](#-license)**
 - **[🤝 Contributing](#-contributing)**
 
@@ -365,6 +366,23 @@ System analyzes multiple data sources for accurate state determination:
 ## 🤝 Contributing
 
 Pull requests and improvement suggestions are welcome!
+
+---
+
+## 💝 Support the Project
+
+If this app helps you manage your 3D printer farm, I'd appreciate any support!
+
+### ⭐ Telegram Stars
+Send Telegram Stars to [@Tom_Tomich](https://t.me/Tom_Tomich)
+
+### ₿ Cryptocurrency
+Support via crypto (no card needed):
+- **Bitcoin (BTC)**: `(your BTC address)`
+- **USDT (TRC20)**: `(your USDT address)`
+- **TON**: `(your TON address)` - Telegram's cryptocurrency
+
+> 💡 Any support motivates me to keep developing and adding new features!
 
 ---
 
