@@ -2,9 +2,9 @@
 // SHIFT CONTROL PANEL - UI для управления сменами и пользователями
 // ============================================================================
 
-const UserManager = require('./user-manager');
-const ShiftManager = require('./shift-manager');
-const ReportsManager = require('./reports-manager');
+import UserManager from './user-manager.js';
+import ShiftManager from './shift-manager.js';
+import ReportsManager from './reports-manager.js';
 
 class ShiftControlPanel {
   constructor() {
@@ -911,5 +911,5 @@ window.addEventListener('DOMContentLoaded', () => {
   shiftControlPanel = new ShiftControlPanel();
 });
 
-module.exports = ShiftControlPanel;
+export default ShiftControlPanel;
 

@@ -1,5 +1,5 @@
-const UserManager = require('./user-manager');
-const crypto = require('crypto');
+import UserManager from './user-manager.js';
+import crypto from 'crypto';
 
 class SuperAdminPanel {
   constructor() {
@@ -196,5 +196,5 @@ window.addEventListener('DOMContentLoaded', () => {
   superAdminPanel.init();
 });
 
-module.exports = SuperAdminPanel;
+export default SuperAdminPanel;
 
