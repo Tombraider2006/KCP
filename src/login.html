@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход в систему - 3D Printer Control Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 450px;
+            width: 100%;
+            padding: 40px;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo-icon {
+            font-size: 64px;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            background: white;
+        }
+
+        select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            padding-right: 40px;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .input-container {
+            position: relative;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            color: #666;
+            padding: 5px;
+            user-select: none;
+        }
+
+        .toggle-password:hover {
+            color: #333;
+        }
+
+        .user-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .badge-admin {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .badge-operator {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-primary:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 12px 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            color: #721c24;
+            font-size: 14px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+            animation: shake 0.5s ease-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .version {
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+
+        option {
+            padding: 10px;
+        }
+
+        .current-shift-info {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .current-shift-info.show {
+            display: block;
+        }
+
+        .current-shift-info strong {
+            color: #0d47a1;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .current-shift-info p {
+            color: #1565c0;
+            margin: 3px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <div class="logo-icon">🖨️</div>
+            <h1>3D Printer Control Panel</h1>
+            <p class="subtitle">Система сменного контроля</p>
+        </div>
+
+        <div class="current-shift-info" id="currentShiftInfo">
+            <strong>ℹ️ Активная смена</strong>
+            <p id="currentShiftText"></p>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="userSelect">Выберите пользователя</label>
+                <select id="userSelect" name="userSelect" required>
+                    <option value="">-- Выберите пользователя --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Пароль</label>
+                <div class="input-container">
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        placeholder="Введите пароль"
+                        required
+                        autocomplete="current-password"
+                    >
+                    <button type="button" class="toggle-password" id="togglePassword">👁️</button>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="submitBtn">
+                🔓 Войти
+            </button>
+        </form>
+
+        <div class="version" id="version">Загрузка версии...</div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        const UserManager = require('./user-manager');
+        const ShiftManager = require('./shift-manager');
+        
+        const userManager = new UserManager();
+        const shiftManager = new ShiftManager();
+
+        const form = document.getElementById('loginForm');
+        const userSelect = document.getElementById('userSelect');
+        const passwordInput = document.getElementById('password');
+        const submitBtn = document.getElementById('submitBtn');
+        const errorMessage = document.getElementById('errorMessage');
+        const currentShiftInfo = document.getElementById('currentShiftInfo');
+        const currentShiftText = document.getElementById('currentShiftText');
+        const versionElement = document.getElementById('version');
+
+        // Load version
+        window.electronAPI.getAppVersion().then(version => {
+            versionElement.textContent = `Версия ${version}`;
+        });
+
+        // Check if system is initialized
+        if (!userManager.isInitialized()) {
+            window.location.href = 'setup-admin.html';
+        }
+
+        // Load current shift info
+        shiftManager.loadCurrentShift();
+        const currentShift = shiftManager.getCurrentShift();
+        if (currentShift) {
+            currentShiftInfo.classList.add('show');
+            const duration = formatDuration(currentShift.duration);
+            currentShiftText.textContent = `Текущий оператор: ${currentShift.displayName} (${currentShift.username}) - Смена: ${duration}`;
+        }
+
+        // Load users
+        function loadUsers() {
+            userSelect.innerHTML = '<option value="">-- Выберите пользователя --</option>';
+            
+            const admins = userManager.getAdministrators();
+            const operators = userManager.getActiveOperators();
+
+            // Add admins
+            if (admins.length > 0) {
+                const adminGroup = document.createElement('optgroup');
+                adminGroup.label = '👑 Администраторы';
+                admins.forEach(admin => {
+                    const option = document.createElement('option');
+                    option.value = admin.id;
+                    option.textContent = `${admin.displayName} (${admin.username})`;
+                    option.dataset.role = admin.role;
+                    option.dataset.username = admin.username;
+                    option.dataset.displayName = admin.displayName;
+                    adminGroup.appendChild(option);
+                });
+                userSelect.appendChild(adminGroup);
+            }
+
+            // Add operators
+            if (operators.length > 0) {
+                const operatorGroup = document.createElement('optgroup');
+                operatorGroup.label = '👤 Операторы';
+                operators.forEach(operator => {
+                    const option = document.createElement('option');
+                    option.value = operator.id;
+                    option.textContent = `${operator.displayName} (${operator.username})`;
+                    option.dataset.role = operator.role;
+                    option.dataset.username = operator.username;
+                    option.dataset.displayName = operator.displayName;
+                    operatorGroup.appendChild(option);
+                });
+                userSelect.appendChild(operatorGroup);
+            }
+        }
+
+        loadUsers();
+
+        // Toggle password visibility
+        document.getElementById('togglePassword').addEventListener('click', () => {
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                document.getElementById('togglePassword').textContent = '🙈';
+            } else {
+                passwordInput.type = 'password';
+                document.getElementById('togglePassword').textContent = '👁️';
+            }
+        });
+
+        // Form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const userId = userSelect.value;
+            const password = passwordInput.value;
+
+            if (!userId) {
+                showError('Выберите пользователя');
+                return;
+            }
+
+            if (!password) {
+                showError('Введите пароль');
+                return;
+            }
+
+            try {
+                submitBtn.disabled = true;
+                submitBtn.textContent = '⏳ Проверка...';
+
+                const user = userManager.getUserById(userId);
+                const result = userManager.authenticate(user.username, password);
+                
+                if (result.success) {
+                    // Check if there's an active shift
+                    const currentShift = shiftManager.getCurrentShift();
+                    
+                    if (currentShift && currentShift.userId !== userId) {
+                        // Another user has active shift - need to transfer
+                        showError('Сначала завершите текущую смену или используйте функцию передачи смены');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = '🔓 Войти';
+                        return;
+                    }
+
+                    // Start new shift if no active shift
+                    if (!currentShift) {
+                        shiftManager.startShift(
+                            result.user.id,
+                            result.user.username,
+                            result.user.displayName,
+                            result.user.role
+                        );
+                    }
+
+                    // Save current user to session
+                    await window.electronAPI.storeSet('currentUser', result.user);
+                    await window.electronAPI.storeSet('isAuthenticated', true);
+
+                    // Redirect to main application
+                    window.location.href = 'index.html';
+                } else {
+                    showError(result.error || 'Неверный логин или пароль');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '🔓 Войти';
+                }
+            } catch (error) {
+                showError(error.message || 'Произошла ошибка');
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🔓 Войти';
+            }
+        });
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('show');
+            setTimeout(() => {
+                errorMessage.classList.remove('show');
+            }, 5000);
+        }
+
+        function formatDuration(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+
+            if (hours > 0) {
+                return `${hours}ч ${minutes % 60}м`;
+            } else if (minutes > 0) {
+                return `${minutes}м`;
+            } else {
+                return `${seconds}с`;
+            }
+        }
+
+        // Auto-focus password when user is selected
+        userSelect.addEventListener('change', () => {
+            if (userSelect.value) {
+                passwordInput.focus();
+            }
+        });
+
+        // Focus on first field
+        window.addEventListener('load', () => {
+            userSelect.focus();
+        });
+    </script>
+</body>
+</html>
+

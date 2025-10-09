@@ -44,5 +44,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     if (validChannels.includes(channel)) {
       ipcRenderer.send(channel, ...args);
     }
-  }
+  },
+  
+  // Shift Management & User System
+  onBeforeQuit: (callback) => ipcRenderer.on('before-quit-check', callback),
+  removeBeforeQuitListener: () => ipcRenderer.removeAllListeners('before-quit-check'),
+  confirmQuit: (canQuit) => ipcRenderer.send('confirm-quit', canQuit)
 });
