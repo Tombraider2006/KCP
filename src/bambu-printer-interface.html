@@ -635,24 +635,52 @@
             
             console.log('[CAMERA] Loading stream from:', data.cameraStreamUrl);
 
-            // Bambu Lab использует MJPEG stream - используем img вместо video
+            // Bambu Lab использует FTP для доступа к снимкам камеры (как OrcaSlicer)
+            // Нужно периодически загружать изображение
             const img = document.createElement('img');
             img.className = 'camera-stream';
-            img.src = data.cameraStreamUrl;
             img.alt = 'Camera Stream';
+            
+            // Функция для обновления изображения камеры
+            let cameraUpdateInterval;
+            const updateCameraImage = async () => {
+                try {
+                    // Для FTP URLs браузер не поддерживает прямую загрузку
+                    // Добавляем timestamp для обхода кэша
+                    const timestamp = new Date().getTime();
+                    const urlWithTimestamp = data.cameraStreamUrl + '?t=' + timestamp;
+                    
+                    // Пробуем загрузить изображение
+                    img.src = urlWithTimestamp;
+                    console.log('[CAMERA] Updating image, timestamp:', timestamp);
+                } catch (error) {
+                    console.error('[CAMERA] Error updating image:', error);
+                }
+            };
             
             // Handle image events
             img.addEventListener('load', () => {
-                console.log('[CAMERA] Stream loaded successfully (MJPEG)');
-                cameraContent.innerHTML = '';
-                cameraContent.appendChild(img);
+                console.log('[CAMERA] Image loaded successfully');
+                if (cameraContent.querySelector('.camera-stream') !== img) {
+                    cameraContent.innerHTML = '';
+                    cameraContent.appendChild(img);
+                    
+                    // Обновляем изображение каждую секунду
+                    cameraUpdateInterval = setInterval(updateCameraImage, 1000);
+                    console.log('[CAMERA] Started auto-refresh (1 sec interval)');
+                }
             });
             
             img.addEventListener('error', (e) => {
-                console.error('[CAMERA] Stream error:', e);
+                console.error('[CAMERA] Image error:', e);
                 console.error('[CAMERA] Failed URL:', data.cameraStreamUrl);
-                showCameraError('Failed to load camera stream. Check if printer is online and port 8080 is accessible.');
+                console.error('[CAMERA] Note: Camera requires access code for FTP authentication');
+                clearInterval(cameraUpdateInterval);
+                showCameraError('Failed to load camera. Camera requires access code for authentication (FTP).');
             });
+            
+            // Первая загрузка
+            updateCameraImage();
         }
 
         function showCameraError(message) {

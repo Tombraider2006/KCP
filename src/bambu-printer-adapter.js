@@ -215,10 +215,24 @@ class BambuLabAdapter extends PrinterAdapter {
     handlePrinterMessage(data) {
         console.log('Bambu Lab MQTT message received:', JSON.stringify(data, null, 2));
         
+        // Логируем ВСЕ ключи верхнего уровня для поиска данных камеры
+        console.log('[MQTT] Top level keys:', Object.keys(data));
+        if (data.print) {
+            console.log('[MQTT] Print keys:', Object.keys(data.print));
+        }
+        
         // Обновляем данные принтера
         if (data.print) {
             this.printerData.print = { ...this.printerData.print, ...data.print };
             console.log('Updated print data:', this.printerData.print);
+            
+            // Проверяем поля камеры
+            if (data.print.ipcam_dev !== undefined) {
+                console.log('[CAMERA] ipcam_dev found:', data.print.ipcam_dev);
+            }
+            if (data.print.ipcam_record !== undefined) {
+                console.log('[CAMERA] ipcam_record found:', data.print.ipcam_record);
+            }
         }
 
         // Температуры - проверяем различные возможные поля
@@ -445,8 +459,24 @@ class BambuLabAdapter extends PrinterAdapter {
         // Очищаем IP от порта (если есть)
         const cleanIp = this.printer.ip.split(':')[0];
         
-        // Bambu Lab использует HTTP поток на порту 8080
-        return `http://${cleanIp}:8080/?action=stream`;
+        // Bambu Lab использует FTP для доступа к снимкам камеры
+        // Требуется аутентификация с access code
+        // OrcaSlicer использует: ftp://bblp:ACCESS_CODE@IP/ipcam.jpg
+        const accessCode = this.printer.accessCode || '';
+        
+        if (!accessCode) {
+            console.log('[CAMERA URL] No access code - camera requires authentication');
+            return null;
+        }
+        
+        // FTP URL с аутентификацией (как в OrcaSlicer)
+        const url = `ftp://bblp:${accessCode}@${cleanIp}/ipcam.jpg`;
+        
+        console.log('[CAMERA URL] Generated camera URL (FTP with auth)');
+        console.log('[CAMERA URL] Clean IP:', cleanIp);
+        console.log('[CAMERA URL] Has access code:', !!accessCode);
+        
+        return url;
     }
 
     /**
