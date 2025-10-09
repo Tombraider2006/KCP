@@ -431,19 +431,24 @@ header {
 }
 
 .btn {
-    padding: 4px 8px;
+    padding: 10px 16px !important;
     border: 1px solid;
     border-radius: 6px;
     cursor: pointer;
-    font-size: 11px;
+    font-size: 14px !important;
     transition: all 0.2s ease;
     text-decoration: none;
-    display: inline-block;
+    display: inline-flex !important;
     text-align: center;
     flex: 1;
-    min-height: 24px;
-    line-height: 1.2;
+    min-height: 40px !important;
+    height: 40px !important;
+    line-height: 1.4 !important;
     font-weight: 500;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    box-sizing: border-box !important;
 }
 
 .btn:hover {
@@ -785,17 +790,20 @@ header {
 }
 
 /* Кнопки в модальных окнах - увеличенные и одинаковой высоты */
+.modal .btn,
 .modal-footer .btn,
-.modal-body .btn {
-    padding: 10px 16px;
-    font-size: 14px;
-    min-height: 40px;
-    height: 40px;
-    line-height: 1.4;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
+.modal-body .btn,
+.modal-content .btn {
+    padding: 10px 16px !important;
+    font-size: 14px !important;
+    min-height: 40px !important;
+    height: 40px !important;
+    line-height: 1.4 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    box-sizing: border-box !important;
 }
 
 /* ===== ФОРМЫ ===== */
