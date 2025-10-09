@@ -635,32 +635,23 @@
             
             console.log('[CAMERA] Loading stream from:', data.cameraStreamUrl);
 
-            // Create video element
-            const video = document.createElement('video');
-            video.className = 'camera-stream';
-            video.autoplay = true;
-            video.muted = true;
-            video.controls = true;
-            video.src = data.cameraStreamUrl;
+            // Bambu Lab использует MJPEG stream - используем img вместо video
+            const img = document.createElement('img');
+            img.className = 'camera-stream';
+            img.src = data.cameraStreamUrl;
+            img.alt = 'Camera Stream';
             
-            // Handle video events
-            video.addEventListener('loadstart', () => {
-                console.log('Camera stream loading started');
-            });
-            
-            video.addEventListener('loadeddata', () => {
-                console.log('Camera stream loaded successfully');
+            // Handle image events
+            img.addEventListener('load', () => {
+                console.log('[CAMERA] Stream loaded successfully (MJPEG)');
                 cameraContent.innerHTML = '';
-                cameraContent.appendChild(video);
+                cameraContent.appendChild(img);
             });
             
-            video.addEventListener('error', (e) => {
-                console.error('Camera stream error:', e);
-                showCameraError('Failed to load camera stream');
-            });
-            
-            video.addEventListener('canplay', () => {
-                console.log('Camera stream can play');
+            img.addEventListener('error', (e) => {
+                console.error('[CAMERA] Stream error:', e);
+                console.error('[CAMERA] Failed URL:', data.cameraStreamUrl);
+                showCameraError('Failed to load camera stream. Check if printer is online and port 8080 is accessible.');
             });
         }
 
