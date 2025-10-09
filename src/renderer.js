@@ -706,11 +706,23 @@ async function showBambuLabHelpModal() {
     // Set title
     title.textContent = t('bambu_help_title') || 'Bambu Lab Printer Setup';
     
-    // Get current language
+    // Get current language - try multiple sources
     let currentLang = 'en'; // default
+    
+    // Method 1: Try store
     if (window.electronAPI && window.electronAPI.storeGet) {
         currentLang = await window.electronAPI.storeGet('appLanguage', 'en');
     }
+    
+    // Method 2: Check if interface is in Russian by looking at translated text
+    const testElement = document.querySelector('[data-i18n="add_printer"]');
+    const isInterfaceRussian = testElement && testElement.textContent.includes('Добавить');
+    
+    // Use the most reliable method
+    if (isInterfaceRussian || document.documentElement.lang === 'ru') {
+        currentLang = 'ru';
+    }
+    
     const isRussian = currentLang === 'ru';
     
     content.innerHTML = getBambuLabHelpContent(isRussian);
@@ -4086,12 +4098,29 @@ async function showTelegramHelpModal() {
     const titleText = t('telegram_help_title') || 'Telegram Bot Setup Help';
     title.textContent = titleText;
     
-    // Get current language
+    // Get current language - try multiple sources
     let currentLang = 'en'; // default
+    
+    // Method 1: Try store
     if (window.electronAPI && window.electronAPI.storeGet) {
         currentLang = await window.electronAPI.storeGet('appLanguage', 'en');
         console.log('Retrieved language from store:', currentLang);
     }
+    
+    // Method 2: Check HTML lang attribute
+    const htmlLang = document.documentElement.lang;
+    console.log('HTML lang attribute:', htmlLang);
+    
+    // Method 3: Check if interface is in Russian by looking at translated text
+    const testElement = document.querySelector('[data-i18n="add_printer"]');
+    const isInterfaceRussian = testElement && testElement.textContent.includes('Добавить');
+    console.log('Interface appears to be Russian:', isInterfaceRussian);
+    
+    // Use the most reliable method
+    if (isInterfaceRussian || htmlLang === 'ru') {
+        currentLang = 'ru';
+    }
+    
     const isRussian = currentLang === 'ru';
     
     // Debug: check what language we're using
