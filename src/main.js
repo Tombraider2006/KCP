@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, Menu, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Menu } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 const { version: APP_VERSION } = require('../package.json');
@@ -6,12 +6,6 @@ const { encrypt, decrypt } = require('./encryption');
 // bambu-js will be imported dynamically as ES module
 
 const store = new Store();
-
-// Система управления пользователями и сменами
-const UserManager = require('./user-manager');
-const ShiftManager = require('./shift-manager');
-const userManager = new UserManager();
-const shiftManager = new ShiftManager();
 
 let mainWindow;
 let tabsWindow = null;
@@ -64,26 +58,6 @@ function createMainWindow() {
   }
 
   createApplicationMenu();
-
-  // Защита от закрытия без подтверждения
-  let canClose = false;
-  
-  mainWindow.on('close', async (event) => {
-    if (!canClose) {
-      event.preventDefault();
-      
-      // Отправляем запрос на подтверждение закрытия
-      mainWindow.webContents.send('before-quit-check');
-      
-      // Ждем подтверждения
-      ipcMain.once('confirm-quit', (e, confirmed) => {
-        if (confirmed) {
-          canClose = true;
-          mainWindow.close();
-        }
-      });
-    }
-  });
 
   mainWindow.on('closed', () => {
     if (tabsWindow && !tabsWindow.isDestroyed()) {
