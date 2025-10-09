@@ -4200,7 +4200,7 @@ function updatePollingInterval(seconds) {
 }
 
 async function savePrintersToStorage() {
-    const printersData = printers.map(p => {
+    const printersData = await Promise.all(printers.map(async (p) => {
         const data = {
             id: p.id,
             name: p.name,
@@ -4219,10 +4219,17 @@ async function savePrintersToStorage() {
             }
         }
         
-        // Bambu Lab-specific fields
+        // Bambu Lab-specific fields - шифруем чувствительные данные
         if (p.type === 'bambu') {
-            data.accessCode = p.accessCode;
-            data.serialNumber = p.serialNumber;
+            // Шифруем accessCode и serialNumber для безопасности
+            if (window.electronAPI && window.electronAPI.encrypt) {
+                data.accessCode = await window.electronAPI.encrypt(p.accessCode);
+                data.serialNumber = await window.electronAPI.encrypt(p.serialNumber);
+            } else {
+                // Fallback для localStorage (без шифрования)
+                data.accessCode = p.accessCode;
+                data.serialNumber = p.serialNumber;
+            }
             // Сохраняем предпочитаемый протокол для быстрого подключения
             if (p.preferredProtocol) {
                 data.preferredProtocol = p.preferredProtocol;
@@ -4230,7 +4237,7 @@ async function savePrintersToStorage() {
         }
         
         return data;
-    });
+    }));
     
     if (window.electronAPI && window.electronAPI.storeSet) {
         await window.electronAPI.storeSet('printers', printersData);
@@ -4257,13 +4264,30 @@ async function loadPrintersFromStorage() {
         printersData = stored ? JSON.parse(stored) : [];
     }
 
-    printers = (printersData || []).map((p, index) => ({
-        ...p,
-        status: 'offline',
-        data: {},
-        lastUpdate: null,
-        connectionType: null,
-        order: p.order !== undefined ? p.order : index
+    // Дешифруем чувствительные данные Bambu Lab
+    printers = await Promise.all((printersData || []).map(async (p, index) => {
+        const printer = {
+            ...p,
+            status: 'offline',
+            data: {},
+            lastUpdate: null,
+            connectionType: null,
+            order: p.order !== undefined ? p.order : index
+        };
+        
+        // Дешифруем accessCode и serialNumber для Bambu Lab принтеров
+        if (p.type === 'bambu') {
+            if (window.electronAPI && window.electronAPI.decrypt) {
+                if (p.accessCode) {
+                    printer.accessCode = await window.electronAPI.decrypt(p.accessCode);
+                }
+                if (p.serialNumber) {
+                    printer.serialNumber = await window.electronAPI.decrypt(p.serialNumber);
+                }
+            }
+        }
+        
+        return printer;
     }));
     
     sortPrinters();

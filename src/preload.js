@@ -18,6 +18,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   storeGet: (key, defaultValue) => ipcRenderer.invoke('store-get', key, defaultValue),
   storeSet: (key, value) => ipcRenderer.invoke('store-set', key, value),
   
+  // Encryption API for secure credential storage
+  encrypt: (text) => ipcRenderer.invoke('encrypt-data', text),
+  decrypt: (encryptedText) => ipcRenderer.invoke('decrypt-data', encryptedText),
+  
   // Bambu Lab data transmission
   sendBambuData: (printerId, data) => ipcRenderer.send('send-bambu-data', printerId, data),
   

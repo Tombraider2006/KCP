@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, shell, Menu } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 const { version: APP_VERSION } = require('../package.json');
+const { encrypt, decrypt } = require('./encryption');
 // bambu-js will be imported dynamically as ES module
 
 const store = new Store();
@@ -1644,6 +1645,15 @@ ipcMain.handle('store-get', (event, key, defaultValue) => {
 ipcMain.handle('store-set', (event, key, value) => {
   store.set(key, value);
   return true;
+});
+
+// Encryption handlers for secure credential storage
+ipcMain.handle('encrypt-data', (event, text) => {
+  return encrypt(text);
+});
+
+ipcMain.handle('decrypt-data', (event, encryptedText) => {
+  return decrypt(encryptedText);
 });
 
 // Network Scanner
