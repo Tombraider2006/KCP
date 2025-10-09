@@ -121,6 +121,79 @@
             border: 2px solid rgba(220, 53, 69, 0.5);
         }
 
+        /* Control Buttons Styles */
+        .control-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            min-width: 100px;
+            justify-content: center;
+        }
+
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .control-btn:not(:disabled):hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .pause-btn {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+            border: 2px solid rgba(255, 193, 7, 0.5);
+        }
+
+        .pause-btn:not(:disabled):hover {
+            background: rgba(255, 193, 7, 0.3);
+            border-color: rgba(255, 193, 7, 0.7);
+        }
+
+        .resume-btn {
+            background: rgba(40, 167, 69, 0.2);
+            color: #5dff8f;
+            border: 2px solid rgba(40, 167, 69, 0.5);
+        }
+
+        .resume-btn:not(:disabled):hover {
+            background: rgba(40, 167, 69, 0.3);
+            border-color: rgba(40, 167, 69, 0.7);
+        }
+
+        .stop-btn {
+            background: rgba(220, 53, 69, 0.2);
+            color: #ff6b6b;
+            border: 2px solid rgba(220, 53, 69, 0.5);
+        }
+
+        .stop-btn:not(:disabled):hover {
+            background: rgba(220, 53, 69, 0.3);
+            border-color: rgba(220, 53, 69, 0.7);
+        }
+
+        .btn-icon {
+            font-size: 16px;
+        }
+
         .status-complete {
             background: rgba(108, 117, 125, 0.2);
             color: #adb5bd;
@@ -369,6 +442,28 @@
                     </div>
                 </div>
 
+                <!-- Printer Control Card -->
+                <div class="card">
+                    <div class="card-title">
+                        <span class="card-icon">🎮</span>
+                        <span>Printer Control</span>
+                    </div>
+                    <div class="control-buttons">
+                        <button id="pauseBtn" class="control-btn pause-btn" disabled>
+                            <span class="btn-icon">⏸️</span>
+                            <span>Pause</span>
+                        </button>
+                        <button id="resumeBtn" class="control-btn resume-btn" disabled>
+                            <span class="btn-icon">▶️</span>
+                            <span>Resume</span>
+                        </button>
+                        <button id="stopBtn" class="control-btn stop-btn" disabled>
+                            <span class="btn-icon">⏹️</span>
+                            <span>Stop</span>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Print Progress Card -->
                 <div class="card">
                     <div class="card-title">
@@ -600,6 +695,9 @@
             // Update last update time
             const now = new Date();
             document.getElementById('lastUpdate').textContent = now.toLocaleTimeString();
+
+            // Update control buttons state
+            updateControlButtons(data.status);
         }
 
         let cameraStarted = false;
@@ -690,6 +788,72 @@
             
             badge.textContent = statusMap[status] || 'UNKNOWN';
         }
+
+        // Control buttons functionality
+        function updateControlButtons(status) {
+            const pauseBtn = document.getElementById('pauseBtn');
+            const resumeBtn = document.getElementById('resumeBtn');
+            const stopBtn = document.getElementById('stopBtn');
+
+            // Reset all buttons
+            pauseBtn.disabled = true;
+            resumeBtn.disabled = true;
+            stopBtn.disabled = true;
+
+            // Enable buttons based on status
+            switch (status) {
+                case 'printing':
+                    pauseBtn.disabled = false;
+                    stopBtn.disabled = false;
+                    break;
+                case 'paused':
+                    resumeBtn.disabled = false;
+                    stopBtn.disabled = false;
+                    break;
+                case 'ready':
+                    // No active print, no controls needed
+                    break;
+                case 'error':
+                    stopBtn.disabled = false;
+                    break;
+            }
+        }
+
+        // Add event listeners for control buttons
+        function setupControlButtons() {
+            document.getElementById('pauseBtn').addEventListener('click', () => {
+                if (printerId) {
+                    window.parent.postMessage({
+                        type: 'bambu-control',
+                        action: 'pause',
+                        printerId: printerId
+                    }, '*');
+                }
+            });
+
+            document.getElementById('resumeBtn').addEventListener('click', () => {
+                if (printerId) {
+                    window.parent.postMessage({
+                        type: 'bambu-control',
+                        action: 'resume',
+                        printerId: printerId
+                    }, '*');
+                }
+            });
+
+            document.getElementById('stopBtn').addEventListener('click', () => {
+                if (printerId) {
+                    window.parent.postMessage({
+                        type: 'bambu-control',
+                        action: 'stop',
+                        printerId: printerId
+                    }, '*');
+                }
+            });
+        }
+
+        // Initialize control buttons when DOM is ready
+        document.addEventListener('DOMContentLoaded', setupControlButtons);
 
         // Request data updates periodically
         setInterval(() => {

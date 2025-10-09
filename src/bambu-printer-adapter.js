@@ -499,6 +499,78 @@ class BambuLabAdapter extends PrinterAdapter {
 
         this.isConnected = false;
     }
+
+    /**
+     * Пауза печати
+     */
+    async pausePrint() {
+        if (!this.mqttClient || !this.isConnected) {
+            throw new Error('Printer not connected');
+        }
+        
+        console.log('[BAMBU CONTROL] Sending pause command...');
+        
+        // Отправляем команду паузы через MQTT
+        const command = {
+            "print": {
+                "sequence_id": Date.now(),
+                "command": "pause"
+            }
+        };
+        
+        const topic = `device/${this.printer.serialNumber}/request`;
+        this.mqttClient.publish(topic, JSON.stringify(command));
+        
+        console.log('[BAMBU CONTROL] Pause command sent');
+    }
+
+    /**
+     * Возобновление печати
+     */
+    async resumePrint() {
+        if (!this.mqttClient || !this.isConnected) {
+            throw new Error('Printer not connected');
+        }
+        
+        console.log('[BAMBU CONTROL] Sending resume command...');
+        
+        // Отправляем команду возобновления через MQTT
+        const command = {
+            "print": {
+                "sequence_id": Date.now(),
+                "command": "resume"
+            }
+        };
+        
+        const topic = `device/${this.printer.serialNumber}/request`;
+        this.mqttClient.publish(topic, JSON.stringify(command));
+        
+        console.log('[BAMBU CONTROL] Resume command sent');
+    }
+
+    /**
+     * Остановка печати
+     */
+    async stopPrint() {
+        if (!this.mqttClient || !this.isConnected) {
+            throw new Error('Printer not connected');
+        }
+        
+        console.log('[BAMBU CONTROL] Sending stop command...');
+        
+        // Отправляем команду остановки через MQTT
+        const command = {
+            "print": {
+                "sequence_id": Date.now(),
+                "command": "stop"
+            }
+        };
+        
+        const topic = `device/${this.printer.serialNumber}/request`;
+        this.mqttClient.publish(topic, JSON.stringify(command));
+        
+        console.log('[BAMBU CONTROL] Stop command sent');
+    }
 }
 
 // Экспорт для использования в других модулях

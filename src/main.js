@@ -1832,8 +1832,11 @@ const cameraControllers = new Map(); // printerId -> CameraController
  */
 async function fetchBambuCamera(ip, accessCode, model = 'P1S') {
   try {
+    console.log(`[CAMERA] Attempting to fetch camera from ${ip} (model: ${model})`);
+    
     // Динамический импорт bambu-js как ES модуль
     const { CameraController } = await import('bambu-js');
+    console.log('[CAMERA] bambu-js imported successfully');
     
     // Создаем camera controller (используем P1S для всех моделей как базовую конфигурацию)
     const camera = CameraController.create({
@@ -1845,17 +1848,21 @@ async function fetchBambuCamera(ip, accessCode, model = 'P1S') {
         maxFrameSize: 2 * 1024 * 1024  // 2MB
       }
     });
+    console.log('[CAMERA] Camera controller created');
     
     // Захватываем кадр
     const frame = await camera.captureFrame();
+    console.log(`[CAMERA] Frame captured: ${frame.size} bytes, frame #${frame.frameNumber}`);
     
     // Конвертируем Buffer в base64 Data URL
     const base64 = frame.imageData.toString('base64');
     const dataUrl = `data:image/jpeg;base64,${base64}`;
     
+    console.log('[CAMERA] Image converted to base64, length:', base64.length);
     return dataUrl;
   } catch (error) {
     console.error('[CAMERA] Error:', error.message);
+    console.error('[CAMERA] Stack:', error.stack);
     return null;
   }
 }
@@ -1934,6 +1941,40 @@ ipcMain.on('start-camera-updates', (event, printerId) => {
 ipcMain.on('stop-camera-updates', (event, printerId) => {
   console.log('[CAMERA IPC] Stop camera updates requested for:', printerId);
   stopCameraUpdates(printerId);
+});
+
+// IPC обработчик для управления Bambu Lab принтером
+ipcMain.on('bambu-control', async (event, printerId, action) => {
+  console.log('[BAMBU CONTROL] Command received:', action, 'for printer:', printerId);
+  
+  const adapter = bambuConnections.get(printerId);
+  if (!adapter) {
+    console.error('[BAMBU CONTROL] No adapter found for printer:', printerId);
+    return;
+  }
+  
+  try {
+    switch (action) {
+      case 'pause':
+        console.log('[BAMBU CONTROL] Pausing print...');
+        await adapter.pausePrint();
+        break;
+      case 'resume':
+        console.log('[BAMBU CONTROL] Resuming print...');
+        await adapter.resumePrint();
+        break;
+      case 'stop':
+        console.log('[BAMBU CONTROL] Stopping print...');
+        await adapter.stopPrint();
+        break;
+      default:
+        console.error('[BAMBU CONTROL] Unknown action:', action);
+    }
+    
+    console.log('[BAMBU CONTROL] Command executed successfully:', action);
+  } catch (error) {
+    console.error('[BAMBU CONTROL] Error executing command:', action, error.message);
+  }
 });
 
 // App events

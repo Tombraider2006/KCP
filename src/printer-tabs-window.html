@@ -488,6 +488,13 @@
                         
                         // Проксируем запрос камеры в main процесс через IPC
                         ipcRenderer.send('start-camera-updates', printerId);
+                    } else if (event.data.type === 'bambu-control') {
+                        const printerId = event.data.printerId;
+                        const action = event.data.action;
+                        // Proxying Bambu control command
+                        
+                        // Проксируем команду управления в main процесс через IPC
+                        ipcRenderer.send('bambu-control', printerId, action);
                     }
                 });
             }
