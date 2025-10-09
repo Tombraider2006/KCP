@@ -4111,6 +4111,9 @@ function debouncedUpdatePrintersCounter() {
 function openTelegramSettingsModal() {
     const modal = document.getElementById('telegramSettingsModal');
     if (modal) {
+        // Update help button text before showing modal
+        updateHelpButtons();
+        
         modal.style.display = 'block';
         loadTelegramSettings();
     }
@@ -4256,6 +4259,9 @@ async function loadTelegramSettings() {
     if (programStartInput) programStartInput.checked = telegramConfig.notifications.programStart !== false;
     
     updateTelegramStatusDisplay();
+    
+    // Update help button text after loading settings
+    updateHelpButtons();
 }
 
 async function saveTelegramSettings() {
