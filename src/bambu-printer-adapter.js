@@ -449,8 +449,11 @@ class BambuLabAdapter extends PrinterAdapter {
             return null;
         }
         
+        // Очищаем IP от порта (если есть)
+        const cleanIp = this.printer.ip.split(':')[0];
+        
         // Bambu Lab использует HTTP поток на порту 8080
-        return `http://${this.printer.ip}:8080/?action=stream`;
+        return `http://${cleanIp}:8080/?action=stream`;
     }
 
     /**
