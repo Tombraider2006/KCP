@@ -1360,6 +1360,13 @@ function compareVersions(v1, v2) {
 
 function createTabsWindow() {
   if (tabsWindow && !tabsWindow.isDestroyed()) {
+    // Показываем окно если оно скрыто или свернуто
+    if (!tabsWindow.isVisible()) {
+      tabsWindow.show();
+    }
+    if (tabsWindow.isMinimized()) {
+      tabsWindow.restore();
+    }
     tabsWindow.focus();
     return tabsWindow;
   }
@@ -1377,15 +1384,11 @@ function createTabsWindow() {
     },
     title: `3D Printer Interfaces - v${APP_VERSION}`,
     icon: getIconPath(),
-    show: false,
+    show: true,  // Показываем окно сразу
     autoHideMenuBar: true
   });
 
   tabsWindow.loadFile('src/printer-tabs-window.html');
-
-  tabsWindow.once('ready-to-show', () => {
-    tabsWindow.show();
-  });
 
   if (process.argv.includes('--dev')) {
     tabsWindow.webContents.openDevTools();
@@ -1395,6 +1398,8 @@ function createTabsWindow() {
     tabsWindow = null;
     printerTabs.clear();
   });
+
+  console.log('Tabs window created and shown');
 
   return tabsWindow;
 }
@@ -1436,6 +1441,14 @@ function addPrinterTab(printerData) {
 
 function focusPrinterTab(printerId) {
   if (tabsWindow && !tabsWindow.isDestroyed() && printerTabs.has(printerId)) {
+    // Показываем окно если оно скрыто или свернуто
+    if (!tabsWindow.isVisible()) {
+      tabsWindow.show();
+    }
+    if (tabsWindow.isMinimized()) {
+      tabsWindow.restore();
+    }
+    
     tabsWindow.webContents.send('focus-printer-tab', printerId);
     tabsWindow.focus();
     
