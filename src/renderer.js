@@ -301,6 +301,18 @@ function updateInterfaceLanguage() {
     
     const exportLogBtn = document.querySelector('[onclick="exportLogs()"]');
     if (exportLogBtn) exportLogBtn.textContent = t('export_log');
+    
+    // Update all elements with data-i18n attributes
+    const i18nElements = document.querySelectorAll('[data-i18n]');
+    i18nElements.forEach(element => {
+        const key = element.getAttribute('data-i18n');
+        if (key && typeof t === 'function') {
+            const translation = t(key);
+            if (translation && translation !== key) {
+                element.textContent = translation;
+            }
+        }
+    });
 
     const analyticsBtnText = document.getElementById('analyticsBtnText');
     if (analyticsBtnText) analyticsBtnText.textContent = t('analytics').replace('📈 ', '');
