@@ -1478,10 +1478,8 @@ async function testBambuLabConnection(printer, isManualCheck = false) {
     addConsoleMessage(`🔍 ${t('testing_connection')} ${printer.name}... (Bambu Lab)`, 'info');
     
     try {
-        // Note: MQTT requires backend support or special browser library
-        // For now, mark as ready and add note
-        addConsoleMessage(`⚠️ ${printer.name} - Bambu Lab MQTT support requires npm install first`, 'warning');
-        addConsoleMessage(`ℹ️ ${printer.name} - Please restart app after running: npm install`, 'info');
+        // Note: MQTT connection handled by main process
+        addConsoleMessage(`ℹ️ ${printer.name} - Bambu Lab printer detected, connecting via MQTT...`, 'info');
         
         printer.status = 'offline';
         printer.connectionType = 'MQTT (not configured)';

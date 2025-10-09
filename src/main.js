@@ -778,12 +778,16 @@ function showBambuLabHelp(isRussian) {
 
             <h2>🔧 Подготовка к работе</h2>
             
-            <h3>Шаг 1: Проверьте зависимости</h3>
+            <h3>Шаг 1: Установка программы</h3>
             <div class="step">
-                <p>Библиотека <code>mqtt@^5.3.5</code> уже включена в зависимости проекта. Если вы только что клонировали проект или обновили код, убедитесь что все зависимости установлены:</p>
-                <pre>npm install</pre>
+                <p>Скачайте готовый установщик из <a href="https://github.com/Tombraider2006/KCP/releases/" target="_blank">релизов</a>:</p>
+                <ul>
+                    <li>🪟 <strong>Windows:</strong> .exe установщик</li>
+                    <li>🍎 <strong>macOS:</strong> .dmg образ</li>
+                    <li>🐧 <strong>Linux:</strong> .AppImage портативная версия</li>
+                </ul>
                 <div class="note">
-                    💡 <strong>Примечание:</strong> Если вы установили программу через готовый установщик, все зависимости уже включены и этот шаг не требуется.
+                    💡 <strong>Примечание:</strong> Все зависимости, включая MQTT библиотеку (<code>mqtt@^5.3.5</code>), уже включены в установщик!
                 </div>
             </div>
 
@@ -864,15 +868,15 @@ function showBambuLabHelp(isRussian) {
             
             <h3>Проблемы с подключением MQTT</h3>
             <div class="step">
-                <p><strong>Если вы видите ошибку связанную с MQTT:</strong></p>
-                <p>Это может произойти, если вы запускаете программу из исходного кода и не установили зависимости.</p>
-                <p><strong>Решение:</strong></p>
-                <pre>cd путь/к/3DC
-npm install
-# Затем перезапустите приложение</pre>
-                <div class="note">
-                    💡 Если вы используете установленную версию программы, эта проблема возникнуть не должна.
-                </div>
+                <p><strong>Если принтер Bambu Lab не подключается:</strong></p>
+                <ul>
+                    <li>🔑 Проверьте, что режим разработчика включен</li>
+                    <li>📝 Проверьте правильность Access Code (8 цифр)</li>
+                    <li>🔢 Проверьте серийный номер принтера</li>
+                    <li>🌐 Убедитесь что принтер и ПК в одной сети</li>
+                    <li>🛡️ Проверьте что порт 8883 не заблокирован</li>
+                    <li>🔄 Попробуйте перезапустить приложение</li>
+                </ul>
             </div>
 
             <h3>"Developer mode must be enabled in printer settings"</h3>
@@ -1010,12 +1014,16 @@ npm install
 
             <h2>🔧 Getting Started</h2>
             
-            <h3>Step 1: Check Dependencies</h3>
+            <h3>Step 1: Install the Application</h3>
             <div class="step">
-                <p>The <code>mqtt@^5.3.5</code> library is already included in the project dependencies. If you just cloned the project or updated the code, make sure all dependencies are installed:</p>
-                <pre>npm install</pre>
+                <p>Download the ready installer from <a href="https://github.com/Tombraider2006/KCP/releases/" target="_blank">releases</a>:</p>
+                <ul>
+                    <li>🪟 <strong>Windows:</strong> .exe installer</li>
+                    <li>🍎 <strong>macOS:</strong> .dmg image</li>
+                    <li>🐧 <strong>Linux:</strong> .AppImage portable version</li>
+                </ul>
                 <div class="note">
-                    💡 <strong>Note:</strong> If you installed the program via the installer, all dependencies are already included and this step is not required.
+                    💡 <strong>Note:</strong> All dependencies, including MQTT library (<code>mqtt@^5.3.5</code>), are already included in the installer!
                 </div>
             </div>
 
@@ -1096,15 +1104,15 @@ npm install
             
             <h3>MQTT Connection Issues</h3>
             <div class="step">
-                <p><strong>If you see an MQTT-related error:</strong></p>
-                <p>This can happen if you're running the program from source code and haven't installed dependencies.</p>
-                <p><strong>Solution:</strong></p>
-                <pre>cd path/to/3DC
-npm install
-# Then restart the application</pre>
-                <div class="note">
-                    💡 If you're using the installed version of the program, this issue should not occur.
-                </div>
+                <p><strong>If Bambu Lab printer won't connect:</strong></p>
+                <ul>
+                    <li>🔑 Check that developer mode is enabled</li>
+                    <li>📝 Verify Access Code correctness (8 digits)</li>
+                    <li>🔢 Verify printer serial number</li>
+                    <li>🌐 Ensure printer and PC are on the same network</li>
+                    <li>🛡️ Check that port 8883 is not blocked</li>
+                    <li>🔄 Try restarting the application</li>
+                </ul>
             </div>
 
             <h3>"Developer mode must be enabled in printer settings"</h3>

@@ -16,15 +16,15 @@ This application now supports **Bambu Lab** 3D printers in addition to Klipper-b
 
 ## 🔧 Installation Steps
 
-### Step 1: Install MQTT Dependency
+### Step 1: Install the Application
 
-Before using Bambu Lab printers, you need to install the MQTT library:
+Download the ready installer from [**releases**](https://github.com/Tombraider2006/KCP/releases/):
 
-```bash
-npm install
-```
+- 🪟 **Windows**: `3D-Printer-Control-Panel-Setup-X.X.X.exe`
+- 🍎 **macOS**: `3D-Printer-Control-Panel-X.X.X.dmg`
+- 🐧 **Linux**: `3D-Printer-Control-Panel-X.X.X.AppImage`
 
-This will install all dependencies including `mqtt@^5.3.5` required for Bambu Lab communication.
+All dependencies, including MQTT library (`mqtt@^5.3.5`), are already included in the installer!
 
 ### Step 2: Enable Developer Mode on Printer
 
