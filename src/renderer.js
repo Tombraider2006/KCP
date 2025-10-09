@@ -730,6 +730,12 @@ async function showBambuLabHelpModal() {
     
     content.innerHTML = getBambuLabHelpContent(isRussian);
     
+    // Update button text based on language
+    const bambuHelpButton = document.querySelector('button[onclick="showBambuLabHelpModal()"]');
+    if (bambuHelpButton) {
+        bambuHelpButton.textContent = isRussian ? '❓ Помощь' : '❓ Help';
+    }
+    
     modal.style.display = 'block';
 }
 
@@ -4142,6 +4148,13 @@ async function showTelegramHelpModal() {
     content.innerHTML = getTelegramHelpContent(isRussian);
     
     console.log('Showing modal, isRussian:', isRussian, 'currentLang:', currentLang);
+    
+    // Update button text based on language
+    const helpButton = document.querySelector('button[onclick="showTelegramHelpModal()"]');
+    if (helpButton) {
+        helpButton.textContent = isRussian ? '❓ Помощь' : '❓ Help';
+    }
+    
     modal.style.display = 'block';
 }
 
