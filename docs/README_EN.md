@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="logo.png" alt="3D Printer Control Panel Logo" width="250">
+<img src="../logo.png" alt="3D Printer Control Panel Logo" width="250">
 
 # 🖨️ 3D Printer Control Panel
 
-**[🇷🇺 Русский](README.md)** | **[🇬🇧 English](README_EN.md)**
+**[🇷🇺 Русский](../README.md)** | **[🇬🇧 English](README_EN.md)**
 
 ![3D Printer Control Panel](https://img.shields.io/badge/Version-1.5.9-blue.svg)
 ![Electron](https://img.shields.io/badge/Electron-22.0+-green.svg)

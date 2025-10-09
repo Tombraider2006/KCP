@@ -43,8 +43,13 @@
     "files": [
       "src/**/*",
       "icons/**/*",
-      "node_modules/**/*",
-      "package.json"
+      "package.json",
+      "README.md",
+      "!docs/**/*",
+      "!node_modules/**/*",
+      "!dist-electron/**/*",
+      "!build/**/*",
+      "!.git/**/*"
     ],
     "win": {
       "target": "nsis",

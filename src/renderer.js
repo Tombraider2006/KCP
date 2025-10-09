@@ -1,10 +1,72 @@
-// ===== КОНСТАНТЫ И ПЕРЕМЕННЫЕ =====
+// ============================================================================
+// 3D PRINTER CONTROL PANEL - RENDERER PROCESS
+// ============================================================================
+// 
+// TABLE OF CONTENTS (быстрая навигация - используйте Ctrl+F):
+// 
+// 1. CONFIGURATION & STATE ........................ Line 23
+//    1.1. Application Config ...................... Line 23
+//    1.2. Printer State ........................... Line 29
+//    1.3. Analytics State ......................... Line 43
+//    1.4. Telegram Config ......................... Line 72
+//    1.5. Status Priority ......................... Line 91
+// 
+// 2. INITIALIZATION & SETUP ....................... Line 100
+//    2.1. App Initialization ...................... Line 100
+//    2.2. Data Loading ............................ Line 202
+//    2.3. Language & Localization ................. Line 317
+// 
+// 3. PRINTER MANAGEMENT ........................... Line 540
+//    3.1. Add/Edit/Remove Printers ................ Line 540
+//    3.2. Printer Display & UI .................... Line 2540
+//    3.3. Status Updates & Sorting ................ Line 1411
+// 
+// 4. PRINTER CONNECTIONS .......................... Line 2006
+//    4.1. Connection Testing ...................... Line 2006
+//    4.2. Klipper Integration ..................... Line 2119
+//    4.3. Bambu Lab Integration ................... Line 2028
+//    4.4. WebSocket Management .................... Line 2265
+// 
+// 5. ANALYTICS SYSTEM ............................. Line 1465
+//    5.1. Event Tracking .......................... Line 1465
+//    5.2. Metrics Calculation ..................... Line 3050
+//    5.3. Inefficiency Detection .................. Line 1487
+//    5.4. Analytics UI ............................ Line 2622
+//    5.5. Charts & Visualization .................. Line 2909
+//    5.6. Data Export ............................. Line 4861
+// 
+// 6. NOTIFICATIONS ................................ Line 4481
+//    6.1. Telegram Integration .................... Line 4481
+//    6.2. Notification Sending .................... Line 4599
+//    6.3. Event Notifications ..................... Line 1609
+// 
+// 7. NETWORK SCANNER .............................. Line 4754
+// 
+// 8. UTILITY FUNCTIONS ............................ Line 4986
+//    8.1. Formatters .............................. Line 4986
+//    8.2. Status Helpers .......................... Line 5028
+//    8.3. Temperature Sensors ..................... Line 3859
+// 
+// 9. UI MODALS & INTERACTIONS ..................... Line 562
+//    9.1. Printer Modals .......................... Line 562
+//    9.2. Analytics Modals ........................ Line 1152
+//    9.3. Help Modals ............................. Line 794
+//    9.4. Settings Modals ......................... Line 4271
+// 
+// ============================================================================
+
+// ============================================================================
+// 1. CONFIGURATION & STATE
+// ============================================================================
+
+// 1.1. Application Config
 const CONFIG = {
     UPDATE_INTERVAL: 30000,
     CONNECTION_TIMEOUT: 8000,
     RETRY_INTERVAL: 10000
 };
 
+// 1.2. Printer State
 let printers = [];
 let websocketConnections = {};
 let currentPollingInterval = CONFIG.UPDATE_INTERVAL;
@@ -19,7 +81,7 @@ let retryInterval = null;
 let sortDebounceTimer = null;
 let counterDebounceTimer = null;
 
-// ===== ANALYTICS STATE =====
+// 1.3. Analytics State
 let analytics = {
     // events: [{printerId, ts, from, to}], status transitions
     events: [],
@@ -32,13 +94,23 @@ let analytics = {
     lastInefficiencyCheck: {}
 };
 
+// Analytics Helper: Date formatting
+// Fixes timezone issue: uses local time instead of UTC (исправлено 09.10.2025)
+function getLocalDateString(timestamp) {
+    const date = new Date(timestamp);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 // Chart.js instances storage for proper cleanup
 let chartInstances = {};
 
 // Current analytics tab
 let currentAnalyticsTab = 'eff';
 
-// Telegram Bot Configuration
+// 1.4. Telegram Configuration
 let telegramConfig = {
     enabled: false,
     botToken: '',
@@ -56,6 +128,7 @@ let telegramConfig = {
     }
 };
 
+// 1.5. Status Priority (для сортировки принтеров)
 const STATUS_PRIORITY = {
     'error': 100,
     'paused': 90,
@@ -65,7 +138,11 @@ const STATUS_PRIORITY = {
     'printing': 50
 };
 
-// ===== ОСНОВНЫЕ ФУНКЦИИ =====
+// ============================================================================
+// 2. INITIALIZATION & SETUP
+// ============================================================================
+
+// 2.1. App Initialization
 document.addEventListener('DOMContentLoaded', function() {
     initApp();
     setupToggleVisibilityButtons();
@@ -167,7 +244,10 @@ async function initApp() {
     }, 1000);
 }
 
-// ===== ANALYTICS PERSISTENCE =====
+// ============================================================================
+// 2.2. Data Loading & Persistence
+// ============================================================================
+
 async function loadAnalytics() {
     try {
         if (window.electronAPI && window.electronAPI.storeGet) {
@@ -505,7 +585,11 @@ function updateModalTranslations() {
     }
 }
 
-// ===== ФУНКЦИИ ДЛЯ РАБОТЫ С ПРИНТЕРАМИ =====
+// ============================================================================
+// 3. PRINTER MANAGEMENT
+// ============================================================================
+
+// 3.1. Add/Edit/Remove Printers
 
 // Функция переключения полей в зависимости от типа принтера
 function togglePrinterTypeFields(modalType) {
@@ -1430,6 +1514,12 @@ function checkStatusChanges() {
     });
 }
 
+// ============================================================================
+// 5. ANALYTICS SYSTEM
+// ============================================================================
+
+// 5.1. Event Tracking
+
 function trackStatusTransition(printerId, fromStatus, toStatus) {
     // Ensure printerId is always a string for consistent comparison
     const printerIdStr = String(printerId);
@@ -1449,6 +1539,8 @@ function trackStatusTransition(printerId, fromStatus, toStatus) {
     // Проверяем на новые события неэффективности
     checkForNewInefficiency(printerIdStr);
 }
+
+// 5.3. Inefficiency Detection
 
 // Build inefficiency periods based on rules:
 // Efficient if gaps between printing < 10m and any pause < 7m
@@ -1851,7 +1943,7 @@ function renderInefficiency(printerId, custom) {
     // Aggregate by day with separate Gap and Pause durations
     const byDay = {};
     periods.forEach(p => {
-        const day = new Date(p.from).toISOString().slice(0,10);
+        const day = getLocalDateString(p.from);  // Fixed: use local time instead of UTC
         if (!byDay[day]) {
             byDay[day] = { gapMinutes: 0, pauseMinutes: 0 };
         }
@@ -1971,7 +2063,11 @@ function drawIneffMarkers(canvasId, series) {
     });
 }
 
-// ===== ФУНКЦИИ ПОДКЛЮЧЕНИЯ И WEBSOCKET =====
+// ============================================================================
+// 4. PRINTER CONNECTIONS
+// ============================================================================
+
+// 4.1. Connection Testing
 
 // Проверка совместимости старых принтеров (добавлен type если его нет)
 function ensurePrinterType(printer) {
@@ -1991,6 +2087,8 @@ async function testPrinterConnection(printer, isManualCheck = false) {
         return await testKlipperConnection(printer, isManualCheck);
     }
 }
+
+// 4.3. Bambu Lab Integration
 
 // Тестирование подключения к Bambu Lab принтеру
 async function testBambuLabConnection(printer, isManualCheck = false) {
@@ -2082,6 +2180,8 @@ async function handleBambuPrinterUpdate(updateData) {
     // Send data to Bambu interface if window is open
     await sendPrinterDataToBambuInterface(printer.id);
 }
+
+// 4.2. Klipper Integration
 
 // Тестирование подключения к Klipper принтеру
 async function testKlipperConnection(printer, isManualCheck = false) {
@@ -2229,6 +2329,8 @@ async function getPrinterObjects(printer) {
         console.log(`${t('printer_objects_failed')} ${printer.name}:`, error);
     }
 }
+
+// 4.4. WebSocket Management
 
 function setupWebSocketConnection(printer) {
     return new Promise((resolve, reject) => {
@@ -2505,7 +2607,9 @@ function updatePrinterStatus(printer) {
     console.log(`Printer ${printer.name}: state=${state}, status=${printer.status}, progress=${progressPercent}%, filename=${filename}, hasActiveFile=${hasActiveFile}`);
 }
 
-// ===== ФУНКЦИИ ОТОБРАЖЕНИЯ И УТИЛИТЫ =====
+// ============================================================================
+// 3.2. Printer Display & UI
+// ============================================================================
 
 function updatePrintersDisplay() {
     const container = document.getElementById('printersContainer');
@@ -2587,7 +2691,8 @@ function updatePrintersDisplay() {
     updatePrintersCounter();
 }
 
-// ===== ANALYTICS UI =====
+// 5.4. Analytics UI
+
 function openAnalyticsModal() {
     const modal = document.getElementById('analyticsModal');
     if (!modal) return;
@@ -3026,6 +3131,8 @@ function getCurrencySymbol(code) {
     }
 }
 
+// 5.2. Metrics Calculation (исправлено 09.10.2025: timezone issue + initial state)
+
 function computeAnalytics(periodKey, printerId, customRange) {
     let since = Date.now() - 7*24*60*60*1000;
     if (periodKey === '1d') since = Date.now() - 24*60*60*1000;
@@ -3253,12 +3360,10 @@ function aggregateDailyEnergy(periodKey, printerId, customRange, withRaw) {
     const dayMs = 24*60*60*1000;
     const buckets = {};
     const push = (ts, printing) => {
-        const day = new Date(ts).toISOString().slice(0,10);
+        const day = getLocalDateString(ts);  // Fixed: use local time instead of UTC
         if (!buckets[day]) buckets[day] = { printMs:0, idleMs:0 };
         if (printing) buckets[day].printMs += 60000; else buckets[day].idleMs += 60000;
     };
-    // sample each minute based on last state approximation
-    let state = 'idle';
     
     // Ensure printerId is string for consistent comparison
     const printerIdStr = String(printerId);
@@ -3282,9 +3387,14 @@ function aggregateDailyEnergy(periodKey, printerId, customRange, withRaw) {
         // Process each printer separately
         Object.keys(eventsByPrinter).forEach(pid => {
             const printerEvents = eventsByPrinter[pid];
-            let state = 'idle';
-            let cursor = since;
-            let idx = 0;
+            
+            // Fixed: Start from first event to avoid counting unknown state as idle
+            // If printer was offline before period start, we shouldn't count that as idle time
+            if (printerEvents.length === 0) return; // No events for this printer
+            
+            let state = printerEvents[0].to;  // Start with first known state
+            let cursor = Math.max(since, printerEvents[0].ts);  // Start from first event or period start
+            let idx = 1;  // Already processed first event
             
             while (cursor <= until) {
                 while (idx < printerEvents.length && printerEvents[idx].ts <= cursor) {
@@ -3292,7 +3402,7 @@ function aggregateDailyEnergy(periodKey, printerId, customRange, withRaw) {
                     idx++;
                 }
                 
-                const day = new Date(cursor).toISOString().slice(0,10);
+                const day = getLocalDateString(cursor);  // Fixed: use local time instead of UTC
                 if (!bucketsByPrinter[pid]) bucketsByPrinter[pid] = {};
                 if (!bucketsByPrinter[pid][day]) bucketsByPrinter[pid][day] = { printMs: 0, idleMs: 0 };
                 
@@ -3336,10 +3446,15 @@ function aggregateDailyEnergy(periodKey, printerId, customRange, withRaw) {
         return data;
         
     } else {
-        // Single printer - original logic
-        let cursor = since;
-        let idx = 0;
-        let state = 'idle';
+        // Single printer - fixed logic
+        // Fixed: Start from first event to avoid counting unknown state as idle
+        if (events.length === 0) {
+            return [];  // No events - no data
+        }
+        
+        let state = events[0].to;  // Start with first known state
+        let cursor = Math.max(since, events[0].ts);  // Start from first event or period start
+        let idx = 1;  // Already processed first event
         
         while (cursor <= until) {
             while (idx < events.length && events[idx].ts <= cursor) {
@@ -4373,7 +4488,11 @@ function debouncedUpdatePrintersCounter() {
     }, 100);
 }
 
-// ===== TELEGRAM BOT FUNCTIONS =====
+// ============================================================================
+// 6. NOTIFICATIONS
+// ============================================================================
+
+// 6.1. Telegram Integration
 
 function openTelegramSettingsModal() {
     const modal = document.getElementById('telegramSettingsModal');
@@ -4596,6 +4715,8 @@ async function testTelegramConnection() {
         addConsoleMessage('❌ ' + t('telegram_test_failed'), 'error');
     }
 }
+
+// 6.2. Notification Sending
 
 async function sendTelegramNotification(notification) {
     if (!telegramConfig.enabled || !telegramConfig.botToken || !telegramConfig.chatId) {
