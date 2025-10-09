@@ -15,7 +15,25 @@
 **Control panel for 3D printers with Klipper firmware and Bambu Lab**  
 *Convenient interface for monitoring and controlling multiple 3D printers*
 
+**[⬇️ Quick navigation](#-table-of-contents)**
+
 </div>
+
+---
+
+## 📑 Table of Contents
+
+- [👥 Who Is This For?](#-who-is-this-for)
+- [🌟 Key Features](#-key-features)
+- [🚀 Installation](#-installation)
+- [🎋 Bambu Lab Support](#-bambu-lab-support)
+- [📋 Adding Printers](#-adding-printers)
+- [🎯 System Features](#-system-features)
+- [🔧 Technical Details](#-technical-details)
+- [📋 Changelog](#-changelog)
+- [🆘 Troubleshooting](#-troubleshooting)
+- [🎉 Benefits](#-benefits)
+- [📚 Additional Documentation](#-additional-documentation)
 
 ---
 
