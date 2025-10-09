@@ -696,7 +696,7 @@ function openBambuLabHelpFromModal() {
     }
 }
 
-function showBambuLabHelpModal() {
+async function showBambuLabHelpModal() {
     const modal = document.getElementById('bambuLabHelpModal');
     const content = document.getElementById('bambuLabHelpContent');
     const title = document.getElementById('bambuLabHelpTitle');
@@ -706,8 +706,13 @@ function showBambuLabHelpModal() {
     // Set title
     title.textContent = t('bambu_help_title') || 'Bambu Lab Printer Setup';
     
-    // Set content based on current language
-    const isRussian = currentLanguage === 'ru';
+    // Get current language
+    let currentLang = 'en'; // default
+    if (window.electronAPI && window.electronAPI.storeGet) {
+        currentLang = await window.electronAPI.storeGet('appLanguage', 'en');
+    }
+    const isRussian = currentLang === 'ru';
+    
     content.innerHTML = getBambuLabHelpContent(isRussian);
     
     modal.style.display = 'block';
@@ -4065,7 +4070,7 @@ function openTelegramHelp() {
     }
 }
 
-function showTelegramHelpModal() {
+async function showTelegramHelpModal() {
     const modal = document.getElementById('telegramHelpModal');
     const content = document.getElementById('telegramHelpContent');
     const title = document.getElementById('telegramHelpTitle');
@@ -4081,11 +4086,16 @@ function showTelegramHelpModal() {
     const titleText = t('telegram_help_title') || 'Telegram Bot Setup Help';
     title.textContent = titleText;
     
-    // Set content based on current language
-    const isRussian = currentLanguage === 'ru';
+    // Get current language
+    let currentLang = 'en'; // default
+    if (window.electronAPI && window.electronAPI.storeGet) {
+        currentLang = await window.electronAPI.storeGet('appLanguage', 'en');
+    }
+    const isRussian = currentLang === 'ru';
+    
     content.innerHTML = getTelegramHelpContent(isRussian);
     
-    console.log('Showing modal, isRussian:', isRussian);
+    console.log('Showing modal, isRussian:', isRussian, 'currentLang:', currentLang);
     modal.style.display = 'block';
 }
 
