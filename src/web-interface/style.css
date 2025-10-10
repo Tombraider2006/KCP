@@ -796,9 +796,33 @@ body {
     box-shadow: none !important;
 }
 
+:root[data-theme="light"] .header h1 {
+    color: var(--text-primary);
+    text-shadow: none;
+}
+
 :root[data-theme="light"] .footer {
     background: transparent !important;
     border: none !important;
+}
+
+/* Весь текст на карточках темнее в светлой теме */
+:root[data-theme="light"] .printer-card h3,
+:root[data-theme="light"] .printer-card p,
+:root[data-theme="light"] .printer-card span,
+:root[data-theme="light"] .printer-info,
+:root[data-theme="light"] .printer-info div,
+:root[data-theme="light"] .printer-info span {
+    color: var(--text-primary) !important;
+    text-shadow: none !important;
+}
+
+:root[data-theme="light"] .printer-header h3 {
+    color: var(--text-primary) !important;
+}
+
+:root[data-theme="light"] .printer-status {
+    color: var(--text-secondary) !important;
 }
 
 :root[data-theme="light"] .compact-stat {
