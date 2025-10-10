@@ -1,6 +1,6 @@
 {
   "name": "3d-printer-control-panel",
-  "version": "1.5.27",
+  "version": "1.5.28",
   "description": "3D Printer Control Panel with Smart Temperature Monitoring for Klipper and Bambu Lab",
   "main": "src/main.js",
   "scripts": {
@@ -31,8 +31,11 @@
     "bambu-js": "^3.0.1",
     "basic-ftp": "^5.0.5",
     "chart.js": "^4.5.0",
+    "cors": "^2.8.5",
     "electron-store": "^8.1.0",
-    "mqtt": "^5.3.5"
+    "express": "^5.1.0",
+    "mqtt": "^5.3.5",
+    "socket.io": "^4.8.1"
   },
   "build": {
     "appId": "3D Printer Control Panel",

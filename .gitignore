@@ -1,52 +1,25 @@
 # Dependencies
 node_modules/
-node_modules.backup/
-package-lock.json
 
-# Build output
-dist-electron/
-dist-electron.backup/
+# Build outputs
 dist/
-build/
-
-# Electron build files
-*.exe
-*.dmg
-*.AppImage
-*.blockmap
-*.zip
-*.asar
+dist-electron/
+temp_artifacts/
 
 # OS files
 .DS_Store
 Thumbs.db
-desktop.ini
 
-# IDE files
+# Editor
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
 
 # Logs
-logs/
 *.log
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
-# Environment variables
-.env
-.env.local
-.env.*.local
-
-# Temporary files
-*.tmp
-*.temp
-.cache/
-
-# Debug files
-*.pdb
-*.map
-
+# Private server files
+server-telemetry/
+PRIVATE_NOTES.md

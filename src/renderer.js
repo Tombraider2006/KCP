@@ -110,6 +110,9 @@ let chartInstances = {};
 // Current analytics tab
 let currentAnalyticsTab = 'eff';
 
+// Current language
+let currentLang = 'en';
+
 // 1.4. Telegram Configuration
 let telegramConfig = {
     enabled: false,
@@ -171,6 +174,7 @@ async function initApp() {
         // Слушаем изменения языка
         if (window.electronAPI.onLanguageChanged) {
             window.electronAPI.onLanguageChanged(async (event, lang) => {
+                currentLang = lang; // Обновляем глобальную переменную
                 if (typeof updateLanguage === 'function') {
                     await updateLanguage(lang);
                 }
@@ -202,8 +206,14 @@ async function initApp() {
     const loadLanguagePromise = (async () => {
         if (window.electronAPI && window.electronAPI.storeGet) {
             const savedLang = await window.electronAPI.storeGet('appLanguage', null);
-            if (savedLang && typeof updateLanguage === 'function') {
-                await updateLanguage(savedLang);
+            if (savedLang) {
+                currentLang = savedLang; // Обновляем глобальную переменную
+                if (typeof updateLanguage === 'function') {
+                    await updateLanguage(savedLang);
+                }
+            } else {
+                // Если нет сохраненного языка, определяем системный
+                currentLang = navigator.language.toLowerCase().includes('ru') ? 'ru' : 'en';
             }
         }
     })();
@@ -526,23 +536,33 @@ function updateModalTranslations() {
         if (helpBtn) helpBtn.textContent = t('bambu_info_help');
     }
     
-    // Обновляем модальное окно Network Scanner
+    // Обновляем модальное окно Add & Manage Printers
     const networkScanModal = document.getElementById('networkScanModal');
     if (networkScanModal) {
         const title = networkScanModal.querySelector('#networkScanModalTitle');
-        const quickScanBtn = networkScanModal.querySelector('#quickScanBtn');
-        const fullScanBtn = networkScanModal.querySelector('#fullScanBtn');
+        const addManuallyBtn = networkScanModal.querySelector('#addManuallyBtn');
+        const startScanBtn = networkScanModal.querySelector('#startScanBtn');
+        const importFromFileBtn = networkScanModal.querySelector('#importFromFileBtn');
+        const exportToFileBtn = networkScanModal.querySelector('#exportToFileBtn');
+        const addManuallyHint = networkScanModal.querySelector('#addManuallyHint');
         const scanHint = networkScanModal.querySelector('#scanHint');
+        const importHint = networkScanModal.querySelector('#importHint');
+        const exportHint = networkScanModal.querySelector('#exportHint');
         const scanProgressText = networkScanModal.querySelector('#scanProgressText');
         const scanResultsTitle = networkScanModal.querySelector('#scanResultsTitle');
         const noResultsMessage = networkScanModal.querySelector('#noResultsMessage');
         const noResultsTip = networkScanModal.querySelector('#noResultsTip');
         const scanCloseBtn = networkScanModal.querySelector('#scanCloseBtn');
         
-        if (title) title.textContent = t('network_scanner');
-        if (quickScanBtn) quickScanBtn.textContent = t('quick_scan');
-        if (fullScanBtn) fullScanBtn.textContent = t('full_scan');
+        if (title) title.textContent = t('add_manage_printers');
+        if (addManuallyBtn) addManuallyBtn.textContent = t('add_manually');
+        if (startScanBtn) startScanBtn.textContent = t('start_scan');
+        if (importFromFileBtn) importFromFileBtn.textContent = t('import_btn');
+        if (exportToFileBtn) exportToFileBtn.textContent = t('export_btn');
+        if (addManuallyHint) addManuallyHint.textContent = t('add_manually_hint');
         if (scanHint) scanHint.textContent = t('scan_hint');
+        if (importHint) importHint.textContent = t('import_hint');
+        if (exportHint) exportHint.textContent = t('export_hint');
         if (scanProgressText) scanProgressText.textContent = t('scanning_network');
         if (scanResultsTitle) {
             const count = document.getElementById('foundPrintersCount')?.textContent || '0';
@@ -551,14 +571,25 @@ function updateModalTranslations() {
         if (noResultsMessage) noResultsMessage.textContent = t('no_printers_found');
         if (noResultsTip) noResultsTip.textContent = t('scan_tip');
         if (scanCloseBtn) scanCloseBtn.textContent = t('close');
+        
+        // Кнопка Help
+        const helpBtnText = networkScanModal.querySelector('#helpBtnText');
+        if (helpBtnText) helpBtnText.textContent = t('help');
     }
     
-    // Обновляем кнопку сканирования в header
-    const scanNetworkBtn = document.querySelector('[onclick="startNetworkScan()"]');
-    if (scanNetworkBtn) {
-        const scanText = scanNetworkBtn.querySelector('#scanNetworkBtnText');
-        if (scanText) scanText.textContent = t('scan_network').replace('🔍 ', '');
-    }
+    // Обновляем кнопку управления принтерами в header
+    const managePrintersBtn = document.getElementById('managePrintersBtnText');
+    if (managePrintersBtn) managePrintersBtn.textContent = t('manage_printers');
+    
+    // Обновляем кнопки в модальном окне сканирования
+    const selectAllBtn = document.getElementById('selectAllBtnText');
+    if (selectAllBtn) selectAllBtn.textContent = t('select_all');
+    
+    const deselectAllBtn = document.getElementById('deselectAllBtnText');
+    if (deselectAllBtn) deselectAllBtn.textContent = t('deselect_all');
+    
+    const batchAddAllBtn = document.getElementById('batchAddAllBtnText');
+    if (batchAddAllBtn) batchAddAllBtn.textContent = t('batch_add_all');
     
     // Обновляем модальное окно Clear Analytics
     updateClearAnalyticsModalTranslations();
@@ -706,6 +737,12 @@ function addPrinter() {
     updatePrintersDisplay();
     testPrinterConnection(printer, true);
     closeAddPrinterModal();
+    
+    // Обновляем список результатов сканирования, если панель сканирования открыта
+    const networkScanModal = document.getElementById('networkScanModal');
+    if (networkScanModal && networkScanModal.style.display === 'block' && foundPrintersInScan.length > 0) {
+        displayScanResults(foundPrintersInScan);
+    }
     
     const connInfo = type === 'klipper' ? `${ip}:${printer.port}` : `${ip} (${printer.serialNumber})`;
     addConsoleMessage(`✅ ${t('printer_added')} ${name} (${connInfo})`, 'info');
@@ -889,6 +926,185 @@ async function showBambuLabHelpModal() {
 function closeBambuLabHelpModal() {
     const modal = document.getElementById('bambuLabHelpModal');
     if (modal) modal.style.display = 'none';
+}
+
+// ===== WEB SERVER MANAGEMENT =====
+
+let webServerInfo = null;
+
+async function toggleWebServerModal() {
+    const modal = document.getElementById('webServerModal');
+    if (!modal) return;
+    
+    modal.style.display = 'flex';
+    await updateWebServerStatus();
+}
+
+function closeWebServerModal() {
+    const modal = document.getElementById('webServerModal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function updateWebServerStatus() {
+    try {
+        webServerInfo = await window.electronAPI.getWebServerInfo();
+        
+        const statusDot = document.getElementById('webServerStatusDot');
+        const statusText = document.getElementById('webServerStatusText');
+        const webServerInfo_div = document.getElementById('webServerInfo');
+        const toggleBtn = document.getElementById('webServerToggleBtn');
+        const toggleBtnText = document.getElementById('webServerToggleBtnText');
+        const openBtn = document.getElementById('webServerOpenBtn');
+        const urlElement = document.getElementById('webServerUrl');
+        const clientsElement = document.getElementById('webServerClients');
+        const portInput = document.getElementById('webServerPort');
+        const webServerBtn = document.getElementById('webServerBtn');
+        
+        if (webServerInfo.isRunning) {
+            // Сервер запущен
+            statusDot.className = 'status-dot active';
+            statusText.setAttribute('data-i18n', 'web_server_status_running');
+            statusText.style.color = '#4CAF50';
+            statusText.style.fontWeight = '600';
+            webServerInfo_div.style.display = 'block';
+            
+            // Получаем все сетевые адреса
+            const networkInterfaces = await window.electronAPI.getNetworkInterfaces();
+            const port = webServerInfo.port;
+            
+            // Формируем список адресов
+            let urlsHtml = `<strong>Localhost:</strong> <a href="http://localhost:${port}" onclick="openWebInterfaceLink(event)" style="color: #4dabf7;">http://localhost:${port}</a><br>`;
+            
+            if (networkInterfaces && networkInterfaces.length > 0) {
+                networkInterfaces.forEach(iface => {
+                    urlsHtml += `<strong>${iface.name}:</strong> <a href="http://${iface.address}:${port}" onclick="window.electronAPI.openExternalLink('http://${iface.address}:${port}')" style="color: #4dabf7;">http://${iface.address}:${port}</a><br>`;
+                });
+            }
+            
+            urlElement.innerHTML = urlsHtml;
+            clientsElement.textContent = webServerInfo.connectedClients || 0;
+            toggleBtn.className = 'btn btn-error';
+            toggleBtnText.setAttribute('data-i18n', 'web_server_btn_stop');
+            openBtn.style.display = 'inline-block';
+            portInput.disabled = true;
+            if (webServerBtn) webServerBtn.classList.add('active');
+        } else {
+            // Сервер остановлен
+            statusDot.className = 'status-dot inactive';
+            statusText.setAttribute('data-i18n', 'web_server_status_stopped');
+            statusText.style.color = '#f44336';
+            statusText.style.fontWeight = '600';
+            webServerInfo_div.style.display = 'none';
+            toggleBtn.className = 'btn btn-success';
+            toggleBtnText.setAttribute('data-i18n', 'web_server_btn_start');
+            openBtn.style.display = 'none';
+            portInput.disabled = false;
+            if (webServerBtn) webServerBtn.classList.remove('active');
+        }
+        
+        // Устанавливаем порт
+        if (webServerInfo.port) {
+            portInput.value = webServerInfo.port;
+        }
+        
+        // Применяем переводы только к элементам web-сервера
+        const i18nElements = document.querySelectorAll('#webServerModal [data-i18n]');
+        i18nElements.forEach(element => {
+            const key = element.getAttribute('data-i18n');
+            if (key && typeof t === 'function') {
+                const translation = t(key);
+                if (translation && translation !== key) {
+                    element.textContent = translation;
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error updating web server status:', error);
+        addConsoleMessage('❌ Error updating web server status: ' + error.message, 'error');
+    }
+}
+
+async function toggleWebServer() {
+    const toggleBtn = document.getElementById('webServerToggleBtn');
+    const toggleBtnText = document.getElementById('webServerToggleBtnText');
+    
+    // Блокируем кнопку
+    toggleBtn.disabled = true;
+    const originalDataI18n = toggleBtnText.getAttribute('data-i18n');
+    toggleBtnText.setAttribute('data-i18n', 'web_server_btn_processing');
+    toggleBtnText.textContent = t('web_server_btn_processing'); // Применяем перевод
+    
+    try {
+        if (webServerInfo && webServerInfo.isRunning) {
+            // Останавливаем сервер
+            const result = await window.electronAPI.stopWebServer();
+            if (result.success) {
+                addConsoleMessage('🛑 ' + (currentLang === 'ru' ? 'Web-сервер остановлен' : 'Web server stopped'), 'success');
+            } else {
+                addConsoleMessage('❌ ' + (currentLang === 'ru' ? 'Ошибка остановки: ' : 'Stop error: ') + result.error, 'error');
+            }
+        } else {
+            // Запускаем сервер
+            const port = parseInt(document.getElementById('webServerPort').value) || 8000;
+            const result = await window.electronAPI.startWebServer(port);
+            
+            if (result.success) {
+                addConsoleMessage('✅ ' + (currentLang === 'ru' ? 'Web-сервер запущен на ' : 'Web server started at ') + result.info.url, 'success');
+            } else {
+                addConsoleMessage('❌ ' + (currentLang === 'ru' ? 'Ошибка запуска: ' : 'Start error: ') + result.error, 'error');
+            }
+        }
+        
+        // Обновляем статус (он сам обновит переводы)
+        await updateWebServerStatus();
+    } catch (error) {
+        console.error('Error toggling web server:', error);
+        addConsoleMessage('❌ Error: ' + error.message, 'error');
+    } finally {
+        // Разблокируем кнопку
+        toggleBtn.disabled = false;
+    }
+}
+
+async function openWebInterfaceLink(event) {
+    if (event) {
+        event.preventDefault();
+    }
+    
+    try {
+        const result = await window.electronAPI.openWebInterface();
+        if (result && result.success) {
+            addConsoleMessage('✅ ' + (currentLang === 'ru' ? 'Открыт web-интерфейс' : 'Web interface opened'), 'success');
+        } else {
+            addConsoleMessage('❌ ' + (currentLang === 'ru' ? 'Web-сервер не запущен' : 'Web server is not running'), 'error');
+        }
+    } catch (error) {
+        console.error('Error opening web interface:', error);
+        addConsoleMessage('❌ Error opening web interface: ' + error.message, 'error');
+    }
+}
+
+async function openWebServerHelp() {
+    try {
+        // Открываем документацию на GitHub
+        const helpUrl = 'https://github.com/Tombraider2006/KCP/blob/main/docs/WEB_SERVER.md';
+        await window.electronAPI.openExternalLink(helpUrl);
+        addConsoleMessage('📖 ' + (currentLang === 'ru' ? 'Открыта документация по web-серверу' : 'Web server documentation opened'), 'info');
+    } catch (error) {
+        console.error('Error opening help:', error);
+        addConsoleMessage('❌ ' + (currentLang === 'ru' ? 'Ошибка открытия документации' : 'Error opening documentation'), 'error');
+    }
+}
+
+// Слушаем обновления статуса web-сервера от main процесса
+if (window.electronAPI && window.electronAPI.onWebServerStatus) {
+    window.electronAPI.onWebServerStatus((info) => {
+        webServerInfo = info;
+        const modal = document.getElementById('webServerModal');
+        if (modal && modal.style.display === 'flex') {
+            updateWebServerStatus();
+        }
+    });
 }
 
 function getTelegramHelpContent(isRussian) {
@@ -2477,6 +2693,24 @@ async function updatePrinterData(printer) {
             debouncedSortPrinters();
             debouncedUpdatePrintersCounter();
             
+            // Отправляем данные в web-сервер
+            if (window.electronAPI && window.electronAPI.updatePrinterData) {
+                const state = printer.data?.print_stats?.state || printer.data?.display_status?.state || 'standby';
+                const printerStatusData = {
+                    state: state,
+                    stateText: state,
+                    progress: printer.data?.virtual_sdcard?.progress ? Math.round(printer.data.virtual_sdcard.progress * 100) : 0,
+                    fileName: printer.data?.print_stats?.filename || '',
+                    temps: {
+                        nozzle: printer.data?.extruder?.temperature || 0,
+                        nozzle_target: printer.data?.extruder?.target || 0,
+                        bed: printer.data?.heater_bed?.temperature || 0,
+                        bed_target: printer.data?.heater_bed?.target || 0
+                    }
+                };
+                window.electronAPI.updatePrinterData(printer.id, printerStatusData);
+            }
+            
             debugPrinterData(printer, 'HTTP update');
         }
     } catch (error) {
@@ -2576,6 +2810,11 @@ function updatePrinterStatus(printer) {
     const hasActiveFile = !!(filename && filename !== 'null' && filename !== '' && filename !== null) || 
                          !!(filePath && filePath !== 'null' && filePath !== '' && filePath !== null);
     
+    // Проверяем, действительно ли идет печать (не завершена)
+    const isActivelyPrinting = isActive === true || 
+                               (progress !== undefined && progress > 0 && progress < 1) ||
+                               (hasActiveFile && isActive !== false && (progress === undefined || progress < 1));
+    
     if (state === 'printing') {
         printer.status = 'printing';
     } 
@@ -2589,14 +2828,14 @@ function updatePrinterStatus(printer) {
         printer.status = 'complete';
     }
     else if (state === 'ready' || state === 'standby' || state === 'cancelled') {
-        if (isActive === true || (progress !== undefined && progress > 0 && progress < 1) || hasActiveFile) {
+        if (isActivelyPrinting) {
             printer.status = 'printing';
         } else {
             printer.status = 'ready';
         }
     }
     else {
-        if (isActive === true || (progress !== undefined && progress > 0 && progress < 1) || hasActiveFile) {
+        if (isActivelyPrinting) {
             printer.status = 'printing';
         } else {
             printer.status = printer.connectionType ? 'ready' : 'offline';
@@ -2604,7 +2843,7 @@ function updatePrinterStatus(printer) {
     }
     
     const progressPercent = getProgressNumber(printer);
-    console.log(`Printer ${printer.name}: state=${state}, status=${printer.status}, progress=${progressPercent}%, filename=${filename}, hasActiveFile=${hasActiveFile}`);
+    console.log(`Printer ${printer.name}: state=${state}, status=${printer.status}, progress=${progressPercent}%, filename=${filename}, hasActiveFile=${hasActiveFile}, isActivelyPrinting=${isActivelyPrinting}`);
 }
 
 // ============================================================================
@@ -4448,9 +4687,35 @@ function startPeriodicUpdates() {
                             updatePrinterDisplay(printer);
                             debouncedSortPrinters();
                             updatePrintersDisplay();
+                            
+                            // Отправляем данные в web-сервер в правильном формате
+                            if (window.electronAPI && window.electronAPI.updatePrinterData) {
+                                const printerStatusData = {
+                                    state: freshData.status || 'unknown',
+                                    stateText: freshData.status || 'Unknown',
+                                    progress: freshData.data?.progress || 0,
+                                    fileName: freshData.data?.fileName || '',
+                                    temps: freshData.data?.temps || { nozzle: 0, bed: 0 }
+                                };
+                                window.electronAPI.updatePrinterData(printer.id, printerStatusData);
+                            }
                         }
                     } catch (error) {
                         console.log('Could not get fresh Bambu data:', error);
+                    }
+                } else if (printer.status === 'offline') {
+                    // Bambu Lab принтер offline - отправляем offline статус в web-сервер
+                    // только при изменении статуса (оптимизация)
+                    if (window.electronAPI && window.electronAPI.updatePrinterData) {
+                        const offlineStatusData = {
+                            state: 'offline',
+                            stateText: 'Offline',
+                            progress: 0,
+                            fileName: '',
+                            temps: { nozzle: 0, bed: 0 }
+                        };
+                        // Отправляем только при изменении статуса
+                        window.electronAPI.updatePrinterData(printer.id, offlineStatusData);
                     }
                 }
             } else if (printer.status === 'offline' || printer.connectionType === 'HTTP') {
@@ -5175,7 +5440,204 @@ function closeNetworkScanModal() {
     scanInProgress = false;
 }
 
-async function executeScan(scanType) {
+/**
+ * Показывает меню помощи с полезными ссылками
+ */
+function showPrinterManagementHelp() {
+    const isRussian = BROWSER_LANGUAGE === 'ru';
+    
+    const helpHTML = isRussian ? `
+        <div style="text-align: left;">
+            <h4 style="color: #00d4ff; margin-bottom: 15px;">🔧 Управление принтерами</h4>
+            
+            <div style="margin-bottom: 20px;">
+                <h5 style="color: #00d4ff; margin-bottom: 10px;">➕ Ручное добавление</h5>
+                <p style="color: #ccc; font-size: 14px; line-height: 1.6; margin-bottom: 10px;">
+                    Используйте, если вы знаете IP адрес принтера. Подходит для добавления одного или нескольких принтеров.
+                </p>
+                <ul style="color: #888; font-size: 13px; line-height: 1.6;">
+                    <li>Укажите имя принтера</li>
+                    <li>Введите IP адрес (например: 192.168.1.100)</li>
+                    <li>Выберите тип: Klipper или Bambu Lab</li>
+                    <li>Для Bambu Lab: введите access code и serial number</li>
+                </ul>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h5 style="color: #00d4ff; margin-bottom: 10px;">🔍 Сканирование сети</h5>
+                <p style="color: #ccc; font-size: 14px; line-height: 1.6; margin-bottom: 10px;">
+                    Автоматически находит все Klipper принтеры в вашей сети. Процесс занимает 1-2 минуты.
+                </p>
+                <ul style="color: #888; font-size: 13px; line-height: 1.6;">
+                    <li>Сканирует диапазон IP адресов в вашей подсети</li>
+                    <li>Проверяет порт 7125 (стандартный для Moonraker/Klipper)</li>
+                    <li>Показывает найденные принтеры с возможностью выбора</li>
+                    <li>Можно добавить все сразу или выбрать нужные</li>
+                </ul>
+                <p style="color: #fd7e14; font-size: 13px; margin-top: 10px;">
+                    ⚠️ <strong>Примечание:</strong> Bambu Lab принтеры не обнаруживаются сканированием и должны добавляться вручную.
+                </p>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h5 style="color: #00d4ff; margin-bottom: 10px;">📥 Импорт из файла</h5>
+                <p style="color: #ccc; font-size: 14px; line-height: 1.6; margin-bottom: 10px;">
+                    Восстановление списка принтеров из ранее созданной резервной копии (JSON файл).
+                </p>
+                <ul style="color: #888; font-size: 13px; line-height: 1.6;">
+                    <li>Загружает список принтеров из файла</li>
+                    <li>Объединяет с существующими принтерами (без дублирования)</li>
+                    <li>Полезно при переносе настроек на новый компьютер</li>
+                    <li>Сохраняет все настройки: IP, порты, типы, access codes</li>
+                </ul>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h5 style="color: #00d4ff; margin-bottom: 10px;">📤 Экспорт в файл</h5>
+                <p style="color: #ccc; font-size: 14px; line-height: 1.6; margin-bottom: 10px;">
+                    Создание резервной копии списка всех принтеров для сохранения или переноса.
+                </p>
+                <ul style="color: #888; font-size: 13px; line-height: 1.6;">
+                    <li>Сохраняет все добавленные принтеры в JSON файл</li>
+                    <li>Включает все настройки и параметры</li>
+                    <li>Рекомендуется создавать перед переустановкой ОС</li>
+                    <li>Можно использовать для резервного копирования</li>
+                </ul>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <h5 style="color: #00d4ff; margin-bottom: 10px;">🔍 Проблемы с подключением?</h5>
+                <ul style="color: #ccc; font-size: 14px; line-height: 1.8;">
+                    <li>Убедитесь, что принтер и компьютер в одной сети</li>
+                    <li>Проверьте IP адрес принтера в его настройках (экран или веб-интерфейс)</li>
+                    <li>Для Klipper: проверьте доступность Moonraker (порт 7125)</li>
+                    <li>Для Bambu Lab: включите режим разработчика и получите access code</li>
+                    <li>Проверьте, что порты не заблокированы файрволом</li>
+                </ul>
+            </div>
+            
+            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #333;">
+                <button class="btn btn-primary" onclick="window.electronAPI.send('show-bambu-help'); closePrinterManagementHelp();" style="width: 100%; margin-bottom: 10px;">
+                    🎋 Подробная инструкция по Bambu Lab
+                </button>
+            </div>
+        </div>
+    ` : `
+        <div style="text-align: left;">
+            <h4 style="color: #00d4ff; margin-bottom: 15px;">🔧 Printer Management</h4>
+            
+            <div style="margin-bottom: 20px;">
+                <h5 style="color: #00d4ff; margin-bottom: 10px;">➕ Manual Add</h5>
+                <p style="color: #ccc; font-size: 14px; line-height: 1.6; margin-bottom: 10px;">
+                    Use when you know the printer's IP address. Perfect for adding one or multiple printers.
+                </p>
+                <ul style="color: #888; font-size: 13px; line-height: 1.6;">
+                    <li>Specify printer name</li>
+                    <li>Enter IP address (e.g., 192.168.1.100)</li>
+                    <li>Select type: Klipper or Bambu Lab</li>
+                    <li>For Bambu Lab: enter access code and serial number</li>
+                </ul>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h5 style="color: #00d4ff; margin-bottom: 10px;">🔍 Network Scan</h5>
+                <p style="color: #ccc; font-size: 14px; line-height: 1.6; margin-bottom: 10px;">
+                    Automatically finds all Klipper printers on your network. Takes 1-2 minutes to complete.
+                </p>
+                <ul style="color: #888; font-size: 13px; line-height: 1.6;">
+                    <li>Scans IP range in your subnet</li>
+                    <li>Checks port 7125 (standard for Moonraker/Klipper)</li>
+                    <li>Shows found printers with selection option</li>
+                    <li>Can add all at once or select specific ones</li>
+                </ul>
+                <p style="color: #fd7e14; font-size: 13px; margin-top: 10px;">
+                    ⚠️ <strong>Note:</strong> Bambu Lab printers are not discoverable via scan and must be added manually.
+                </p>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h5 style="color: #00d4ff; margin-bottom: 10px;">📥 Import from File</h5>
+                <p style="color: #ccc; font-size: 14px; line-height: 1.6; margin-bottom: 10px;">
+                    Restore printer list from a previously created backup (JSON file).
+                </p>
+                <ul style="color: #888; font-size: 13px; line-height: 1.6;">
+                    <li>Loads printer list from file</li>
+                    <li>Merges with existing printers (no duplicates)</li>
+                    <li>Useful when transferring settings to new computer</li>
+                    <li>Preserves all settings: IPs, ports, types, access codes</li>
+                </ul>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h5 style="color: #00d4ff; margin-bottom: 10px;">📤 Export to File</h5>
+                <p style="color: #ccc; font-size: 14px; line-height: 1.6; margin-bottom: 10px;">
+                    Create a backup of all printers for saving or transferring.
+                </p>
+                <ul style="color: #888; font-size: 13px; line-height: 1.6;">
+                    <li>Saves all added printers to JSON file</li>
+                    <li>Includes all settings and parameters</li>
+                    <li>Recommended before OS reinstallation</li>
+                    <li>Can be used for regular backups</li>
+                </ul>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <h5 style="color: #00d4ff; margin-bottom: 10px;">🔍 Connection Issues?</h5>
+                <ul style="color: #ccc; font-size: 14px; line-height: 1.8;">
+                    <li>Make sure printer and PC are on same network</li>
+                    <li>Check printer IP address in its settings (screen or web interface)</li>
+                    <li>For Klipper: verify Moonraker accessibility (port 7125)</li>
+                    <li>For Bambu Lab: enable Developer Mode and get access code</li>
+                    <li>Check that ports are not blocked by firewall</li>
+                </ul>
+            </div>
+            
+            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #333;">
+                <button class="btn btn-primary" onclick="window.electronAPI.send('show-bambu-help'); closePrinterManagementHelp();" style="width: 100%; margin-bottom: 10px;">
+                    🎋 Detailed Bambu Lab Instructions
+                </button>
+            </div>
+        </div>
+    `;
+    
+    // Создаем простое модальное окно
+    const existingHelp = document.getElementById('printerManagementHelpModal');
+    if (existingHelp) {
+        existingHelp.remove();
+    }
+    
+    const helpModal = document.createElement('div');
+    helpModal.id = 'printerManagementHelpModal';
+    helpModal.className = 'modal';
+    helpModal.style.display = 'block';
+    helpModal.innerHTML = `
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>${isRussian ? '❓ Справка' : '❓ Help'}</h3>
+                <span class="close" onclick="closePrinterManagementHelp()">&times;</span>
+            </div>
+            <div class="modal-body">
+                ${helpHTML}
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closePrinterManagementHelp()">
+                    ${isRussian ? 'Закрыть' : 'Close'}
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(helpModal);
+}
+
+function closePrinterManagementHelp() {
+    const modal = document.getElementById('printerManagementHelpModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+async function executeScan() {
     if (scanInProgress) {
         addConsoleMessage(t('scan_already_running') || '⚠️ Scan is already in progress', 'warning');
         return;
@@ -5199,8 +5661,7 @@ async function executeScan(scanType) {
     document.getElementById('scanProgressBar').style.width = '0%';
     document.getElementById('scanProgressDetails').textContent = '0 / 0 IPs checked';
     
-    const scanTypeText = scanType === 'quick' ? (t('quick_scan') || 'Quick Scan') : (t('full_scan') || 'Full Scan');
-    addConsoleMessage(`🔍 ${t('scan_started') || 'Network scan started'}: ${scanTypeText}`, 'info');
+    addConsoleMessage(`🔍 ${t('scan_started') || 'Network scan started'}`, 'info');
     
     // Подписываемся на события прогресса
     if (window.electronAPI.onScanProgress) {
@@ -5213,7 +5674,7 @@ async function executeScan(scanType) {
     }
     
     try {
-        const result = await window.electronAPI.scanNetwork(scanType);
+        const result = await window.electronAPI.scanNetwork('full');
         
         foundPrintersInScan = result;
         
@@ -5252,6 +5713,9 @@ function displayScanResults(scanResults) {
     const resultsList = document.getElementById('scanResultsList');
     resultsList.innerHTML = '';
     
+    // Сбрасываем выбор
+    selectedPrintersForBatch.clear();
+    
     scanResults.forEach(printer => {
         const item = document.createElement('div');
         item.className = 'scan-result-item';
@@ -5274,6 +5738,11 @@ function displayScanResults(scanResults) {
             detailsHTML += ` <span style="color: #888;">(${t('requires_credentials') || 'requires access code & serial'})</span>`;
         }
         
+        // Checkbox для пакетного добавления
+        const checkboxHTML = alreadyAdded 
+            ? `<input type="checkbox" class="scan-result-checkbox" disabled style="opacity: 0.3; cursor: not-allowed;">`
+            : `<input type="checkbox" class="scan-result-checkbox" data-ip="${printer.ip}" onchange="togglePrinterSelection(this, '${printer.ip}')">`;
+        
         const addButtonHTML = alreadyAdded 
             ? `<button class="btn btn-secondary btn-small" disabled style="opacity: 0.5; cursor: not-allowed;">
                    ✓ ${t('already_added') || 'Already Added'}
@@ -5283,6 +5752,9 @@ function displayScanResults(scanResults) {
                </button>`;
         
         item.innerHTML = `
+            <div class="scan-result-checkbox-wrapper">
+                ${checkboxHTML}
+            </div>
             <div class="scan-result-info">
                 <div class="scan-result-name">${printer.name}${isExisting}</div>
                 <div class="scan-result-details">${detailsHTML}</div>
@@ -5294,13 +5766,13 @@ function displayScanResults(scanResults) {
         
         resultsList.appendChild(item);
     });
+    
+    // Обновляем состояние кнопок пакетного добавления
+    updateBatchAddButtons();
 }
 
 function addPrinterFromScan(printerData) {
-    // Закрываем модальное окно сканирования
-    closeNetworkScanModal();
-    
-    // Открываем модальное окно добавления принтера
+    // Открываем модальное окно добавления принтера (панель сканирования остается открытой)
     openAddPrinterModal();
     
     // Заполняем поля данными из сканирования
@@ -5319,6 +5791,350 @@ function addPrinterFromScan(printerData) {
     addConsoleMessage(`📝 ${t('printer_info_filled') || 'Printer information filled from scan'}`, 'info');
 }
 
+// ===== BATCH ADD AND EXPORT/IMPORT FUNCTIONS =====
+
+// Переменная для хранения выбранных принтеров для пакетного добавления
+let selectedPrintersForBatch = new Set();
+
+/**
+ * Генерирует уникальное имя принтера с автонумерацией при дубликатах
+ */
+function generateUniquePrinterName(baseName) {
+    // Проверяем, есть ли принтер с таким именем
+    let uniqueName = baseName;
+    let counter = 1;
+    
+    while (printers.some(p => p.name === uniqueName)) {
+        uniqueName = `${baseName} (${counter})`;
+        counter++;
+    }
+    
+    return uniqueName;
+}
+
+/**
+ * Toggle выбора принтера для пакетного добавления
+ */
+function togglePrinterSelection(checkbox, printerIP) {
+    if (checkbox.checked) {
+        selectedPrintersForBatch.add(printerIP);
+    } else {
+        selectedPrintersForBatch.delete(printerIP);
+    }
+    updateBatchAddButtons();
+}
+
+/**
+ * Выбрать все принтеры для пакетного добавления
+ */
+function selectAllPrinters() {
+    const checkboxes = document.querySelectorAll('.scan-result-checkbox:not(:disabled)');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+        const printerIP = checkbox.dataset.ip;
+        selectedPrintersForBatch.add(printerIP);
+    });
+    updateBatchAddButtons();
+}
+
+/**
+ * Снять выбор со всех принтеров
+ */
+function deselectAllPrinters() {
+    const checkboxes = document.querySelectorAll('.scan-result-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+        const printerIP = checkbox.dataset.ip;
+        selectedPrintersForBatch.delete(printerIP);
+    });
+    updateBatchAddButtons();
+}
+
+/**
+ * Обновляет состояние кнопок пакетного добавления
+ */
+function updateBatchAddButtons() {
+    const batchAddBtn = document.getElementById('batchAddSelectedBtn');
+    const selectAllBtn = document.getElementById('selectAllPrintersBtn');
+    const deselectAllBtn = document.getElementById('deselectAllPrintersBtn');
+    const selectedCount = document.getElementById('selectedPrintersCount');
+    
+    const count = selectedPrintersForBatch.size;
+    
+    if (batchAddBtn) {
+        batchAddBtn.disabled = count === 0;
+        batchAddBtn.textContent = `➕ ${t('batch_add_selected')} (${count})`;
+    }
+    
+    if (selectedCount) {
+        selectedCount.textContent = `${t('selected_count')}: ${count}`;
+        selectedCount.style.display = count > 0 ? 'inline' : 'none';
+    }
+}
+
+/**
+ * Пакетное добавление выбранных принтеров
+ */
+async function batchAddSelectedPrinters() {
+    if (selectedPrintersForBatch.size === 0) {
+        addConsoleMessage(t('no_printers_selected'), 'warning');
+        return;
+    }
+    
+    const printersToAdd = foundPrintersInScan.filter(p => 
+        selectedPrintersForBatch.has(p.ip)
+    );
+    
+    if (printersToAdd.length === 0) {
+        addConsoleMessage(t('no_printers_selected'), 'warning');
+        return;
+    }
+    
+    let addedCount = 0;
+    
+    for (const printerData of printersToAdd) {
+        // Пропускаем уже добавленные принтеры
+        if (printers.some(p => p.ip === printerData.ip)) {
+            continue;
+        }
+        
+        // Генерируем уникальное имя
+        const uniqueName = generateUniquePrinterName(printerData.name);
+        
+        const printer = {
+            id: generateId(),
+            name: uniqueName,
+            ip: printerData.ip,
+            type: printerData.type || 'klipper'
+        };
+        
+        // Klipper specific fields
+        if (printerData.type === 'klipper') {
+            printer.port = printerData.port || 7125;
+            printer.webPort = printerData.webPort || 80;
+        }
+        
+        printers.push(printer);
+        addedCount++;
+        
+        addConsoleMessage(`✅ ${t('printer_added')} ${printer.name}`, 'success');
+    }
+    
+    if (addedCount > 0) {
+        await savePrintersToStorage();
+        sortPrinters();
+        updatePrintersDisplay();
+        
+        // Тестируем подключение к добавленным принтерам
+        for (const printerData of printersToAdd) {
+            const printer = printers.find(p => p.ip === printerData.ip);
+            if (printer) {
+                testPrinterConnection(printer, true);
+            }
+        }
+        
+        addConsoleMessage(`🎉 ${t('batch_add_success')}: ${addedCount}`, 'success');
+        
+        // Обновляем список результатов сканирования
+        displayScanResults(foundPrintersInScan);
+        
+        // Очищаем выбор
+        selectedPrintersForBatch.clear();
+        updateBatchAddButtons();
+    }
+}
+
+/**
+ * Пакетное добавление всех найденных принтеров
+ */
+async function batchAddAllPrinters() {
+    if (foundPrintersInScan.length === 0) {
+        addConsoleMessage(t('no_printers_found'), 'warning');
+        return;
+    }
+    
+    // Выбираем все принтеры, которые еще не добавлены
+    selectedPrintersForBatch.clear();
+    foundPrintersInScan.forEach(printer => {
+        if (!printers.some(p => p.ip === printer.ip)) {
+            selectedPrintersForBatch.add(printer.ip);
+        }
+    });
+    
+    await batchAddSelectedPrinters();
+}
+
+/**
+ * Экспорт конфигурации принтеров в JSON файл
+ */
+async function exportPrinters() {
+    if (printers.length === 0) {
+        addConsoleMessage(t('no_printers'), 'warning');
+        return;
+    }
+    
+    try {
+        // Подготавливаем данные для экспорта
+        const exportData = {
+            version: '1.0',
+            exportDate: new Date().toISOString(),
+            printers: await Promise.all(printers.map(async (p) => {
+                const data = {
+                    name: p.name,
+                    ip: p.ip,
+                    type: p.type || 'klipper'
+                };
+                
+                // Klipper-specific fields
+                if (p.type === 'klipper') {
+                    data.port = p.port || 7125;
+                    if (p.webPort) {
+                        data.webPort = p.webPort;
+                    }
+                }
+                
+                // Bambu Lab specific fields
+                if (p.type === 'bambu') {
+                    if (p.accessCode && window.electronAPI && window.electronAPI.encryptData) {
+                        data.accessCode = await window.electronAPI.encryptData(p.accessCode);
+                    }
+                    if (p.serialNumber && window.electronAPI && window.electronAPI.encryptData) {
+                        data.serialNumber = await window.electronAPI.encryptData(p.serialNumber);
+                    }
+                }
+                
+                return data;
+            }))
+        };
+        
+        // Создаем Blob и скачиваем файл
+        const jsonStr = JSON.stringify(exportData, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `3d-printers-config-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        addConsoleMessage(`✅ ${t('printers_exported')}: ${printers.length}`, 'success');
+    } catch (error) {
+        console.error('Export error:', error);
+        addConsoleMessage(`❌ ${t('import_error')}: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Импорт конфигурации принтеров из JSON файла
+ */
+async function importPrinters() {
+    try {
+        // Создаем элемент input для выбора файла
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        
+        input.onchange = async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            try {
+                const text = await file.text();
+                const importData = JSON.parse(text);
+                
+                // Проверяем формат файла
+                if (!importData.version || !Array.isArray(importData.printers)) {
+                    throw new Error(t('import_file_invalid'));
+                }
+                
+                let importedCount = 0;
+                let skippedCount = 0;
+                
+                for (const printerData of importData.printers) {
+                    // Проверяем, не добавлен ли уже этот принтер (по IP)
+                    if (printers.some(p => p.ip === printerData.ip)) {
+                        skippedCount++;
+                        continue;
+                    }
+                    
+                    // Генерируем уникальное имя
+                    const uniqueName = generateUniquePrinterName(printerData.name);
+                    
+                    const printer = {
+                        id: generateId(),
+                        name: uniqueName,
+                        ip: printerData.ip,
+                        type: printerData.type || 'klipper'
+                    };
+                    
+                    // Klipper specific fields
+                    if (printerData.type === 'klipper') {
+                        printer.port = printerData.port || 7125;
+                        if (printerData.webPort) {
+                            printer.webPort = printerData.webPort;
+                        }
+                    }
+                    
+                    // Bambu Lab specific fields
+                    if (printerData.type === 'bambu') {
+                        if (printerData.accessCode && window.electronAPI && window.electronAPI.decryptData) {
+                            try {
+                                printer.accessCode = await window.electronAPI.decryptData(printerData.accessCode);
+                            } catch (e) {
+                                // Если расшифровка не удалась, пропускаем поле
+                                console.warn('Failed to decrypt accessCode:', e);
+                            }
+                        }
+                        if (printerData.serialNumber && window.electronAPI && window.electronAPI.decryptData) {
+                            try {
+                                printer.serialNumber = await window.electronAPI.decryptData(printerData.serialNumber);
+                            } catch (e) {
+                                // Если расшифровка не удалась, пропускаем поле
+                                console.warn('Failed to decrypt serialNumber:', e);
+                            }
+                        }
+                    }
+                    
+                    printers.push(printer);
+                    importedCount++;
+                    
+                    addConsoleMessage(`✅ ${t('printer_added')} ${printer.name}`, 'success');
+                }
+                
+                if (importedCount > 0) {
+                    await savePrintersToStorage();
+                    sortPrinters();
+                    updatePrintersDisplay();
+                    
+                    // Тестируем подключение к импортированным принтерам
+                    for (const printer of printers.slice(-importedCount)) {
+                        testPrinterConnection(printer, true);
+                    }
+                    
+                    let message = `🎉 ${t('printers_imported')}: ${importedCount}`;
+                    if (skippedCount > 0) {
+                        message += ` (${t('already_added')}: ${skippedCount})`;
+                    }
+                    addConsoleMessage(message, 'success');
+                } else {
+                    addConsoleMessage(`ℹ️ ${t('already_added')}: ${skippedCount}`, 'info');
+                }
+            } catch (error) {
+                console.error('Import error:', error);
+                addConsoleMessage(`❌ ${t('import_error')}: ${error.message}`, 'error');
+            }
+        };
+        
+        input.click();
+    } catch (error) {
+        console.error('Import error:', error);
+        addConsoleMessage(`❌ ${t('import_error')}: ${error.message}`, 'error');
+    }
+}
+
 // ===== ОБРАБОТЧИКИ СОБЫТИЙ =====
 
 window.onclick = function(event) {
@@ -5330,12 +6146,14 @@ window.onclick = function(event) {
     const ineffCommentModal = document.getElementById('inefficiencyCommentModal');
     const tempSensorsModal = document.getElementById('tempSensorsModal');
     const networkScanModal = document.getElementById('networkScanModal');
+    const helpModal = document.getElementById('printerManagementHelpModal');
     
     if (event.target === addModal) closeAddPrinterModal();
     if (event.target === editModal) closeEditPrinterModal();
     if (event.target === telegramModal) closeTelegramSettingsModal();
     if (event.target === bambuInfoModal) closeBambuInfoModal();
     if (event.target === clearAnalyticsModal) closeClearAnalyticsModal();
+    if (event.target === helpModal) closePrinterManagementHelp();
     if (event.target === ineffCommentModal) closeInefficiencyCommentModal();
     if (event.target === tempSensorsModal) closeTempSensorsModal();
     if (event.target === networkScanModal) closeNetworkScanModal();

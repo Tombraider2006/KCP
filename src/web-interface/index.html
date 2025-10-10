@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Printer Control Panel - Web Interface</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Заголовок -->
+        <header class="header">
+            <div class="header-content">
+                <h1>🖨️ 3D Printer Control Panel</h1>
+                <div class="header-right">
+                    <!-- Компактные счетчики -->
+                    <div class="compact-stats">
+                        <span class="compact-stat">🖨️ <strong id="totalPrinters">-</strong></span>
+                        <span class="compact-stat">🟢 <strong id="onlinePrinters">-</strong></span>
+                        <span class="compact-stat">⚙️ <strong id="printingPrinters">-</strong></span>
+                        <span class="compact-stat">⏸️ <strong id="pausedPrinters">-</strong></span>
+                        <span class="compact-stat connection-status-inline" id="connectionStatus">
+                            <span class="status-indicator"></span>
+                            <strong>Подключено</strong>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Главная панель -->
+        <main class="main-content">
+
+            <!-- Список принтеров -->
+            <div class="printers-section">
+                <h2>Принтеры</h2>
+
+                <div class="printers-grid" id="printersGrid">
+                    <!-- Принтеры будут загружены динамически -->
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Загрузка данных...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Подвал -->
+        <footer class="footer">
+            <p>3D Printer Control Panel v1.5.28 | Web Interface</p>
+            <p>
+                <a href="https://github.com/Tombraider2006/KCP" target="_blank">GitHub</a> | 
+                <a href="/api" target="_blank">API Docs</a>
+            </p>
+        </footer>
+    </div>
+
+    <!-- Модальное окно для деталей принтера -->
+    <div class="modal" id="printerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Детали принтера</h2>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Содержимое будет загружено динамически -->
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+
+

@@ -11,15 +11,27 @@
     <div class="container">
         <header>
             <div class="header-main">
-                <h1>🖨️ Tom Tomich's 3D Printer Control Panel</h1>
-                <div class="app-version" id="appVersion">v—</div>
+                <div class="header-title">
+                    <h1>🖨️ Tom Tomich's 3D Printer Control Panel</h1>
+                    <div class="app-version" id="appVersion">v—</div>
+                </div>
+                <div class="printers-counter">
+                    <span class="counter printing">🖨️ <span id="count-printing">0</span></span>
+                    <span class="counter offline">🔌 <span id="count-offline">0</span></span>
+                    <span class="counter ready">✅ <span id="count-ready">0</span></span>
+                    <span class="counter complete">🏁 <span id="count-complete">0</span></span>
+                    <span class="counter paused">⏸️ <span id="count-paused">0</span></span>
+                    <span class="counter error">🚫 <span id="count-error">0</span></span>
+                </div>
             </div>
             <div class="controls">
-                <button class="btn btn-primary" onclick="openAddPrinterModal()" data-i18n="add_printer">➕ Add Printer</button>
-                <button class="btn btn-secondary" onclick="startNetworkScan()">🔍 <span id="scanNetworkBtnText">Scan Network</span></button>
+                <button class="btn btn-primary" onclick="startNetworkScan()">🔧 <span id="managePrintersBtnText">Manage Printers</span></button>
                 <button class="btn btn-secondary" onclick="testAllConnections()">🔗 Test All Connections</button>
                 <button class="btn btn-telegram" onclick="openTelegramSettingsModal()">🤖 Telegram</button>
                 <button class="btn btn-secondary" onclick="openAnalyticsModal()">📈 <span id="analyticsBtnText">Analytics</span></button>
+                <button class="btn btn-web-server" id="webServerBtn" onclick="toggleWebServerModal()">
+                    🌐 <span id="webServerBtnText" data-i18n="web_server_btn_text">Web Server</span>
+                </button>
                 <div class="interval-selector">
                     <label>Polling interval: </label>
                     <select id="pollingInterval" onchange="updatePollingInterval(this.value)">
@@ -33,14 +45,6 @@
                         <option value="90000">90 sec</option>
                     </select>
                 </div>
-            </div>
-            <div class="printers-counter">
-                <span class="counter printing">🖨️ <span id="count-printing">0</span></span>
-                <span class="counter offline">🔌 <span id="count-offline">0</span></span>
-                <span class="counter ready">✅ <span id="count-ready">0</span></span>
-                <span class="counter complete">🏁 <span id="count-complete">0</span></span>
-                <span class="counter paused">⏸️ <span id="count-paused">0</span></span>
-                <span class="counter error">🚫 <span id="count-error">0</span></span>
             </div>
         </header>
 
@@ -419,19 +423,32 @@
     <div id="networkScanModal" class="modal">
         <div class="modal-content" style="max-width: 800px;">
             <div class="modal-header">
-                <h3 id="networkScanModalTitle">🔍 Network Scanner</h3>
+                <h3 id="networkScanModalTitle">🔧 Add & Manage Printers</h3>
                 <span class="close" onclick="closeNetworkScanModal()">&times;</span>
             </div>
             <div class="modal-body">
-                <!-- Scan Options -->
-                <div id="scanOptions" class="form-group" style="display: flex; gap: 15px; align-items: center; margin-bottom: 20px;">
-                    <button class="btn btn-primary" onclick="executeScan('quick')">
-                        <span id="quickScanBtn">⚡ Quick Scan</span>
-                    </button>
-                    <button class="btn btn-secondary" onclick="executeScan('full')">
-                        <span id="fullScanBtn">🌐 Full Scan</span>
-                    </button>
-                    <small id="scanHint" style="color: #888;">Quick scan checks common IP addresses (~150), Full scan checks entire subnet (~250)</small>
+                <!-- Printer Management Options -->
+                <div id="scanOptions" class="form-group" style="margin-bottom: 20px;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 15px;">
+                        <button class="btn btn-primary" onclick="openAddPrinterModal(); closeNetworkScanModal();">
+                            ➕ <span id="addManuallyBtn">Add Manually</span>
+                        </button>
+                        <button class="btn btn-secondary" onclick="executeScan('full')">
+                            🔍 <span id="startScanBtn">Scan Network</span>
+                        </button>
+                        <button class="btn btn-secondary" onclick="importPrinters(); closeNetworkScanModal();">
+                            📥 <span id="importFromFileBtn">Import</span>
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportPrinters(); closeNetworkScanModal();">
+                            📤 <span id="exportToFileBtn">Export</span>
+                        </button>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 6px; text-align: center; color: #888; font-size: 12px;">
+                        <small id="addManuallyHint">➕ Add printer by IP</small>
+                        <small id="scanHint">🔍 Find in network</small>
+                        <small id="importHint">📥 Restore backup</small>
+                        <small id="exportHint">📤 Save config</small>
+                    </div>
                 </div>
 
                 <!-- Scan Progress -->
@@ -450,7 +467,26 @@
 
                 <!-- Scan Results -->
                 <div id="scanResults" style="display: none;">
-                    <h4 id="scanResultsTitle" style="margin-bottom: 15px;">Found Printers (<span id="foundPrintersCount">0</span>)</h4>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                        <h4 id="scanResultsTitle" style="margin: 0;">Found Printers (<span id="foundPrintersCount">0</span>)</h4>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <span id="selectedPrintersCount" style="display: none; color: #00d4ff; font-weight: bold; font-size: 14px;"></span>
+                            <button class="btn btn-secondary btn-small" onclick="selectAllPrinters()" id="selectAllPrintersBtn">
+                                <span id="selectAllBtnText">Select All</span>
+                            </button>
+                            <button class="btn btn-secondary btn-small" onclick="deselectAllPrinters()" id="deselectAllPrintersBtn">
+                                <span id="deselectAllBtnText">Deselect All</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+                        <button class="btn btn-primary" onclick="batchAddSelectedPrinters()" id="batchAddSelectedBtn" disabled>
+                            ➕ <span id="batchAddSelectedBtnText">Add Selected (0)</span>
+                        </button>
+                        <button class="btn btn-secondary" onclick="batchAddAllPrinters()" id="batchAddAllBtn">
+                            ➕ <span id="batchAddAllBtnText">Add All New</span>
+                        </button>
+                    </div>
                     <div id="scanResultsList" style="max-height: 400px; overflow-y: auto;">
                         <!-- Results will be dynamically added here -->
                     </div>
@@ -463,7 +499,10 @@
                     <small id="noResultsTip" style="color: #666;">Make sure printers are powered on and connected to the same network</small>
                 </div>
 
-                <div class="modal-footer" style="margin-top: 20px;">
+                <div class="modal-footer" style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
+                    <button class="btn btn-help" onclick="showPrinterManagementHelp()" style="margin-right: auto;">
+                        ❓ <span id="helpBtnText">Help</span>
+                    </button>
                     <button class="btn btn-secondary" onclick="closeNetworkScanModal()">
                         <span id="scanCloseBtn">Close</span>
                     </button>
@@ -537,6 +576,84 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-primary" onclick="closeBambuLabHelpModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Web Server Modal -->
+    <div id="webServerModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>🌐 <span id="webServerModalTitle" data-i18n="web_server_modal_title">Web Server Settings</span></h2>
+                <span class="close" onclick="closeWebServerModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="analytics-card" style="margin: 0;">
+                    <div style="padding: 1.5rem;">
+                        <div class="web-server-status" id="webServerStatus" style="background: rgba(0, 212, 255, 0.1); padding: 1rem; border-radius: 8px; border: 1px solid rgba(0, 212, 255, 0.3);">
+                            <div class="status-indicator">
+                                <span class="status-dot" id="webServerStatusDot"></span>
+                                <span id="webServerStatusText" style="color: #00d4ff; font-weight: 600;" data-i18n="web_server_status_checking">Checking...</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 1.5rem;">
+                            <label for="webServerPort" style="color: #7ea8c8; font-weight: 600; margin-bottom: 0.5rem; display: block;">
+                                <span id="webServerPortLabel" data-i18n="web_server_port_label">Server Port:</span>
+                            </label>
+                            <input type="number" id="webServerPort" value="8000" min="1000" max="65535" 
+                                   style="width: 100%; padding: 0.7rem; background: rgba(10, 22, 40, 0.5); border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 8px; font-size: 1rem; color: #00d4ff;">
+                            <small style="color: #7ea8c8; display: block; margin-top: 0.5rem;">
+                                <span id="webServerPortHint" data-i18n="web_server_port_hint">Recommended: 8000-9000</span>
+                            </small>
+                        </div>
+
+                        <div class="web-server-info" id="webServerInfo" style="display: none; margin-top: 1rem; padding: 1rem; background: rgba(0, 212, 255, 0.15); border-radius: 8px; border: 1px solid rgba(0, 212, 255, 0.4);">
+                            <p style="margin: 0 0 0.5rem 0; font-weight: 600; color: #00d4ff;">
+                                🌐 <span id="webServerUrlText" data-i18n="web_server_url_text">Web interface is available at:</span>
+                            </p>
+                            <div id="webServerUrl" style="margin: 0.5rem 0; line-height: 1.8; font-size: 0.95rem;">
+                                <a href="http://localhost:8000" onclick="openWebInterfaceLink(event)" style="color: #4dabf7; text-decoration: none; font-weight: 500;">
+                                    http://localhost:8000
+                                </a>
+                            </div>
+                            <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; color: #b8d4e8;">
+                                <span id="webServerClientsText" data-i18n="web_server_clients_text">Connected clients:</span> <strong style="color: #00d4ff;" id="webServerClients">0</strong>
+                            </p>
+                        </div>
+
+                        <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(0, 212, 255, 0.1); border-radius: 8px; border: 1px solid rgba(0, 212, 255, 0.2);">
+                            <h4 style="margin-top: 0; color: #00d4ff;">
+                                <span id="webServerWhatIsItTitle" data-i18n="web_server_what_is_it_title">What is this?</span>
+                            </h4>
+                            <p style="margin: 0.5rem 0; line-height: 1.6; color: #b8d4e8;">
+                                <span id="webServerWhatIsItText" data-i18n="web_server_what_is_it_text">
+                                    Web server allows you to manage printers through a browser from any device on your local network. Just open the address on your computer, tablet or phone.
+                                </span>
+                            </p>
+                            <ul style="margin: 0.5rem 0; padding-left: 1.5rem; line-height: 1.8; color: #b8d4e8;">
+                                <li><span id="webServerFeature1" data-i18n="web_server_feature1">View status of all printers</span></li>
+                                <li><span id="webServerFeature2" data-i18n="web_server_feature2">Real-time monitoring</span></li>
+                                <li><span id="webServerFeature3" data-i18n="web_server_feature3">Access from any device on network</span></li>
+                                <li><span id="webServerFeature4" data-i18n="web_server_feature4">No installation required</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-info" onclick="openWebServerHelp()" style="margin-right: auto;">
+                    <span id="webServerHelpBtnText" data-i18n="web_server_btn_help">📖 Help</span>
+                </button>
+                <button class="btn btn-success" id="webServerToggleBtn" onclick="toggleWebServer()">
+                    <span id="webServerToggleBtnText" data-i18n="web_server_btn_start">▶️ Start</span>
+                </button>
+                <button class="btn btn-primary" id="webServerOpenBtn" onclick="openWebInterfaceLink()" style="display: none;">
+                    <span id="webServerOpenBtnText" data-i18n="web_server_btn_open">Open in Browser</span>
+                </button>
+                <button class="btn btn-secondary" onclick="closeWebServerModal()">
+                    <span id="webServerCloseBtnText" data-i18n="web_server_btn_close">Close</span>
+                </button>
             </div>
         </div>
     </div>

@@ -3,9 +3,11 @@ const path = require('path');
 const Store = require('electron-store');
 const { version: APP_VERSION } = require('../package.json');
 const { encrypt, decrypt } = require('./encryption');
+const DiagnosticsReporter = require('./diagnostics');
 // bambu-js will be imported dynamically as ES module
 
 const store = new Store();
+const reporter = new DiagnosticsReporter();
 
 let mainWindow;
 let tabsWindow = null;
@@ -14,6 +16,13 @@ const printerTabs = new Map();
 // Bambu Lab MQTT Manager
 const BambuLabAdapter = require('./bambu-printer-adapter.js');
 const bambuConnections = new Map(); // printerId -> BambuLabAdapter instance
+
+// Web Server для удаленного доступа
+const WebServer = require('./web-server.js');
+const { StructuredPrinterManager } = require('./data-structures.js');
+const structuredManager = new StructuredPrinterManager(store, bambuConnections);
+const webServer = new WebServer(store, bambuConnections);
+let isWebServerEnabled = false;
 
 // Блокировка запуска нескольких экземпляров приложения
 const gotTheLock = app.requestSingleInstanceLock();
@@ -1505,6 +1514,17 @@ async function testBambuConnection(printerData) {
             lastUpdate: new Date().toISOString()
           });
         }
+        
+        // Отправляем обновление в web-сервер
+        const statusData = {
+          state: adapter.getStatus(),
+          stateText: adapter.getStateText(),
+          progress: adapter.getProgress(),
+          fileName: adapter.getFileName(),
+          temps: adapter.getTemperatures()
+        };
+        notifyWebServerPrinterUpdate(printerData.id, statusData);
+        notifyWebServerPrinterStatus(printerData.id, statusData);
       };
       
       console.log(`✅ Bambu Lab connection successful for: ${printerData.name}`);
@@ -2101,9 +2121,207 @@ ipcMain.on('bambu-control', async (event, printerId, action) => {
   }
 });
 
+// IPC Handlers for diagnostics
+ipcMain.handle('diagnostics-track-printer-added', (event, printerType) => {
+  reporter.trackPrinterAdded(printerType);
+});
+
+ipcMain.handle('diagnostics-update-printers', (event, printers) => {
+  reporter.updatePrintersCount(printers);
+});
+
+ipcMain.handle('diagnostics-track-feature', (event, featureName) => {
+  reporter.trackFeatureUsage(featureName);
+});
+
+ipcMain.handle('diagnostics-track-analytics-view', () => {
+  reporter.trackAnalyticsView();
+});
+
+ipcMain.handle('diagnostics-track-export', (event, format) => {
+  reporter.trackExport(format);
+});
+
+// ===== WEB SERVER MANAGEMENT =====
+
+/**
+ * Запустить web-сервер
+ */
+ipcMain.handle('start-web-server', async (event, port) => {
+  try {
+    if (webServer.isRunning) {
+      return {
+        success: true,
+        message: 'Web-сервер уже запущен',
+        info: webServer.getInfo()
+      };
+    }
+
+    const result = await webServer.start(port || 8000);
+    isWebServerEnabled = true;
+    store.set('webServerEnabled', true);
+    store.set('webServerPort', port || 8000);
+
+    console.log(`[WebServer] ✅ Запущен на порту ${result.port}`);
+    
+    // Отправляем обновление в renderer
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('web-server-status', webServer.getInfo());
+    }
+
+    return {
+      success: true,
+      message: `Web-сервер запущен на http://localhost:${result.port}`,
+      info: webServer.getInfo()
+    };
+  } catch (error) {
+    console.error('[WebServer] Ошибка запуска:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+/**
+ * Остановить web-сервер
+ */
+ipcMain.handle('stop-web-server', async () => {
+  try {
+    await webServer.stop();
+    isWebServerEnabled = false;
+    store.set('webServerEnabled', false);
+
+    console.log('[WebServer] 🛑 Остановлен');
+    
+    // Отправляем обновление в renderer
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('web-server-status', webServer.getInfo());
+    }
+
+    return {
+      success: true,
+      message: 'Web-сервер остановлен'
+    };
+  } catch (error) {
+    console.error('[WebServer] Ошибка остановки:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+/**
+ * Получить информацию о web-сервере
+ */
+ipcMain.handle('get-web-server-info', () => {
+  return webServer.getInfo();
+});
+
+/**
+ * Открыть web-интерфейс в браузере
+ */
+ipcMain.handle('open-web-interface', () => {
+  const info = webServer.getInfo();
+  if (info.isRunning && info.url) {
+    shell.openExternal(info.url);
+    return { success: true };
+  }
+  return { success: false, error: 'Web-сервер не запущен' };
+});
+
+/**
+ * Открыть внешнюю ссылку в браузере
+ */
+ipcMain.handle('open-external-link', (event, url) => {
+  try {
+    shell.openExternal(url);
+    return { success: true };
+  } catch (error) {
+    console.error('[IPC] Error opening external link:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Получить сетевые интерфейсы хоста
+ */
+ipcMain.handle('get-network-interfaces', () => {
+  const os = require('os');
+  const interfaces = os.networkInterfaces();
+  const addresses = [];
+  
+  Object.keys(interfaces).forEach(name => {
+    interfaces[name].forEach(iface => {
+      // Только IPv4, не внутренние
+      if (iface.family === 'IPv4' && !iface.internal) {
+        addresses.push({
+          name: name,
+          address: iface.address
+        });
+      }
+    });
+  });
+  
+  return addresses;
+});
+
+// Отправка обновлений принтеров в web-сервер
+function notifyWebServerPrinterUpdate(printerId, data) {
+  // Сохраняем данные в структурированный кэш
+  const wasUpdated = structuredManager.updatePrinterData(printerId, data);
+
+  // Рассылаем через WebSocket только если данные обновились
+  if (webServer.isRunning && wasUpdated) {
+    webServer.broadcastPrinterUpdate(printerId, data);
+  }
+}
+
+function notifyWebServerPrinterStatus(printerId, status) {
+  if (webServer.isRunning) {
+    webServer.broadcastPrinterStatus(printerId, status);
+  }
+}
+
+/**
+ * IPC handler для обновления данных принтера из renderer
+ */
+ipcMain.handle('update-printer-data', (event, printerId, data) => {
+  try {
+    // Сохраняем данные в структурированный менеджер
+    structuredManager.updatePrinterData(printerId, data);
+    
+    // Отправляем в web-сервер
+    notifyWebServerPrinterUpdate(printerId, data);
+    notifyWebServerPrinterStatus(printerId, data);
+    
+    return { success: true };
+  } catch (error) {
+    console.error('[IPC] Error updating printer data:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // App events
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  await reporter.initialize();
+  reporter.trackSession();
+  
   createMainWindow();
+
+  // Автозапуск web-сервера если был включен ранее
+  const webServerEnabled = store.get('webServerEnabled', false);
+  if (webServerEnabled) {
+    const webServerPort = store.get('webServerPort', 8000);
+    try {
+      await webServer.start(webServerPort);
+      isWebServerEnabled = true;
+      console.log(`[WebServer] ✅ Автозапуск на порту ${webServerPort}`);
+    } catch (error) {
+      console.error('[WebServer] Ошибка автозапуска:', error);
+    }
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -2119,6 +2337,16 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', async () => {
+  // Stop web server
+  if (webServer.isRunning) {
+    try {
+      await webServer.stop();
+      console.log('[WebServer] Stopped on app quit');
+    } catch (error) {
+      console.error('[WebServer] Error stopping on quit:', error);
+    }
+  }
+
   // Close all Bambu Lab connections
   for (const [printerId, adapter] of bambuConnections.entries()) {
     try {

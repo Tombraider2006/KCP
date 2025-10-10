@@ -44,5 +44,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
     if (validChannels.includes(channel)) {
       ipcRenderer.send(channel, ...args);
     }
+  },
+  
+  // Web Server Management
+  startWebServer: (port) => ipcRenderer.invoke('start-web-server', port),
+  stopWebServer: () => ipcRenderer.invoke('stop-web-server'),
+  getWebServerInfo: () => ipcRenderer.invoke('get-web-server-info'),
+  openWebInterface: () => ipcRenderer.invoke('open-web-interface'),
+  openExternalLink: (url) => ipcRenderer.invoke('open-external-link', url),
+  updatePrinterData: (printerId, data) => ipcRenderer.invoke('update-printer-data', printerId, data),
+  getNetworkInterfaces: () => ipcRenderer.invoke('get-network-interfaces'),
+  onWebServerStatus: (callback) => ipcRenderer.on('web-server-status', (event, ...args) => callback(...args)),
+  removeWebServerStatusListener: () => ipcRenderer.removeAllListeners('web-server-status'),
+  
+  diagnostics: {
+    trackPrinterAdded: (type) => ipcRenderer.invoke('diagnostics-track-printer-added', type),
+    updatePrinters: (list) => ipcRenderer.invoke('diagnostics-update-printers', list),
+    trackFeature: (name) => ipcRenderer.invoke('diagnostics-track-feature', name),
+    trackAnalyticsView: () => ipcRenderer.invoke('diagnostics-track-analytics-view'),
+    trackExport: (format) => ipcRenderer.invoke('diagnostics-track-export', format)
   }
 });

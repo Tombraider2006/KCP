@@ -251,6 +251,11 @@ class KlipperAdapter extends PrinterAdapter {
         const hasActiveFile = !!(filename && filename !== 'null' && filename !== '' && filename !== null) ||
                               !!(filePath && filePath !== 'null' && filePath !== '' && filePath !== null);
 
+        // Проверяем, действительно ли идет печать (не завершена)
+        const isActivelyPrinting = isActive === true || 
+                                   (progress !== undefined && progress > 0 && progress < 1) ||
+                                   (hasActiveFile && isActive !== false && (progress === undefined || progress < 1));
+
         if (state === 'printing') {
             this.printer.status = 'printing';
         } else if (state === 'paused') {
@@ -260,13 +265,13 @@ class KlipperAdapter extends PrinterAdapter {
         } else if (state === 'complete') {
             this.printer.status = 'complete';
         } else if (state === 'ready' || state === 'standby' || state === 'cancelled') {
-            if (isActive === true || (progress !== undefined && progress > 0 && progress < 1) || hasActiveFile) {
+            if (isActivelyPrinting) {
                 this.printer.status = 'printing';
             } else {
                 this.printer.status = 'ready';
             }
         } else {
-            if (isActive === true || (progress !== undefined && progress > 0 && progress < 1) || hasActiveFile) {
+            if (isActivelyPrinting) {
                 this.printer.status = 'printing';
             } else {
                 this.printer.status = this.printer.connectionType ? 'ready' : 'offline';

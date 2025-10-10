@@ -59,6 +59,15 @@ header {
     align-items: center;
     margin-bottom: 10px;
     width: 100%;
+    gap: 20px;
+}
+
+.header-title {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 1;
+    min-width: 0;
 }
 
 .header-main h1 {
@@ -69,6 +78,9 @@ header {
     text-transform: uppercase;
     letter-spacing: 1px;
     text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .app-version {
@@ -79,6 +91,8 @@ header {
     font-size: 0.8em;
     font-weight: bold;
     border: 1px solid rgba(0, 212, 255, 0.4);
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .controls {
@@ -106,14 +120,10 @@ header {
 .printers-counter {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
-    justify-content: center;
-    padding: 10px;
-    background: rgba(13, 27, 42, 0.5);
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(0, 255, 255, 0.15);
-    width: 100%;
+    gap: 10px;
+    justify-content: flex-end;
+    align-items: center;
+    flex-shrink: 0;
 }
 
 .counter {
@@ -1028,7 +1038,20 @@ header {
     
     .header-main {
         flex-direction: column;
-        gap: 10px;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .header-title {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        width: 100%;
+    }
+    
+    .printers-counter {
+        justify-content: flex-start;
+        width: 100%;
     }
     
     .controls {
@@ -1151,6 +1174,55 @@ header {
 .btn-telegram:hover {
     background: rgba(0, 136, 204, 0.3) !important;
     border-color: rgba(0, 136, 204, 0.7) !important;
+}
+
+.btn-web-server {
+    background: rgba(103, 58, 183, 0.2) !important;
+    color: #7e57c2 !important;
+    border-color: rgba(103, 58, 183, 0.5) !important;
+}
+
+.btn-web-server:hover {
+    background: rgba(103, 58, 183, 0.3) !important;
+    border-color: rgba(103, 58, 183, 0.7) !important;
+}
+
+.btn-web-server.active {
+    background: rgba(76, 175, 80, 0.2) !important;
+    color: #4CAF50 !important;
+    border-color: rgba(76, 175, 80, 0.5) !important;
+}
+
+.web-server-status {
+    display: flex;
+    align-items: center;
+}
+
+.web-server-status .status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+}
+
+.web-server-status .status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #bdc3c7;
+}
+
+.web-server-status .status-dot.active {
+    background: #4CAF50;
+    animation: pulse 2s infinite;
+}
+
+.web-server-status .status-dot.inactive {
+    background: #f44336;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
 }
 
 .notification-settings {
@@ -1409,4 +1481,41 @@ body::after {
 .scan-result-actions {
     display: flex;
     gap: 10px;
+}
+
+/* Scan result checkbox styles */
+.scan-result-checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+}
+
+.scan-result-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #00d4ff;
+}
+
+.scan-result-checkbox:disabled {
+    cursor: not-allowed;
+    opacity: 0.3;
+}
+
+.scan-result-item {
+    display: flex;
+    align-items: center;
+    background: rgba(20, 35, 50, 0.5);
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border: 1px solid rgba(0, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.scan-result-item:hover {
+    background: rgba(25, 40, 55, 0.6);
+    border-color: rgba(0, 212, 255, 0.3);
+    transform: translateX(3px);
 }
