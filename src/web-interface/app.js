@@ -12,6 +12,33 @@ let printerStatuses = new Map();
 let notificationSound = null;
 let previousStatuses = new Map(); // Для отслеживания изменений статуса
 
+// ===== ПЕРЕКЛЮЧЕНИЕ ТЕМЫ =====
+function toggleTheme() {
+    const root = document.documentElement;
+    const currentTheme = root.getAttribute('data-theme');
+    const icon = document.getElementById('themeIcon');
+    
+    if (currentTheme === 'light') {
+        root.removeAttribute('data-theme');
+        if (icon) icon.textContent = '🌙';
+        localStorage.setItem('webTheme', 'dark');
+    } else {
+        root.setAttribute('data-theme', 'light');
+        if (icon) icon.textContent = '☀️';
+        localStorage.setItem('webTheme', 'light');
+    }
+}
+
+// Загрузка сохраненной темы при старте
+function loadSavedTheme() {
+    const savedTheme = localStorage.getItem('webTheme');
+    if (savedTheme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+        const icon = document.getElementById('themeIcon');
+        if (icon) icon.textContent = '☀️';
+    }
+}
+
 // Подключение к Socket.IO
 function connectWebSocket() {
     const connectionStatus = document.getElementById('connectionStatus');
@@ -566,6 +593,9 @@ function checkCriticalStatus(printerId, newStatus) {
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 Инициализация Web-интерфейса');
+
+    // Загружаем сохранённую тему
+    loadSavedTheme();
 
     // Предзагружаем звук
     notificationSound = new Audio('windows-xp-print-complete.mp3');

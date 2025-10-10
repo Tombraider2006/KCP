@@ -5,11 +5,13 @@
     box-sizing: border-box;
 }
 
+/* Темная тема (по умолчанию) */
 :root {
     --primary-color: #00d4ff;
     --success-color: #4CAF50;
     --warning-color: #FF9800;
     --error-color: #f44336;
+    --bg-gradient: linear-gradient(135deg, #0a1628 0%, #1a2942 50%, #0d1b2a 100%);
     --bg-color: #0a1628;
     --card-bg: rgba(10, 22, 40, 0.7);
     --text-primary: #e8f0f7;
@@ -19,11 +21,52 @@
     --shadow-hover: 0 4px 16px rgba(0, 212, 255, 0.4);
 }
 
+/* Светлая тема - Glassmorphism */
+:root[data-theme="light"] {
+    --primary-color: #2196F3;
+    --success-color: #4CAF50;
+    --warning-color: #FF9800;
+    --error-color: #f44336;
+    --bg-gradient: linear-gradient(135deg, #e3f4fd 0%, #d6eef8 50%, #c5e7f3 100%);
+    --bg-color: #e3f4fd;
+    --card-bg: rgba(255, 255, 255, 0.35);
+    --text-primary: #1e3a5f;
+    --text-secondary: #4a6fa5;
+    --border-color: rgba(255, 255, 255, 0.4);
+    --shadow: 0 4px 16px rgba(31, 38, 135, 0.15);
+    --shadow-hover: 0 8px 32px rgba(31, 38, 135, 0.25);
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    background: var(--bg-color);
+    background: var(--bg-gradient);
     color: var(--text-primary);
     line-height: 1.6;
+    transition: background 0.5s ease, color 0.3s ease;
+    position: relative;
+}
+
+/* Эффект волн на воде для светлой темы */
+:root[data-theme="light"] body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        radial-gradient(ellipse 700px 500px at 20% 30%, rgba(150, 220, 255, 0.25) 0%, rgba(120, 200, 240, 0.08) 40%, transparent 65%),
+        radial-gradient(ellipse 600px 450px at 60% 70%, rgba(130, 210, 250, 0.22) 0%, rgba(100, 190, 235, 0.07) 40%, transparent 65%),
+        radial-gradient(ellipse 550px 600px at 85% 40%, rgba(140, 215, 255, 0.20) 0%, rgba(110, 195, 240, 0.06) 40%, transparent 65%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+:root[data-theme="light"] .container,
+:root[data-theme="light"] .header,
+:root[data-theme="light"] .content {
+    position: relative;
+    z-index: 1;
 }
 
 .container {
@@ -220,6 +263,54 @@ body {
 .printer-card:hover {
     box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
     border-color: rgba(0, 212, 255, 0.6);
+}
+
+/* Glassmorphism для карточек в светлой теме */
+:root[data-theme="light"] .printer-card {
+    background: var(--card-bg);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--border-color);
+    border-top: 1px solid rgba(255, 255, 255, 0.6);
+    border-left: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 
+        0 8px 32px rgba(31, 38, 135, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+}
+
+:root[data-theme="light"] .printer-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 40%;
+    background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.4) 0%,
+        rgba(255, 255, 255, 0.1) 50%,
+        transparent 100%
+    );
+    border-radius: 12px 12px 0 0;
+    pointer-events: none;
+    z-index: 0;
+}
+
+:root[data-theme="light"] .printer-card > * {
+    position: relative;
+    z-index: 1;
+}
+
+:root[data-theme="light"] .printer-card:hover {
+    background: rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(25px) saturate(200%);
+    -webkit-backdrop-filter: blur(25px) saturate(200%);
+    transform: translateY(-2px);
+    box-shadow: 
+        0 12px 40px rgba(31, 38, 135, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.6),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.05);
 }
 
 /* Критические статусы - красная рамка и свечение */
@@ -596,6 +687,136 @@ body {
 
 .empty-state p {
     font-size: 1rem;
+}
+
+/* ===== СВЕТЛАЯ ТЕМА - СТАТУСЫ ===== */
+
+/* Цветные фоны для статусов в светлой теме */
+:root[data-theme="light"] .printer-card.ready {
+    border-left: 4px solid #ff9800 !important;
+    background: rgba(255, 224, 130, 0.85) !important;
+    box-shadow: 0 4px 20px rgba(255, 152, 0, 0.4) !important;
+}
+
+:root[data-theme="light"] .printer-card.printing {
+    border-left: 4px solid #4caf50 !important;
+    background: rgba(200, 230, 201, 0.85) !important;
+    box-shadow: 0 4px 20px rgba(76, 175, 80, 0.4) !important;
+}
+
+:root[data-theme="light"] .printer-card.paused,
+:root[data-theme="light"] .printer-card.error,
+:root[data-theme="light"] .printer-card.complete {
+    border-left: 4px solid #f44336 !important;
+    background: rgba(255, 205, 210, 0.85) !important;
+    box-shadow: 0 4px 20px rgba(244, 67, 54, 0.4) !important;
+}
+
+:root[data-theme="light"] .printer-card.offline {
+    border-left: 4px solid #757575 !important;
+    background: rgba(224, 224, 224, 0.8) !important;
+    box-shadow: 0 4px 16px rgba(117, 117, 117, 0.25) !important;
+}
+
+/* Анимации для светлой темы */
+:root[data-theme="light"] .printer-card.error,
+:root[data-theme="light"] .printer-card.paused,
+:root[data-theme="light"] .printer-card.complete {
+    animation: blinkRedLight 1.5s infinite !important;
+}
+
+:root[data-theme="light"] .printer-card.printing {
+    animation: blinkGreenLight 2s infinite !important;
+}
+
+:root[data-theme="light"] .printer-card.ready {
+    animation: blinkYellowLight 3s infinite !important;
+}
+
+@keyframes blinkRedLight {
+    0%, 100% { 
+        background: rgba(255, 205, 210, 0.85);
+        box-shadow: 0 4px 20px rgba(244, 67, 54, 0.4);
+    }
+    50% { 
+        background: rgba(255, 138, 128, 0.9);
+        box-shadow: 0 8px 40px rgba(244, 67, 54, 0.6);
+    }
+}
+
+@keyframes blinkGreenLight {
+    0%, 100% { 
+        background: rgba(200, 230, 201, 0.85);
+        box-shadow: 0 4px 20px rgba(76, 175, 80, 0.4);
+    }
+    50% { 
+        background: rgba(165, 214, 167, 0.9);
+        box-shadow: 0 8px 40px rgba(76, 175, 80, 0.6);
+    }
+}
+
+@keyframes blinkYellowLight {
+    0%, 100% { 
+        background: rgba(255, 224, 130, 0.85);
+        box-shadow: 0 4px 20px rgba(255, 152, 0, 0.4);
+    }
+    50% { 
+        background: rgba(255, 213, 79, 0.9);
+        box-shadow: 0 8px 40px rgba(255, 152, 0, 0.6);
+    }
+}
+
+/* Кнопка переключения темы */
+.theme-toggle {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-color);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: all 0.3s ease;
+    margin-left: 1rem;
+}
+
+.theme-toggle:hover {
+    transform: scale(1.1);
+    background: rgba(255, 255, 255, 0.2);
+}
+
+:root[data-theme="light"] .theme-toggle {
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+}
+
+/* Header и Footer прозрачные в светлой теме */
+:root[data-theme="light"] .header {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+:root[data-theme="light"] .footer {
+    background: transparent !important;
+    border: none !important;
+}
+
+:root[data-theme="light"] .compact-stat {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.1);
+}
+
+:root[data-theme="light"] .connection-status-inline {
+    background: rgba(76, 175, 80, 0.15) !important;
+    border: 1px solid rgba(76, 175, 80, 0.3) !important;
+}
+
+:root[data-theme="light"] .connection-status-inline strong {
+    color: #2e7d32 !important;
 }
 
 
