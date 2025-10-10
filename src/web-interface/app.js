@@ -137,7 +137,7 @@ function renderPrinters() {
     if (printers.length === 0) {
         grid.innerHTML = `
             <div class="empty-state">
-                <div class="empty-state-icon">🖨️</div>
+                <div class="empty-state-icon">🧊</div>
                 <h3>Принтеры не найдены</h3>
                 <p>Добавьте принтеры в настольном приложении</p>
             </div>
