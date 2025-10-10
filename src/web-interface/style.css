@@ -23,15 +23,15 @@
 
 /* Светлая тема - Glassmorphism */
 :root[data-theme="light"] {
-    --primary-color: #2196F3;
-    --success-color: #4CAF50;
-    --warning-color: #FF9800;
-    --error-color: #f44336;
+    --primary-color: #1976d2;
+    --success-color: #2e7d32;
+    --warning-color: #f57c00;
+    --error-color: #d32f2f;
     --bg-gradient: linear-gradient(135deg, #e3f4fd 0%, #d6eef8 50%, #c5e7f3 100%);
     --bg-color: #e3f4fd;
     --card-bg: rgba(255, 255, 255, 0.35);
-    --text-primary: #1e3a5f;
-    --text-secondary: #4a6fa5;
+    --text-primary: #0d1b2a;
+    --text-secondary: #1e3a5f;
     --border-color: rgba(255, 255, 255, 0.4);
     --shadow: 0 4px 16px rgba(31, 38, 135, 0.15);
     --shadow-hover: 0 8px 32px rgba(31, 38, 135, 0.25);
