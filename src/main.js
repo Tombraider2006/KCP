@@ -2191,8 +2191,6 @@ ipcMain.handle('stop-web-server', async () => {
     await webServer.stop();
     isWebServerEnabled = false;
     store.set('webServerEnabled', false);
-
-    console.log('[WebServer] 🛑 Остановлен');
     
     // Отправляем обновление в renderer
     if (mainWindow && !mainWindow.isDestroyed()) {
