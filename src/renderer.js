@@ -6191,3 +6191,30 @@ function setupToggleVisibilityButtons() {
         });
     });
 }
+
+// ===== ПЕРЕКЛЮЧЕНИЕ ТЕМЫ =====
+function toggleTheme() {
+    const root = document.documentElement;
+    const currentTheme = root.getAttribute('data-theme');
+    const icon = document.getElementById('themeIcon');
+    
+    if (currentTheme === 'light') {
+        root.removeAttribute('data-theme');
+        if (icon) icon.textContent = '🌙';
+        localStorage.setItem('appTheme', 'dark');
+    } else {
+        root.setAttribute('data-theme', 'light');
+        if (icon) icon.textContent = '☀️';
+        localStorage.setItem('appTheme', 'light');
+    }
+}
+
+// Загрузка сохраненной темы при старте
+const savedTheme = localStorage.getItem('appTheme');
+if (savedTheme === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    setTimeout(() => {
+        const icon = document.getElementById('themeIcon');
+        if (icon) icon.textContent = '☀️';
+    }, 100);
+}

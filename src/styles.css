@@ -1,4 +1,21 @@
 /* ===== ОСНОВНЫЕ СТИЛИ ===== */
+
+/* CSS переменные - Темная тема (по умолчанию) */
+:root {
+    --bg-gradient: linear-gradient(135deg, #0a1628 0%, #1a2942 50%, #0d1b2a 100%);
+    --text-color: #e0e6ed;
+    --card-bg: rgba(20, 35, 50, 0.5);
+    --border-color: rgba(0, 255, 255, 0.1);
+}
+
+/* Светлая тема - Glassmorphism */
+:root[data-theme="light"] {
+    --bg-gradient: linear-gradient(135deg, #e3f4fd 0%, #d6eef8 50%, #c5e7f3 100%);
+    --text-color: #1e3a5f;
+    --card-bg: rgba(255, 255, 255, 0.35);
+    --border-color: rgba(255, 255, 255, 0.4);
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -7,12 +24,13 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #0a1628 0%, #1a2942 50%, #0d1b2a 100%);
+    background: var(--bg-gradient);
     min-height: 100vh;
     padding: 15px;
-    color: #e0e6ed;
+    color: var(--text-color);
     position: relative;
     overflow-x: hidden;
+    transition: background 0.5s ease, color 0.3s ease;
 }
 
 body::before {
@@ -1518,4 +1536,325 @@ body::after {
     background: rgba(25, 40, 55, 0.6);
     border-color: rgba(0, 212, 255, 0.3);
     transform: translateX(3px);
+}
+
+/* ===== СВЕТЛАЯ ТЕМА - GLASSMORPHISM ===== */
+
+/* Стили для кнопки переключения темы */
+.counter.theme-toggle {
+    transition: transform 0.2s ease;
+}
+
+.counter.theme-toggle:hover {
+    transform: scale(1.2);
+}
+
+/* Glassmorphism для карточек принтеров */
+/* Glassmorphism для карточек принтеров - мутное объёмное стекло */
+:root[data-theme="light"] .printer-card {
+    background: var(--card-bg);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--border-color);
+    border-top: 1px solid rgba(255, 255, 255, 0.6);
+    border-left: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 
+        0 8px 32px rgba(31, 38, 135, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+}
+
+:root[data-theme="light"] .printer-card:hover {
+    background: rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(25px) saturate(200%);
+    -webkit-backdrop-filter: blur(25px) saturate(200%);
+    transform: translateY(-2px);
+    box-shadow: 
+        0 12px 40px rgba(31, 38, 135, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.6),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+}
+
+/* Glassmorphism для модальных окон */
+:root[data-theme="light"] .modal-content {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 32px rgba(33, 150, 243, 0.2);
+}
+
+/* Текст в светлой теме */
+:root[data-theme="light"] h1,
+:root[data-theme="light"] h2,
+:root[data-theme="light"] h3 {
+    color: var(--text-color);
+    text-shadow: none;
+}
+
+/* Убираем неоновые эффекты с текстов в карточках */
+:root[data-theme="light"] .printer-card h3,
+:root[data-theme="light"] .printer-card p,
+:root[data-theme="light"] .printer-card span,
+:root[data-theme="light"] .printer-status,
+:root[data-theme="light"] .progress-text {
+    text-shadow: none !important;
+    color: var(--text-color);
+}
+
+/* Статусы принтеров в светлой теме */
+:root[data-theme="light"] .status-ready { color: #2e7d32; }
+:root[data-theme="light"] .status-printing { color: #1565c0; }
+:root[data-theme="light"] .status-paused { color: #f57c00; }
+:root[data-theme="light"] .status-complete { color: #2e7d32; }
+:root[data-theme="light"] .status-error { color: #c62828; }
+:root[data-theme="light"] .status-offline { color: #616161; }
+
+/* Счётчики в светлой теме */
+:root[data-theme="light"] .counter {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.1);
+}
+
+/* Кнопки в светлой теме */
+:root[data-theme="light"] .btn {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+}
+
+/* Консоль лога в светлой теме - стеклянный эффект */
+:root[data-theme="light"] .console {
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--border-color);
+    border-top: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 
+        0 4px 24px rgba(31, 38, 135, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+:root[data-theme="light"] .console-content {
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+:root[data-theme="light"] .console-message {
+    border-bottom: 1px solid rgba(144, 202, 249, 0.2);
+}
+
+:root[data-theme="light"] .console-message.info,
+:root[data-theme="light"] .console-info {
+    background: rgba(33, 150, 243, 0.1);
+    color: #0d47a1;
+    font-weight: 500;
+}
+
+:root[data-theme="light"] .console-message.success,
+:root[data-theme="light"] .console-success {
+    background: rgba(76, 175, 80, 0.1);
+    color: #1b5e20;
+    font-weight: 500;
+}
+
+:root[data-theme="light"] .console-message.warning,
+:root[data-theme="light"] .console-warning {
+    background: rgba(255, 152, 0, 0.1);
+    color: #e65100;
+    font-weight: 500;
+}
+
+:root[data-theme="light"] .console-message.error,
+:root[data-theme="light"] .console-error {
+    background: rgba(244, 67, 54, 0.1);
+    color: #b71c1c;
+    font-weight: 500;
+}
+
+/* Прогресс бары в светлой теме */
+:root[data-theme="light"] .progress-bar {
+    background: rgba(144, 202, 249, 0.2);
+    border: 1px solid var(--border-color);
+}
+
+:root[data-theme="light"] .progress-fill {
+    background: linear-gradient(90deg, #42a5f5 0%, #1976d2 100%);
+}
+
+/* Убираем неоновые анимации в светлой теме */
+:root[data-theme="light"] .printing-glow,
+:root[data-theme="light"] .error-pulse,
+:root[data-theme="light"] .complete-flash {
+    animation: none !important;
+    box-shadow: none !important;
+}
+
+/* Светлое мигание с цветными границами */
+:root[data-theme="light"] .printer-card.blinking-red {
+    animation: blinkRedBackgroundLight 1.5s infinite !important;
+    border-left: 4px solid #f44336 !important;
+}
+
+:root[data-theme="light"] .printer-card.blinking-green {
+    animation: blinkGreenBackgroundLight 2s infinite !important;
+    border-left: 4px solid #4caf50 !important;
+}
+
+:root[data-theme="light"] .printer-card.blinking-yellow {
+    animation: blinkYellowBackgroundLight 3s infinite !important;
+    border-left: 4px solid #ff9800 !important;
+}
+
+/* Анимации для светлой темы - яркие */
+@keyframes blinkRedBackgroundLight {
+    0%, 100% { 
+        background: rgba(255, 205, 210, 0.85);
+        box-shadow: 0 4px 20px rgba(244, 67, 54, 0.4);
+    }
+    50% { 
+        background: rgba(255, 138, 128, 0.9);
+        box-shadow: 0 8px 40px rgba(244, 67, 54, 0.6);
+    }
+}
+
+@keyframes blinkGreenBackgroundLight {
+    0%, 100% { 
+        background: rgba(200, 230, 201, 0.85);
+        box-shadow: 0 4px 20px rgba(76, 175, 80, 0.4);
+    }
+    50% { 
+        background: rgba(165, 214, 167, 0.9);
+        box-shadow: 0 8px 40px rgba(76, 175, 80, 0.6);
+    }
+}
+
+@keyframes blinkYellowBackgroundLight {
+    0%, 100% { 
+        background: rgba(255, 224, 130, 0.85);
+        box-shadow: 0 4px 20px rgba(255, 152, 0, 0.4);
+    }
+    50% { 
+        background: rgba(255, 213, 79, 0.9);
+        box-shadow: 0 8px 40px rgba(255, 152, 0, 0.6);
+    }
+}
+
+/* Цветовая индикация статусов в светлой теме */
+:root[data-theme="light"] .printer-card {
+    border-left: 4px solid rgba(100, 180, 240, 0.4) !important;
+}
+
+/* Ready - яркий жёлтый фон (standby, готов к печати) */
+:root[data-theme="light"] .printer-card.ready {
+    border-left: 4px solid #ff9800 !important;
+    background: rgba(255, 224, 130, 0.85) !important;
+    box-shadow: 0 4px 20px rgba(255, 152, 0, 0.4) !important;
+}
+
+/* Printing - яркий зелёный фон (активная печать) */
+:root[data-theme="light"] .printer-card.printing {
+    border-left: 4px solid #4caf50 !important;
+    background: rgba(200, 230, 201, 0.85) !important;
+    box-shadow: 0 4px 20px rgba(76, 175, 80, 0.4) !important;
+}
+
+/* Paused, Error, Complete - яркий красный фон (требует внимания) */
+:root[data-theme="light"] .printer-card.paused,
+:root[data-theme="light"] .printer-card.error,
+:root[data-theme="light"] .printer-card.complete {
+    border-left: 4px solid #f44336 !important;
+    background: rgba(255, 205, 210, 0.85) !important;
+    box-shadow: 0 4px 20px rgba(244, 67, 54, 0.4) !important;
+}
+
+/* Offline - серый фон */
+:root[data-theme="light"] .printer-card.offline {
+    border-left: 4px solid #757575 !important;
+    background: rgba(224, 224, 224, 0.8) !important;
+    box-shadow: 0 4px 16px rgba(117, 117, 117, 0.25) !important;
+}
+
+/* Input поля в светлой теме */
+:root[data-theme="light"] input,
+:root[data-theme="light"] select,
+:root[data-theme="light"] textarea {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+:root[data-theme="light"] input:focus,
+:root[data-theme="light"] select:focus,
+:root[data-theme="light"] textarea:focus {
+    border-color: #42a5f5;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(66, 165, 245, 0.2);
+}
+
+/* Header и контейнеры в светлой теме - полностью прозрачный */
+:root[data-theme="light"] header,
+:root[data-theme="light"] .header,
+:root[data-theme="light"] .header-main {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+:root[data-theme="light"] .controls {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+:root[data-theme="light"] .printers-grid-container,
+:root[data-theme="light"] .container {
+    background: transparent;
+}
+
+/* Секция со статусом принтеров - полностью прозрачная */
+:root[data-theme="light"] .card,
+:root[data-theme="light"] section.card {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+}
+
+:root[data-theme="light"] .card h2 {
+    color: var(--text-color);
+    border-bottom: 2px solid rgba(100, 180, 240, 0.3);
+    text-shadow: none;
+}
+
+/* Статичный эффект игры света от волн на мелководье (caustics) */
+:root[data-theme="light"] body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        /* Яркие светлые пятна от волн */
+        radial-gradient(ellipse 700px 500px at 20% 30%, rgba(150, 220, 255, 0.25) 0%, rgba(120, 200, 240, 0.08) 40%, transparent 65%),
+        radial-gradient(ellipse 600px 450px at 60% 70%, rgba(130, 210, 250, 0.22) 0%, rgba(100, 190, 235, 0.07) 40%, transparent 65%),
+        radial-gradient(ellipse 550px 600px at 85% 40%, rgba(140, 215, 255, 0.20) 0%, rgba(110, 195, 240, 0.06) 40%, transparent 65%),
+        radial-gradient(ellipse 650px 550px at 40% 80%, rgba(160, 225, 255, 0.18) 0%, rgba(130, 205, 245, 0.05) 40%, transparent 65%),
+        radial-gradient(ellipse 500px 400px at 75% 15%, rgba(145, 218, 252, 0.19) 0%, rgba(115, 198, 237, 0.06) 40%, transparent 65%),
+        /* Тёмные участки между пятнами света (тени) */
+        radial-gradient(ellipse 450px 350px at 48% 45%, rgba(70, 130, 180, 0.12) 0%, transparent 50%),
+        radial-gradient(ellipse 400px 450px at 72% 58%, rgba(60, 120, 170, 0.10) 0%, transparent 50%),
+        radial-gradient(ellipse 550px 400px at 28% 65%, rgba(80, 140, 190, 0.11) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
 }
