@@ -21,7 +21,7 @@ const bambuConnections = new Map(); // printerId -> BambuLabAdapter instance
 const WebServer = require('./web-server.js');
 const { StructuredPrinterManager } = require('./data-structures.js');
 const structuredManager = new StructuredPrinterManager(store, bambuConnections);
-const webServer = new WebServer(store, bambuConnections);
+const webServer = new WebServer(store, bambuConnections, structuredManager);
 let isWebServerEnabled = false;
 
 // Блокировка запуска нескольких экземпляров приложения

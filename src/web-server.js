@@ -11,10 +11,10 @@ const cors = require('cors');
 const { StructuredPrinterManager } = require('./data-structures');
 
 class WebServer {
-  constructor(store, bambuConnections) {
+  constructor(store, bambuConnections, structuredManager = null) {
     this.store = store;
     this.bambuConnections = bambuConnections;
-    this.structuredManager = new StructuredPrinterManager(store, bambuConnections);
+    this.structuredManager = structuredManager || new StructuredPrinterManager(store, bambuConnections);
     this.app = express();
     this.server = null;
     this.io = null;
@@ -297,15 +297,15 @@ class WebServer {
       this.clients.add(socket.id);
       console.log(`[WebServer] 🔌 Клиент подключен: ${socket.id} (всего: ${this.clients.size})`);
 
-      // Отправляем начальные данные
-      socket.emit('initial-data', {
-        printers: this.store.get('printers', []).map(p => ({
-          id: p.id,
-          name: p.name,
-          type: p.type || 'klipper',
-          ip: p.ip
-        }))
-      });
+      // Отправляем начальные данные с полной информацией
+      try {
+        const optimizedPackage = this.structuredManager.getOptimizedPackage();
+        socket.emit('initial-data', optimizedPackage);
+        console.log(`[WebServer] 📦 Отправлены данные: ${optimizedPackage.critical.length} critical, ${optimizedPackage.active.length} active`);
+      } catch (error) {
+        console.error('[WebServer] Ошибка отправки initial-data:', error);
+        socket.emit('initial-data', { critical: [], active: [], stats: {} });
+      }
 
       // Подписка на обновления конкретного принтера
       socket.on('subscribe-printer', (printerId) => {

@@ -32,7 +32,9 @@ function connectWebSocket() {
 
     socket.on('initial-data', (data) => {
         console.log('📦 Получены начальные данные:', data);
-        printers = data.printers || [];
+        // Объединяем critical и active принтеры
+        printers = [...(data.critical || []), ...(data.active || [])];
+        console.log(`📊 Загружено принтеров: ${printers.length}`);
         renderPrinters();
         updateStats();
     });
