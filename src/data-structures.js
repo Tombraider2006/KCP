@@ -582,17 +582,12 @@ class StructuredPrinterManager {
           // НЕ добавляем в кэш, т.к. это временные данные до первого обновления
         }
         
-        // Возвращаем только не-offline принтеры
-        if (printerData.status !== 'offline' && printerData.status !== 'unknown') {
-          return printerData.toAPIFormat();
+        // Показываем все принтеры кроме offline
+        if (printerData.status === 'offline') {
+          return null;
         }
         
-        // Для unknown статуса тоже показываем принтер (просто ещё нет данных)
-        if (printerData.status === 'unknown') {
-          return printerData.toAPIFormat();
-        }
-        
-        return null;
+        return printerData.toAPIFormat();
       })
       .filter(printer => printer !== null)
       .sort((a, b) => {
