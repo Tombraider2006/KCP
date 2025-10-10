@@ -79,15 +79,29 @@ class WebServer {
     return new Promise((resolve) => {
       // Отключаем всех клиентов
       if (this.io) {
+        this.io.disconnectSockets(true);
         this.io.close();
       }
 
+      this.clients.clear();
+
       if (this.server) {
+        // Таймаут на случай зависания
+        const timeout = setTimeout(() => {
+          console.log('[WebServer] ⚠️ Принудительная остановка по таймауту');
+          this.isRunning = false;
+          resolve();
+        }, 3000);
+
         this.server.close(() => {
+          clearTimeout(timeout);
           this.isRunning = false;
           console.log('[WebServer] 🛑 Web-сервер остановлен');
           resolve();
         });
+
+        // Принудительно закрываем все соединения
+        this.server.closeAllConnections?.();
       } else {
         this.isRunning = false;
         resolve();
