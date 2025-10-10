@@ -148,6 +148,7 @@ class DiagnosticsReporter {
             version: app.getVersion(),
             platform: os.platform(),
             arch: os.arch(),
+            locale: app.getLocale(),
             installDate: store.installed,
             metrics: {
                 sessions: this.data.sessions,
