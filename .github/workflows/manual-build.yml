@@ -15,7 +15,7 @@ jobs:
     
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
         include:
           - os: ubuntu-latest
             artifact_name: '*.AppImage'
@@ -23,6 +23,9 @@ jobs:
           - os: macos-latest
             artifact_name: '*.dmg'
             asset_name_pattern: 'mac'
+          - os: windows-latest
+            artifact_name: '*.exe'
+            asset_name_pattern: 'windows'
     
     steps:
       - name: Checkout code
@@ -46,6 +49,10 @@ jobs:
       - name: Build for macOS
         if: matrix.os == 'macos-latest'
         run: npm run build:mac
+      
+      - name: Build for Windows
+        if: matrix.os == 'windows-latest'
+        run: npm run build:win
       
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -73,9 +80,10 @@ jobs:
       - name: Prepare release files
         run: |
           mkdir -p ./release-files
-          # Копируем только файлы с дефисами в названии (не точками)
-          find ./artifacts/linux-build -type f -name "3D-*-*.AppImage" -exec cp {} ./release-files/ \; 2>/dev/null || true
-          find ./artifacts/mac-build -type f -name "3D-*.dmg" ! -name "*.blockmap" -exec cp {} ./release-files/ \; 2>/dev/null || true
+          # Копируем установочные файлы для всех платформ
+          find ./artifacts/linux-build -type f -name "*.AppImage" -exec cp {} ./release-files/ \; 2>/dev/null || true
+          find ./artifacts/mac-build -type f -name "*.dmg" ! -name "*.blockmap" -exec cp {} ./release-files/ \; 2>/dev/null || true
+          find ./artifacts/windows-build -type f -name "*Setup*.exe" ! -name "*.blockmap" -exec cp {} ./release-files/ \; 2>/dev/null || true
           # Удаляем служебные файлы
           rm -f ./release-files/*.blockmap ./release-files/*.yml 2>/dev/null || true
           echo "=== Files prepared for release ==="
