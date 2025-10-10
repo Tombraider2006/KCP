@@ -565,7 +565,7 @@ class StructuredPrinterManager {
   }
   
   /**
-   * Получить только активные принтеры (не offline)
+   * Получить все принтеры (включая offline)
    */
   getActivePrinters() {
     const printers = this.store.get('printers', []);
@@ -582,14 +582,8 @@ class StructuredPrinterManager {
           // НЕ добавляем в кэш, т.к. это временные данные до первого обновления
         }
         
-        // Показываем все принтеры кроме offline
-        if (printerData.status === 'offline') {
-          return null;
-        }
-        
         return printerData.toAPIFormat();
       })
-      .filter(printer => printer !== null)
       .sort((a, b) => {
         // Сортировка по приоритету (критические первыми)
         if (b.priority !== a.priority) {
