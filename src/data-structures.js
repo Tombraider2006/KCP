@@ -572,13 +572,26 @@ class StructuredPrinterManager {
     
     return printers
       .map(printer => {
+        let printerData;
+        
         if (this.printerCache.has(printer.id)) {
-          const printerData = this.printerCache.get(printer.id);
-          // Возвращаем только не-offline принтеры
-          if (printerData.status !== 'offline') {
-            return printerData.toAPIFormat();
-          }
+          printerData = this.printerCache.get(printer.id);
+        } else {
+          // Создаём данные принтера если их нет в кэше
+          printerData = new PrinterData(printer);
+          // НЕ добавляем в кэш, т.к. это временные данные до первого обновления
         }
+        
+        // Возвращаем только не-offline принтеры
+        if (printerData.status !== 'offline' && printerData.status !== 'unknown') {
+          return printerData.toAPIFormat();
+        }
+        
+        // Для unknown статуса тоже показываем принтер (просто ещё нет данных)
+        if (printerData.status === 'unknown') {
+          return printerData.toAPIFormat();
+        }
+        
         return null;
       })
       .filter(printer => printer !== null)
