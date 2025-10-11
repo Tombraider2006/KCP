@@ -77,6 +77,20 @@ jobs:
       - name: Display structure of downloaded files
         run: ls -R ./artifacts
       
+      - name: Checkout for tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get latest tag
+        id: get_tag
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
+          fi
+      
       - name: Prepare release files
         run: |
           mkdir -p ./release-files
@@ -88,20 +102,6 @@ jobs:
           rm -f ./release-files/*.blockmap ./release-files/*.yml 2>/dev/null || true
           echo "=== Files prepared for release ==="
           ls -lh ./release-files || echo "No files found"
-      
-      - name: Get latest tag
-        id: get_tag
-        run: |
-          if [ -n "${{ github.event.inputs.tag }}" ]; then
-            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
-          else
-            echo "tag=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: Checkout for tag
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       
       - name: Upload files to release
         uses: softprops/action-gh-release@v1
