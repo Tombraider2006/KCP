@@ -1,6 +1,6 @@
 {
   "name": "3d-printer-control-panel",
-  "version": "1.5.33",
+  "version": "1.5.34",
   "description": "3D Printer Control Panel with Smart Temperature Monitoring for Klipper and Bambu Lab",
   "main": "src/main.js",
   "scripts": {
@@ -22,7 +22,7 @@
     "mqtt"
   ],
   "author": "Tom Tomich",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE.md",
   "devDependencies": {
     "electron": "^22.0.0",
     "electron-builder": "^24.0.0"

@@ -399,7 +399,12 @@ Support via crypto (no card needed):
 
 ## 📄 License
 
-MIT License - free use and modification.
+**Non-Commercial License** - free use for personal, educational and non-commercial purposes.
+
+For **commercial use**, you must purchase a commercial license.  
+📧 **Contact for purchase**: utolyana@ya.ru
+
+📖 Full license text: [LICENSE.md](../LICENSE.md)
 
 ---
 

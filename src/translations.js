@@ -560,7 +560,10 @@ const TRANSLATIONS = {
         // Telegram Smart Plugs Notifications
         'telegram_power_events': 'События умных розеток:',
         'telegram_notify_power_off': 'Автоотключение питания',
-        'telegram_notify_emergency': 'Аварийное отключение (перегрев)'
+        'telegram_notify_emergency': 'Аварийное отключение (перегрев)',
+        
+        // Footer / License
+        'license_info': 'Для коммерческого использования свяжитесь с разработчиком'
     },
     en: {
         // Statuses
@@ -1122,7 +1125,10 @@ const TRANSLATIONS = {
         // Telegram Smart Plugs Notifications
         'telegram_power_events': 'Smart Plug Events:',
         'telegram_notify_power_off': 'Auto power off',
-        'telegram_notify_emergency': 'Emergency shutdown (overheat)'
+        'telegram_notify_emergency': 'Emergency shutdown (overheat)',
+        
+        // Footer / License
+        'license_info': 'For commercial use, please contact the developer'
     }
 };
 
