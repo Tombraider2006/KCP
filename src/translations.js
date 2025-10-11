@@ -487,6 +487,9 @@ const TRANSLATIONS = {
         'checking_updates': 'Проверка обновлений...',
         'no_updates': 'Вы используете последнюю версию',
         'update_check_error': 'Ошибка проверки обновлений',
+        'update_up_to_date_title': 'Всё актуально!',
+        'update_no_updates_message': 'Вы используете последнюю версию!',
+        'update_no_updates_text': 'Ваше приложение обновлено. Проверьте позже для получения новых функций и улучшений.',
         
         // Smart Plugs
         'smart_plugs': 'Розетки',
@@ -1044,6 +1047,9 @@ const TRANSLATIONS = {
         'checking_updates': 'Checking for updates...',
         'no_updates': 'You are running the latest version',
         'update_check_error': 'Error checking for updates',
+        'update_up_to_date_title': 'You\'re Up to Date!',
+        'update_no_updates_message': 'You are running the latest version!',
+        'update_no_updates_text': 'Your application is up to date. Check back later for new features and improvements.',
         
         // Smart Plugs
         'smart_plugs': 'Smart Plugs',

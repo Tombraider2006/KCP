@@ -173,6 +173,10 @@ async function initApp() {
             showBambuLabHelpModal();
         });
         
+        window.electronAPI.onCheckUpdatesMenu(() => {
+            manualCheckForUpdates();
+        });
+        
         // Слушаем изменения языка
         if (window.electronAPI.onLanguageChanged) {
             window.electronAPI.onLanguageChanged(async (event, lang) => {
@@ -6620,6 +6624,38 @@ function showUpdateNotification(info) {
     // Обновляем переводы
     updateInterfaceLanguage();
     
+    const modal = document.getElementById('updateAvailableModal');
+    
+    // Восстанавливаем оригинальные стили и контент
+    const infoBox = modal?.querySelector('.info-box');
+    if (infoBox) {
+        infoBox.style.background = 'rgba(76, 175, 80, 0.1)';
+        infoBox.style.borderLeft = '3px solid #4caf50';
+    }
+    
+    const titleEl = modal?.querySelector('.modal-header h2');
+    if (titleEl) {
+        titleEl.innerHTML = '🎉 <span data-i18n="update_available_title">New Version Available</span>';
+    }
+    
+    const messageEl = modal?.querySelector('.info-box p:first-child strong');
+    if (messageEl) {
+        messageEl.innerHTML = '<span data-i18n="update_new_version">A new version is available!</span>';
+    }
+    
+    const recommendationEl = modal?.querySelector('.info-box p:last-child');
+    if (recommendationEl) {
+        recommendationEl.innerHTML = '<span data-i18n="update_recommendation">We recommend updating to get the latest features and improvements.</span>';
+    }
+    
+    const downloadBtn = modal?.querySelector('[onclick="downloadUpdate()"]');
+    if (downloadBtn) {
+        downloadBtn.style.display = '';
+    }
+    
+    // Применяем переводы
+    updateInterfaceLanguage();
+    
     // Заполняем информацию о версиях
     const currentVersionEl = document.getElementById('updateCurrentVersion');
     const latestVersionEl = document.getElementById('updateLatestVersion');
@@ -6628,7 +6664,6 @@ function showUpdateNotification(info) {
     if (latestVersionEl) latestVersionEl.textContent = info.latestVersion;
     
     // Показываем модальное окно
-    const modal = document.getElementById('updateAvailableModal');
     if (modal) {
         modal.style.display = 'block';
     }
@@ -6644,6 +6679,18 @@ function closeUpdateModal() {
     const modal = document.getElementById('updateAvailableModal');
     if (modal) {
         modal.style.display = 'none';
+        
+        // Восстанавливаем оригинальные стили для следующего показа
+        const infoBox = modal.querySelector('.info-box');
+        if (infoBox) {
+            infoBox.style.background = 'rgba(76, 175, 80, 0.1)';
+            infoBox.style.borderLeft = '3px solid #4caf50';
+        }
+        
+        const downloadBtn = modal.querySelector('[onclick="downloadUpdate()"]');
+        if (downloadBtn) {
+            downloadBtn.style.display = '';
+        }
     }
 }
 
@@ -6661,20 +6708,82 @@ function downloadUpdate() {
  * Ручная проверка обновлений
  */
 async function manualCheckForUpdates() {
+    // Показываем индикатор загрузки
     addConsoleMessage('🔍 ' + (t('checking_updates') || 'Checking for updates...'), 'info');
     
     try {
         const info = await window.electronAPI.checkForUpdates();
         
         if (info.hasUpdate) {
+            // Есть обновление - показываем модальное окно с информацией
             updateInfo = info;
             showUpdateNotification(info);
         } else {
-            addConsoleMessage('✅ ' + (t('no_updates') || 'You are running the latest version') + ': ' + info.currentVersion, 'success');
+            // Нет обновлений - показываем модальное окно с подтверждением
+            showNoUpdateModal(info);
         }
     } catch (error) {
-        addConsoleMessage('❌ ' + (t('update_check_error') || 'Error checking for updates') + ': ' + error.message, 'error');
+        // Ошибка - показываем модальное окно с ошибкой
+        alert((t('update_check_error') || 'Error checking for updates') + ': ' + error.message);
     }
+}
+
+/**
+ * Показать модальное окно "Обновлений нет"
+ */
+function showNoUpdateModal(info) {
+    // Обновляем переводы
+    updateInterfaceLanguage();
+    
+    // Заполняем информацию о текущей версии
+    const currentVersionEl = document.getElementById('updateCurrentVersion');
+    const latestVersionEl = document.getElementById('updateLatestVersion');
+    const modal = document.getElementById('updateAvailableModal');
+    const titleEl = modal?.querySelector('.modal-header h2');
+    const messageEl = modal?.querySelector('.info-box p:first-child strong');
+    const recommendationEl = modal?.querySelector('.info-box p:last-child');
+    const downloadBtn = modal?.querySelector('[onclick="downloadUpdate()"]');
+    
+    if (currentVersionEl) currentVersionEl.textContent = info.currentVersion;
+    if (latestVersionEl) latestVersionEl.textContent = info.currentVersion;
+    
+    // Меняем стиль модального окна для "нет обновлений"
+    const infoBox = modal?.querySelector('.info-box');
+    if (infoBox) {
+        infoBox.style.background = 'rgba(76, 175, 80, 0.1)';
+        infoBox.style.borderLeft = '3px solid #4caf50';
+    }
+    
+    // Меняем заголовок
+    if (titleEl) {
+        titleEl.innerHTML = '✅ <span data-i18n="update_up_to_date_title">You\'re Up to Date!</span>';
+        updateInterfaceLanguage();
+    }
+    
+    // Меняем сообщение
+    if (messageEl) {
+        messageEl.innerHTML = '<span data-i18n="update_no_updates_message">You are running the latest version!</span>';
+        updateInterfaceLanguage();
+    }
+    
+    // Меняем рекомендацию
+    if (recommendationEl) {
+        recommendationEl.innerHTML = '<span data-i18n="update_no_updates_text">Your application is up to date. Check back later for new features and improvements.</span>';
+        updateInterfaceLanguage();
+    }
+    
+    // Скрываем кнопку скачивания
+    if (downloadBtn) {
+        downloadBtn.style.display = 'none';
+    }
+    
+    // Показываем модальное окно
+    if (modal) {
+        modal.style.display = 'block';
+    }
+    
+    // Логируем в консоль
+    addConsoleMessage(`✅ ${t('no_updates') || 'You are running the latest version'}: ${info.currentVersion}`, 'success');
 }
 
 /**

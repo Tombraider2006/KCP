@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onMenuTestAll: (callback) => ipcRenderer.on('menu-test-all', callback),
   onShowTelegramHelpModal: (callback) => ipcRenderer.on('show-telegram-help-modal', callback),
   onShowBambuHelpModal: (callback) => ipcRenderer.on('show-bambu-help-modal', callback),
+  onCheckUpdatesMenu: (callback) => ipcRenderer.on('check-updates-menu', callback),
   onLanguageChanged: (callback) => ipcRenderer.on('language-changed', callback),
   onGetPrinterData: (callback) => ipcRenderer.on('get-printer-data', callback),
   

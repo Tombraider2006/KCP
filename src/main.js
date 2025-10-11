@@ -251,7 +251,9 @@ function createApplicationMenu() {
         {
           label: isRussian ? 'Проверить обновления' : 'Check for Updates',
           click: () => {
-            checkForUpdates(isRussian);
+            if (mainWindow) {
+              mainWindow.webContents.send('check-updates-menu');
+            }
           }
         },
         { type: 'separator' },
