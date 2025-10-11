@@ -15,6 +15,7 @@ class DiagnosticsReporter {
         this.uid = this.getUid();
         this.data = this.loadData();
         this.timer = null;
+        this.sessionStartTime = Date.now(); // Время старта текущей сессии
     }
     
     async initialize() {
@@ -78,7 +79,7 @@ class DiagnosticsReporter {
         const store = this.getStore();
         return store.data || {
             sessions: 0,
-            uptime: 0,
+            totalUptime: 0, // Общее время работы в секундах
             printersAdded: 0,
             printersKlipper: 0,
             printersBambu: 0,
@@ -151,6 +152,9 @@ class DiagnosticsReporter {
     collectData() {
         const store = this.getStore();
         
+        // Вычисляем время текущей сессии в секундах
+        const currentSessionUptime = Math.floor((Date.now() - this.sessionStartTime) / 1000);
+        
         return {
             id: this.uid,
             version: app.getVersion(),
@@ -158,9 +162,12 @@ class DiagnosticsReporter {
             arch: os.arch(),
             locale: app.getLocale(),
             installDate: store.installed,
+            currentTheme: this.data.currentTheme || 'dark', // Текущая тема
+            webServerEnabled: this.data.webServerEnabled || false, // Статус веб-сервера
             metrics: {
                 sessions: this.data.sessions,
-                uptime: this.data.uptime,
+                totalUptime: this.data.totalUptime || 0, // Общее время работы в секундах
+                sessionUptime: currentSessionUptime, // Время текущей сессии
                 printersAdded: this.data.printersAdded,
                 currentPrinters: this.data.currentPrinters,
                 maxPrinters: this.data.maxPrinters || this.data.currentPrinters,
@@ -221,6 +228,15 @@ class DiagnosticsReporter {
                         if (res.statusCode === 200) {
                             store.lastSync = Date.now();
                             this.saveStore(store);
+                            
+                            // Добавляем время текущей сессии к общему времени работы
+                            const sessionTime = Math.floor((Date.now() - this.sessionStartTime) / 1000);
+                            this.data.totalUptime = (this.data.totalUptime || 0) + sessionTime;
+                            this.saveData();
+                            
+                            // Сбрасываем таймер сессии для следующей синхронизации
+                            this.sessionStartTime = Date.now();
+                            
                             resolve();
                         } else {
                             console.error('[Telemetry] Server returned status:', res.statusCode);
@@ -265,6 +281,16 @@ class DiagnosticsReporter {
         this.config.active = enabled;
         if (enabled) this.startSync();
         else this.stopSync();
+    }
+    
+    setCurrentTheme(theme) {
+        this.data.currentTheme = theme; // 'light' или 'dark'
+        this.saveData();
+    }
+    
+    setWebServerEnabled(enabled) {
+        this.data.webServerEnabled = enabled;
+        this.saveData();
     }
 }
 

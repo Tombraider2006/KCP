@@ -64,7 +64,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     trackFeature: (name) => ipcRenderer.invoke('diagnostics-track-feature', name),
     trackAnalyticsView: () => ipcRenderer.invoke('diagnostics-track-analytics-view'),
     trackExport: (format) => ipcRenderer.invoke('diagnostics-track-export', format),
-    forceSync: () => ipcRenderer.invoke('diagnostics-force-sync')
+    forceSync: () => ipcRenderer.invoke('diagnostics-force-sync'),
+    setTheme: (theme) => ipcRenderer.invoke('diagnostics-set-theme', theme),
+    setWebServer: (enabled) => ipcRenderer.invoke('diagnostics-set-webserver', enabled)
   },
   
   // Tuya Smart Plug Management

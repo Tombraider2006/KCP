@@ -2725,6 +2725,14 @@ ipcMain.handle('diagnostics-force-sync', async () => {
   return { success: true };
 });
 
+ipcMain.handle('diagnostics-set-theme', (event, theme) => {
+  reporter.setCurrentTheme(theme);
+});
+
+ipcMain.handle('diagnostics-set-webserver', (event, enabled) => {
+  reporter.setWebServerEnabled(enabled);
+});
+
 // ===== WEB SERVER MANAGEMENT =====
 
 /**
@@ -2744,6 +2752,9 @@ ipcMain.handle('start-web-server', async (event, port) => {
     isWebServerEnabled = true;
     store.set('webServerEnabled', true);
     store.set('webServerPort', port || 8000);
+    
+    // Обновляем статус в телеметрии
+    reporter.setWebServerEnabled(true);
 
     console.log(`[WebServer] ✅ Запущен на порту ${result.port}`);
     
@@ -2774,6 +2785,9 @@ ipcMain.handle('stop-web-server', async () => {
     await webServer.stop();
     isWebServerEnabled = false;
     store.set('webServerEnabled', false);
+    
+    // Обновляем статус в телеметрии
+    reporter.setWebServerEnabled(false);
     
     // Отправляем обновление в renderer
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -3002,6 +3016,7 @@ app.whenReady().then(async () => {
     try {
       await webServer.start(webServerPort);
       isWebServerEnabled = true;
+      reporter.setWebServerEnabled(true); // Обновляем телеметрию
       console.log(`[WebServer] ✅ Автозапуск на порту ${webServerPort}`);
     } catch (error) {
       console.error('[WebServer] Ошибка автозапуска:', error);

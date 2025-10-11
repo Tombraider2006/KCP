@@ -1715,6 +1715,11 @@ async function removePrinter(printerId, event) {
 
 // ФУНКЦИЯ ДЛЯ ОТКРЫТИЯ ВЕБ-ИНТЕРФЕЙСА ПРИНТЕРА В ОКНЕ С ВКЛАДКАМИ
 async function openPrinterWebInterface(printerId) {
+    // Отслеживаем открытие веб-интерфейса
+    if (window.electronAPI?.diagnostics?.trackFeature) {
+        window.electronAPI.diagnostics.trackFeature('web_interface_opened');
+    }
+    
     const printer = printers.find(p => p.id === printerId);
     if (!printer) return;
     
@@ -3082,6 +3087,12 @@ function updatePrintersDisplay() {
 function openAnalyticsModal() {
     const modal = document.getElementById('analyticsModal');
     if (!modal) return;
+    
+    // Отслеживаем использование аналитики
+    if (window.electronAPI?.diagnostics?.trackFeature) {
+        window.electronAPI.diagnostics.trackFeature('analytics_opened');
+    }
+    
     populateAnalyticsPrinterSelect();
     document.getElementById('analyticsPeriod').value = '7d';
     localizeAnalyticsUi();
@@ -4571,6 +4582,11 @@ function exportLogs() {
 }
 
 async function exportAnalytics() {
+    // Отслеживаем экспорт аналитики
+    if (window.electronAPI?.diagnostics?.trackFeature) {
+        window.electronAPI.diagnostics.trackFeature('analytics_exported');
+    }
+    
     try {
         // Получаем версию приложения
         const appVersion = await window.electronAPI.getAppVersion();
@@ -6408,10 +6424,18 @@ function toggleTheme() {
         root.removeAttribute('data-theme');
         if (icon) icon.textContent = '🌙';
         localStorage.setItem('appTheme', 'dark');
+        // Обновляем текущую тему в телеметрии
+        if (window.electronAPI?.diagnostics?.setTheme) {
+            window.electronAPI.diagnostics.setTheme('dark');
+        }
     } else {
         root.setAttribute('data-theme', 'light');
         if (icon) icon.textContent = '☀️';
         localStorage.setItem('appTheme', 'light');
+        // Обновляем текущую тему в телеметрии
+        if (window.electronAPI?.diagnostics?.setTheme) {
+            window.electronAPI.diagnostics.setTheme('light');
+        }
     }
 }
 
@@ -6422,6 +6446,17 @@ if (savedTheme === 'light') {
     setTimeout(() => {
         const icon = document.getElementById('themeIcon');
         if (icon) icon.textContent = '☀️';
+        // Отправляем текущую тему в телеметрию
+        if (window.electronAPI?.diagnostics?.setTheme) {
+            window.electronAPI.diagnostics.setTheme('light');
+        }
+    }, 100);
+} else {
+    // Темная тема по умолчанию
+    setTimeout(() => {
+        if (window.electronAPI?.diagnostics?.setTheme) {
+            window.electronAPI.diagnostics.setTheme('dark');
+        }
     }, 100);
 }
 
@@ -6585,8 +6620,16 @@ async function confirmPowerOff() {
         // Выключаем розетку
         if (printer.tuyaDeviceId) {
             result = await window.electronAPI.tuyaControlDevice(printerId, 'turn_off');
+            // Отслеживаем использование Tuya
+            if (window.electronAPI?.diagnostics?.trackFeature) {
+                window.electronAPI.diagnostics.trackFeature('tuya_power_control_used');
+            }
         } else if (printer.haEntityId) {
             result = await window.electronAPI.haControlSwitch(printerId, 'turn_off');
+            // Отслеживаем использование Home Assistant
+            if (window.electronAPI?.diagnostics?.trackFeature) {
+                window.electronAPI.diagnostics.trackFeature('homeassistant_power_control_used');
+            }
         }
         
         if (result && result.success) {
@@ -7233,8 +7276,16 @@ async function togglePrinterPower(printerId) {
         let result;
         if (printer.tuyaDeviceId) {
             result = await window.electronAPI.tuyaControlDevice(printerId, 'turn_on');
+            // Отслеживаем использование Tuya
+            if (window.electronAPI?.diagnostics?.trackFeature) {
+                window.electronAPI.diagnostics.trackFeature('tuya_power_control_used');
+            }
         } else if (printer.haEntityId) {
             result = await window.electronAPI.haControlSwitch(printerId, 'turn_on');
+            // Отслеживаем использование Home Assistant
+            if (window.electronAPI?.diagnostics?.trackFeature) {
+                window.electronAPI.diagnostics.trackFeature('homeassistant_power_control_used');
+            }
         }
         
         if (result && result.success) {
