@@ -1,6 +1,6 @@
 {
   "name": "3d-printer-control-panel",
-  "version": "1.5.32",
+  "version": "1.5.33",
   "description": "3D Printer Control Panel with Smart Temperature Monitoring for Klipper and Bambu Lab",
   "main": "src/main.js",
   "scripts": {
@@ -28,6 +28,8 @@
     "electron-builder": "^24.0.0"
   },
   "dependencies": {
+    "@tuya/tuya-connector-nodejs": "^2.1.2",
+    "axios": "^1.12.2",
     "bambu-js": "^3.0.1",
     "basic-ftp": "^5.0.5",
     "chart.js": "^4.5.0",

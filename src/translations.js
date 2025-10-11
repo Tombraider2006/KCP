@@ -467,7 +467,82 @@ const TRANSLATIONS = {
         'temp_sensors_mcu_hint': '🔧 Температура платы',
         'temp_sensors_rpi_hint': '💻 Компьютер хоста',
         'temp_sensors_room_hint': '🌡️ Температура окружения',
-        'temp_sensors_generic_hint': '📊 Датчик температуры'
+        'temp_sensors_generic_hint': '📊 Датчик температуры',
+        
+        // Power Off Confirmation
+        'power_off_confirm_title': 'Подтверждение выключения',
+        'power_off_confirm_message': 'Вы уверены, что хотите выключить принтер?',
+        'power_off_confirm_warning': '⚠️ Это немедленно отключит питание принтера. Убедитесь, что печать завершена или приостановлена.',
+        'power_off_confirm_btn': 'Выключить',
+        
+        // Smart Plugs
+        'smart_plugs': 'Розетки',
+        'smart_plugs_config': 'Настройка умных розеток',
+        'smart_plugs_settings': 'Настройки',
+        'smart_plug_title': 'Умная розетка',
+        'plug_type': 'Тип подключения:',
+        'plug_not_configured': 'Не настроено',
+        'plug_configure_first': 'Сначала настройте подключение:',
+        'plugs_connection_type': 'Тип подключения:',
+        'plugs_choose_type': 'Выберите способ подключения ваших умных розеток:',
+        'plugs_tuya_desc': 'Прямое подключение к Tuya/Smart Life',
+        'plugs_ha_desc': 'Универсальное решение для всех брендов',
+        'plugs_easy_setup': 'Простая настройка',
+        'plugs_tuya_devices': 'Только Tuya устройства',
+        'plugs_all_brands': 'Все бренды (Tuya, Яндекс и т.д.)',
+        'plugs_local_control': 'Локальное управление',
+        'plugs_link_info': 'Чтобы привязать конкретную умную розетку к принтеру, откройте настройки принтера и выберите устройство из списка.',
+        
+        // Tuya
+        'tuya_select_device': 'Выберите Tuya устройство:',
+        'tuya_not_connected': 'Не подключена',
+        'tuya_configure_first': 'Сначала настройте Tuya API:',
+        'tuya_settings': 'Настройки',
+        'tuya_automation': 'Автоматизация:',
+        'tuya_auto_shutdown_complete': 'Автоотключение после завершения печати',
+        'tuya_shutdown_delay': 'Задержка отключения (минут):',
+        'tuya_auto_shutdown_error': 'Автоотключение при ошибке печати',
+        'tuya_auto_shutdown_overheat': 'Автоотключение при перегреве (MCU > 70°C)',
+        'tuya_preparation': 'Подготовка:',
+        'tuya_step1': 'Зарегистрируйтесь на',
+        'tuya_step2': 'Создайте Cloud Project',
+        'tuya_step3': 'Получите Access ID и Access Secret',
+        'tuya_step4': 'Подпишитесь на Smart Home PaaS API',
+        'tuya_step5': 'Свяжите ваш аккаунт Smart Life',
+        'tuya_region': 'Регион:',
+        'tuya_access_id': 'Access ID:',
+        'tuya_access_secret': 'Access Secret:',
+        'tuya_encrypted': '⚠️ Будет храниться в зашифрованном виде',
+        'tuya_secret_saved_hint': '💡 Если сохранен, будет показан точками (кликните для редактирования)',
+        'tuya_test_connection': 'Проверить соединение',
+        'tuya_devices_not_found': 'Розетки не найдены',
+        
+        // Home Assistant
+        'ha_preparation': 'Подготовка:',
+        'ha_step1': 'Установите Home Assistant',
+        'ha_step2': 'Добавьте ваши розетки в Home Assistant',
+        'ha_step3': 'Создайте Long-Lived Access Token',
+        'ha_step4': 'Профиль → Security → Create Token',
+        'ha_url': 'URL Home Assistant:',
+        'ha_url_hint': 'Обычно: http://homeassistant.local:8123 или http://IP:8123',
+        'ha_token': 'Long-Lived Access Token:',
+        'ha_token_hint': 'Получить: Профиль → Security → Long-lived access tokens',
+        'ha_token_saved_hint': '💡 Если сохранен, будет показан точками (кликните для редактирования)',
+        'ha_test_connection': 'Проверить соединение',
+        'ha_select_device': 'Выберите Home Assistant entity:',
+        'ha_not_connected': 'Не подключена',
+        'ha_entities_not_found': 'Розетки не найдены',
+        'ha_configure_first': 'Сначала настройте Home Assistant API:',
+        
+        // Power Control
+        'power_control_error': 'Ошибка управления питанием',
+        'turn_on_power': 'Включить питание',
+        'turn_off_power': 'Выключить питание',
+        
+        // Telegram Smart Plugs Notifications
+        'telegram_power_events': 'События умных розеток:',
+        'telegram_notify_power_off': 'Автоотключение питания',
+        'telegram_notify_emergency': 'Аварийное отключение (перегрев)'
     },
     en: {
         // Statuses
@@ -936,7 +1011,82 @@ const TRANSLATIONS = {
         'temp_sensors_mcu_hint': '🔧 Board temperature',
         'temp_sensors_rpi_hint': '💻 Host computer',
         'temp_sensors_room_hint': '🌡️ Ambient temperature',
-        'temp_sensors_generic_hint': '📊 Temperature sensor'
+        'temp_sensors_generic_hint': '📊 Temperature sensor',
+        
+        // Power Off Confirmation
+        'power_off_confirm_title': 'Confirm Power Off',
+        'power_off_confirm_message': 'Are you sure you want to turn off the printer?',
+        'power_off_confirm_warning': '⚠️ This will cut power to the printer immediately. Make sure the print is complete or paused.',
+        'power_off_confirm_btn': 'Turn Off',
+        
+        // Smart Plugs
+        'smart_plugs': 'Smart Plugs',
+        'smart_plugs_config': 'Smart Plugs Configuration',
+        'smart_plugs_settings': 'Settings',
+        'smart_plug_title': 'Smart Plug',
+        'plug_type': 'Connection type:',
+        'plug_not_configured': 'Not configured',
+        'plug_configure_first': 'Configure connection first:',
+        'plugs_connection_type': 'Connection Type:',
+        'plugs_choose_type': 'Choose how to connect your smart plugs:',
+        'plugs_tuya_desc': 'Direct connection to Tuya/Smart Life',
+        'plugs_ha_desc': 'Universal solution for all brands',
+        'plugs_easy_setup': 'Easy setup',
+        'plugs_tuya_devices': 'Tuya devices only',
+        'plugs_all_brands': 'All brands (Tuya, Yandex, etc.)',
+        'plugs_local_control': 'Local control',
+        'plugs_link_info': 'To link a specific smart plug to a printer, open the printer settings and select the device from the list.',
+        
+        // Tuya
+        'tuya_select_device': 'Select Tuya device:',
+        'tuya_not_connected': 'Not connected',
+        'tuya_configure_first': 'Configure Tuya API first:',
+        'tuya_settings': 'Settings',
+        'tuya_automation': 'Automation:',
+        'tuya_auto_shutdown_complete': 'Auto-shutdown after print complete',
+        'tuya_shutdown_delay': 'Shutdown delay (minutes):',
+        'tuya_auto_shutdown_error': 'Auto-shutdown on print error',
+        'tuya_auto_shutdown_overheat': 'Auto-shutdown on overheat (MCU > 70°C)',
+        'tuya_preparation': 'Preparation:',
+        'tuya_step1': 'Register at',
+        'tuya_step2': 'Create Cloud Project',
+        'tuya_step3': 'Get Access ID and Access Secret',
+        'tuya_step4': 'Subscribe to Smart Home PaaS API',
+        'tuya_step5': 'Link your Smart Life account',
+        'tuya_region': 'Region:',
+        'tuya_access_id': 'Access ID:',
+        'tuya_access_secret': 'Access Secret:',
+        'tuya_encrypted': '⚠️ Will be stored encrypted',
+        'tuya_secret_saved_hint': '💡 If saved, will be shown as dots (click to edit)',
+        'tuya_test_connection': 'Test Connection',
+        'tuya_devices_not_found': 'No smart plugs found',
+        
+        // Home Assistant
+        'ha_preparation': 'Preparation:',
+        'ha_step1': 'Install Home Assistant',
+        'ha_step2': 'Add your smart plugs to HA',
+        'ha_step3': 'Get Long-Lived Access Token',
+        'ha_step4': 'Profile → Security → Create Token',
+        'ha_url': 'Home Assistant URL:',
+        'ha_url_hint': 'Usually: http://homeassistant.local:8123 or http://IP:8123',
+        'ha_token': 'Long-Lived Access Token:',
+        'ha_token_hint': 'Get from: Profile → Security → Long-lived access tokens',
+        'ha_token_saved_hint': '💡 If saved, will be shown as dots (click to edit)',
+        'ha_test_connection': 'Test Connection',
+        'ha_select_device': 'Select entity:',
+        'ha_not_connected': 'Not connected',
+        'ha_entities_not_found': 'No entities found',
+        'ha_configure_first': 'Configure Home Assistant API first:',
+        
+        // Power Control
+        'power_control_error': 'Power control error',
+        'turn_on_power': 'Turn on power',
+        'turn_off_power': 'Turn off power',
+        
+        // Telegram Smart Plugs Notifications
+        'telegram_power_events': 'Smart Plug Events:',
+        'telegram_notify_power_off': 'Auto power off',
+        'telegram_notify_emergency': 'Emergency shutdown (overheat)'
     }
 };
 

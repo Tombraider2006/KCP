@@ -31,6 +31,7 @@
                 <button class="btn btn-primary" onclick="startNetworkScan()">🔧 <span id="managePrintersBtnText">Manage Printers</span></button>
                 <button class="btn btn-secondary" onclick="testAllConnections()">🔗 Test All Connections</button>
                 <button class="btn btn-telegram" onclick="openTelegramSettingsModal()">🤖 Telegram</button>
+                <button class="btn btn-tuya" onclick="openSmartPlugsModal()">🔌 <span data-i18n="smart_plugs">Smart Plugs</span></button>
                 <button class="btn btn-secondary" onclick="openAnalyticsModal()">📈 <span id="analyticsBtnText">Analytics</span></button>
                 <button class="btn btn-web-server" id="webServerBtn" onclick="toggleWebServerModal()">
                     🌐 <span id="webServerBtnText" data-i18n="web_server_btn_text">Web Server</span>
@@ -202,6 +203,77 @@
                     </div>
                 </div>
                 
+                <!-- Smart Plug Configuration -->
+                <div class="form-group" style="margin-top: 25px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <h4 style="margin-bottom: 15px;">🔌 <span data-i18n="smart_plug_title">Smart Plug</span></h4>
+                    
+                    <div class="form-group">
+                        <label for="editPlugType" data-i18n="plug_type">Connection type:</label>
+                        <select id="editPlugType" onchange="togglePlugDeviceFields()">
+                            <option value="" data-i18n="plug_not_configured">Not configured</option>
+                            <option value="tuya">Tuya Cloud API</option>
+                            <option value="homeassistant">Home Assistant</option>
+                        </select>
+                        <small><span data-i18n="plug_configure_first">Configure connection first:</span> <a href="#" onclick="event.preventDefault(); openSmartPlugsModal();" data-i18n="smart_plugs_settings">Settings</a></small>
+                    </div>
+                    
+                    <!-- Tuya Device Selection -->
+                    <div id="editTuyaDeviceGroup" class="form-group" style="display: none;">
+                        <label for="editTuyaDevice" data-i18n="tuya_select_device">Select Tuya device:</label>
+                        <div style="display: flex; gap: 10px;">
+                            <select id="editTuyaDevice" style="flex: 1;">
+                                <option value="" data-i18n="tuya_not_connected">Not connected</option>
+                            </select>
+                            <button type="button" class="btn btn-small" onclick="refreshTuyaDevicesInEdit()" title="Refresh">
+                                🔄
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Home Assistant Entity Selection -->
+                    <div id="editHADeviceGroup" class="form-group" style="display: none;">
+                        <label for="editHAEntity" data-i18n="ha_select_device">Select Home Assistant entity:</label>
+                        <div style="display: flex; gap: 10px;">
+                            <select id="editHAEntity" style="flex: 1;">
+                                <option value="" data-i18n="ha_not_connected">Not connected</option>
+                            </select>
+                            <button type="button" class="btn btn-small" onclick="refreshHAEntitiesInEdit()" title="Refresh">
+                                🔄
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="editTuyaAutomation" style="display: none;">
+                        <h5 style="margin: 15px 0 10px 0; font-size: 14px;">⚙️ <span data-i18n="tuya_automation">Automation:</span></h5>
+                        
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="editAutoShutdownEnabled">
+                            <span data-i18n="tuya_auto_shutdown_complete">Auto-shutdown after print complete</span>
+                        </label>
+                        
+                        <div class="sub-setting" id="editAutoShutdownDelayGroup">
+                            <label for="editAutoShutdownDelay" data-i18n="tuya_shutdown_delay">Shutdown delay (minutes):</label>
+                            <input 
+                                type="number" 
+                                id="editAutoShutdownDelay" 
+                                min="0" 
+                                max="60" 
+                                value="5"
+                            >
+                        </div>
+                        
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="editAutoShutdownError">
+                            <span data-i18n="tuya_auto_shutdown_error">Auto-shutdown on print error</span>
+                        </label>
+                        
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="editAutoShutdownOverheat" checked>
+                            <span data-i18n="tuya_auto_shutdown_overheat">Auto-shutdown on overheat (MCU > 70°C)</span>
+                        </label>
+                    </div>
+                </div>
+                
                 <div class="modal-footer">
                     <button class="btn btn-primary" onclick="savePrinterChanges()">Save</button>
                     <button class="btn" onclick="closeEditPrinterModal()">Cancel</button>
@@ -220,8 +292,9 @@
             <div class="modal-body">
                 <div class="form-group">
                     <label for="telegramBotToken">Bot Token:</label>
-                    <input type="text" id="telegramBotToken" placeholder="1234567890:ABCdefGHIjklMNopQRstUVwxyz">
+                    <input type="password" id="telegramBotToken" placeholder="1234567890:ABCdefGHIjklMNopQRstUVwxyz">
                     <small>Get this from @BotFather in Telegram</small>
+                    <small style="display: block; margin-top: 5px; color: #ffa726;">💡 If saved, will be shown as dots (click to edit)</small>
                 </div>
                 <div class="form-group">
                     <label for="telegramChatId">Chat ID:</label>
@@ -241,6 +314,10 @@
                     <label><input type="checkbox" id="notifyPrintPaused" checked> <span id="labelPrintPaused">Print paused</span></label>
                     <label><input type="checkbox" id="notifyPrinterOffline"> <span id="labelPrinterOffline">Printer offline</span></label>
                     <label><input type="checkbox" id="notifyPrinterOnline"> <span id="labelPrinterOnline">Printer online</span></label>
+                    
+                    <h4 style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">🔌 <span data-i18n="telegram_power_events">Smart Plugs Events:</span></h4>
+                    <label><input type="checkbox" id="notifyPowerOff" checked> <span data-i18n="telegram_notify_power_off">Power auto-shutdown</span></label>
+                    <label><input type="checkbox" id="notifyEmergencyShutdown" checked> <span data-i18n="telegram_notify_emergency">Emergency shutdown (overheat)</span></label>
                     <label><input type="checkbox" id="notifyInefficiency" checked> <span id="labelInefficiency">Inefficiency event</span></label>
                     <label><input type="checkbox" id="notifyInefficiencyReason" checked> <span id="labelInefficiencyReason">Inefficiency reason saved</span></label>
                     <label><input type="checkbox" id="notifyProgramStart" checked> <span id="labelProgramStart">Program start</span></label>
@@ -661,7 +738,202 @@
         </div>
     </div>
 
+    <!-- Модальное окно настройки умных розеток -->
+    <div id="smartPlugsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🔌 <span data-i18n="smart_plugs_config">Smart Plugs Configuration</span></h3>
+                <span class="close" onclick="closeSmartPlugsModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <!-- Выбор типа подключения -->
+                <div class="info-box">
+                    <h4>📡 <span data-i18n="plugs_connection_type">Connection Type:</span></h4>
+                    <p data-i18n="plugs_choose_type">Choose how you want to connect your smart plugs:</p>
+                </div>
+                
+                <div class="plugs-type-selector">
+                    <label class="plug-type-card" onclick="selectPlugType('tuya')">
+                        <input type="radio" name="plugType" value="tuya" checked>
+                        <div class="card-content">
+                            <div class="card-icon">☁️</div>
+                            <div class="card-title">Tuya Cloud API</div>
+                            <div class="card-description" data-i18n="plugs_tuya_desc">Direct connection to Tuya/Smart Life</div>
+                            <div class="card-features">
+                                <span>✅ <span data-i18n="plugs_easy_setup">Easy setup</span></span>
+                                <span>✅ <span data-i18n="plugs_tuya_devices">Tuya devices only</span></span>
+                            </div>
+                        </div>
+                    </label>
+                    
+                    <label class="plug-type-card" onclick="selectPlugType('homeassistant')">
+                        <input type="radio" name="plugType" value="homeassistant">
+                        <div class="card-content">
+                            <div class="card-icon">🏠</div>
+                            <div class="card-title">Home Assistant</div>
+                            <div class="card-description" data-i18n="plugs_ha_desc">Universal solution for all brands</div>
+                            <div class="card-features">
+                                <span>✅ <span data-i18n="plugs_all_brands">All brands (Tuya, Yandex, etc.)</span></span>
+                                <span>✅ <span data-i18n="plugs_local_control">Local control</span></span>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+                
+                <!-- Секция Tuya -->
+                <div id="tuyaConfigSection" class="plug-config-section" style="display: block;">
+                    <h4>☁️ Tuya Cloud API</h4>
+                    
+                    <div class="info-box">
+                        <h5>📋 <span data-i18n="tuya_preparation">Preparation:</span></h5>
+                        <ol>
+                            <li><span data-i18n="tuya_step1">Register at</span> <a href="#" onclick="openExternalUrl('https://iot.tuya.com')">iot.tuya.com</a></li>
+                            <li><span data-i18n="tuya_step2">Create Cloud Project</span></li>
+                            <li><span data-i18n="tuya_step3">Get Access ID and Access Secret</span></li>
+                            <li><span data-i18n="tuya_step4">Subscribe to Smart Home PaaS API</span></li>
+                            <li><span data-i18n="tuya_step5">Link your Smart Life account</span></li>
+                        </ol>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="tuyaRegion" data-i18n="tuya_region">Region:</label>
+                        <select id="tuyaRegion">
+                            <option value="https://openapi.tuyaeu.com">Europe</option>
+                            <option value="https://openapi.tuyaus.com">USA</option>
+                            <option value="https://openapi.tuyacn.com">China</option>
+                            <option value="https://openapi.tuyain.com">India</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="tuyaAccessId" data-i18n="tuya_access_id">Access ID:</label>
+                        <input 
+                            type="text" 
+                            id="tuyaAccessId" 
+                            placeholder="xxxxxxxxxxxxxxxxxx"
+                        >
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="tuyaAccessSecret" data-i18n="tuya_access_secret">Access Secret:</label>
+                        <input 
+                            type="password" 
+                            id="tuyaAccessSecret" 
+                            placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                        >
+                        <small data-i18n="tuya_encrypted">⚠️ Will be stored encrypted</small>
+                        <small style="display: block; margin-top: 5px; color: #ffa726;" data-i18n="tuya_secret_saved_hint">💡 If saved, will be shown as dots (click to edit)</small>
+                    </div>
+                    
+                    <div id="tuyaStatus" class="status-message"></div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-secondary" onclick="testTuyaConnection()">
+                            🔍 <span data-i18n="tuya_test_connection">Test Connection</span>
+                        </button>
+                        <button class="btn btn-primary" onclick="saveTuyaConfig()">
+                            💾 <span data-i18n="save">Save</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Секция Home Assistant -->
+                <div id="homeassistantConfigSection" class="plug-config-section" style="display: none;">
+                    <h4>🏠 Home Assistant</h4>
+                    
+                    <div class="info-box">
+                        <h5>📋 <span data-i18n="ha_preparation">Preparation:</span></h5>
+                        <ol>
+                            <li><span data-i18n="ha_step1">Install Home Assistant</span> (<a href="#" onclick="openExternalUrl('https://www.home-assistant.io/installation/')">home-assistant.io</a>)</li>
+                            <li><span data-i18n="ha_step2">Add your smart plugs to Home Assistant</span></li>
+                            <li><span data-i18n="ha_step3">Create Long-Lived Access Token</span></li>
+                            <li data-i18n="ha_step4">Profile → Security → Create Token</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="haBaseUrl" data-i18n="ha_url">Home Assistant URL:</label>
+                        <input 
+                            type="text" 
+                            id="haBaseUrl" 
+                            placeholder="http://homeassistant.local:8123"
+                        >
+                        <small data-i18n="ha_url_hint">Usually: http://homeassistant.local:8123 or http://IP:8123</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="haToken" data-i18n="ha_token">Long-Lived Access Token:</label>
+                        <textarea 
+                            id="haToken" 
+                            placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+                            rows="3"
+                            style="font-family: monospace; font-size: 12px;"
+                        ></textarea>
+                        <small data-i18n="ha_token_hint">Get from: Profile → Security → Long-lived access tokens</small>
+                        <small style="display: block; margin-top: 5px; color: #ffa726;" data-i18n="ha_token_saved_hint">💡 If saved, will be shown as dots (click to edit)</small>
+                    </div>
+                    
+                    <div id="haStatus" class="status-message"></div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-secondary" onclick="testHomeAssistantConnection()">
+                            🔍 <span data-i18n="ha_test_connection">Test Connection</span>
+                        </button>
+                        <button class="btn btn-primary" onclick="saveHomeAssistantConfig()">
+                            💾 <span data-i18n="save">Save</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Информационное сообщение -->
+                <div class="info-box" style="margin-top: 25px; background: rgba(0, 212, 255, 0.1); border-left: 3px solid #00d4ff;">
+                    <p style="margin: 0; font-size: 14px;">
+                        💡 <span data-i18n="plugs_link_info">To link a specific smart plug to a printer, go to printer settings and select the device from the list.</span>
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="openSmartPlugsHelp()">
+                    📚 <span data-i18n="help">Help</span>
+                </button>
+                <button class="btn" onclick="closeSmartPlugsModal()">
+                    <span data-i18n="close">Close</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Power Off Confirmation Modal -->
+    <div id="powerOffConfirmModal" class="modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2>⚠️ <span data-i18n="power_off_confirm_title">Confirm Power Off</span></h2>
+                <span class="close" onclick="closePowerOffConfirmModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 20px;">
+                    <p data-i18n="power_off_confirm_message">Are you sure you want to turn off the printer?</p>
+                    <p style="margin-top: 10px; color: #ffa726; font-size: 14px;">
+                        <strong id="powerOffPrinterName"></strong>
+                    </p>
+                    <p style="margin-top: 15px; color: #ff6b6b; font-size: 13px;" data-i18n="power_off_confirm_warning">
+                        ⚠️ This will cut power to the printer immediately. Make sure the print is complete or paused.
+                    </p>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-secondary" onclick="closePowerOffConfirmModal()">
+                        <span data-i18n="cancel">Cancel</span>
+                    </button>
+                    <button class="btn btn-danger" onclick="confirmPowerOff()" style="background: #ff6b6b; color: white;">
+                        🔌 <span data-i18n="power_off_confirm_btn">Turn Off</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="../node_modules/chart.js/dist/chart.umd.js"></script>
+
     <script src="translations.js"></script>
     <script src="renderer.js"></script>
 </body>

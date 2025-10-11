@@ -63,5 +63,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
     trackFeature: (name) => ipcRenderer.invoke('diagnostics-track-feature', name),
     trackAnalyticsView: () => ipcRenderer.invoke('diagnostics-track-analytics-view'),
     trackExport: (format) => ipcRenderer.invoke('diagnostics-track-export', format)
-  }
+  },
+  
+  // Tuya Smart Plug Management
+  setupTuya: (config) => ipcRenderer.invoke('setup-tuya', config),
+  tuyaGetDevices: () => ipcRenderer.invoke('tuya-get-devices'),
+  tuyaLinkDevice: (printerId, deviceId, settings) => ipcRenderer.invoke('tuya-link-device', printerId, deviceId, settings),
+  tuyaUnlinkDevice: (printerId) => ipcRenderer.invoke('tuya-unlink-device', printerId),
+  tuyaControlDevice: (printerId, action) => ipcRenderer.invoke('tuya-control-device', printerId, action),
+  tuyaGetEnergyStats: (printerId) => ipcRenderer.invoke('tuya-get-energy-stats', printerId),
+  tuyaGetDeviceStatus: (printerId) => ipcRenderer.invoke('tuya-get-device-status', printerId),
+  
+  // Home Assistant Management
+  setupHomeAssistant: (config) => ipcRenderer.invoke('setup-homeassistant', config),
+  haGetSwitches: () => ipcRenderer.invoke('ha-get-switches'),
+  haLinkDevice: (printerId, entityId, settings) => ipcRenderer.invoke('ha-link-device', printerId, entityId, settings),
+  haUnlinkDevice: (printerId) => ipcRenderer.invoke('ha-unlink-device', printerId),
+  haControlSwitch: (printerId, action) => ipcRenderer.invoke('ha-control-switch', printerId, action),
+  haGetSwitchStatus: (printerId) => ipcRenderer.invoke('ha-get-switch-status', printerId),
+  
+  // Слушатели событий для Smart Plugs
+  onPrinterPoweredOff: (callback) => ipcRenderer.on('printer-powered-off', (event, ...args) => callback(...args)),
+  onPrinterEmergencyShutdown: (callback) => ipcRenderer.on('printer-emergency-shutdown', (event, ...args) => callback(...args)),
+  removePowerOffListener: () => ipcRenderer.removeAllListeners('printer-powered-off'),
+  removeEmergencyShutdownListener: () => ipcRenderer.removeAllListeners('printer-emergency-shutdown')
 });

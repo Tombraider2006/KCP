@@ -17,6 +17,15 @@ const printerTabs = new Map();
 const BambuLabAdapter = require('./bambu-printer-adapter.js');
 const bambuConnections = new Map(); // printerId -> BambuLabAdapter instance
 
+// Tuya Smart Plug Manager
+const TuyaAdapter = require('./tuya-adapter.js');
+const tuyaConnections = new Map(); // printerId -> { adapter, deviceId }
+let globalTuyaAdapter = null; // Глобальный адаптер для всех устройств
+
+// Home Assistant Manager
+const HomeAssistantAdapter = require('./homeassistant-adapter.js');
+let globalHomeAssistantAdapter = null; // Глобальный адаптер Home Assistant
+
 // Web Server для удаленного доступа
 const WebServer = require('./web-server.js');
 const { StructuredPrinterManager } = require('./data-structures.js');
@@ -1741,6 +1750,572 @@ ipcMain.handle('request-bambu-status', (event, printerId) => {
   return { success: true };
 });
 
+// ===== TUYA SMART PLUG IPC HANDLERS =====
+
+/**
+ * Setup Tuya Cloud API connection
+ */
+ipcMain.handle('setup-tuya', async (event, config) => {
+  try {
+    const adapter = new TuyaAdapter({
+      baseUrl: config.baseUrl,
+      accessKey: config.accessId,
+      secretKey: config.accessSecret,
+      debug: true
+    });
+    
+    const isConnected = await adapter.testConnection();
+    
+    if (isConnected) {
+      globalTuyaAdapter = adapter;
+      
+      // Сохранить конфигурацию (зашифровать secret)
+      store.set('tuyaConfig', {
+        baseUrl: config.baseUrl,
+        accessId: config.accessId,
+        accessSecret: encrypt(config.accessSecret)
+      });
+      
+      return { success: true, message: 'Connected to Tuya Cloud API' };
+    } else {
+      return { success: false, error: 'Connection test failed' };
+    }
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Get list of Tuya devices (smart plugs)
+ */
+ipcMain.handle('tuya-get-devices', async () => {
+  if (!globalTuyaAdapter) {
+    return { success: false, error: 'Tuya not configured' };
+  }
+  
+  try {
+    const devices = await globalTuyaAdapter.getDevices();
+    
+    // Фильтруем только розетки (switch)
+    const switches = devices.filter(d => 
+      d.category === 'cz' || // Socket
+      d.category === 'pc' || // Power strip
+      (d.product_name && d.product_name.toLowerCase().includes('socket')) ||
+      (d.product_name && d.product_name.toLowerCase().includes('plug'))
+    );
+    
+    return { success: true, devices: switches };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Link Tuya device to printer
+ */
+ipcMain.handle('tuya-link-device', async (event, printerId, deviceId, settings) => {
+  try {
+    tuyaConnections.set(printerId, {
+      adapter: globalTuyaAdapter,
+      deviceId: deviceId
+    });
+    
+    // Сохранить в настройках принтера
+    const printers = store.get('printers', []);
+    const printer = printers.find(p => p.id === printerId);
+    if (printer) {
+      printer.tuyaDeviceId = deviceId;
+      printer.autoShutdownEnabled = settings.autoShutdownEnabled || false;
+      printer.autoShutdownDelay = settings.autoShutdownDelay || 5;
+      printer.autoShutdownError = settings.autoShutdownError || false;
+      printer.autoShutdownOverheat = settings.autoShutdownOverheat || false;
+      store.set('printers', printers);
+    }
+    
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Unlink Tuya device from printer
+ */
+ipcMain.handle('tuya-unlink-device', async (event, printerId) => {
+  try {
+    tuyaConnections.delete(printerId);
+    
+    // Удалить из настроек принтера
+    const printers = store.get('printers', []);
+    const printer = printers.find(p => p.id === printerId);
+    if (printer) {
+      delete printer.tuyaDeviceId;
+      delete printer.autoShutdownEnabled;
+      delete printer.autoShutdownDelay;
+      delete printer.autoShutdownError;
+      delete printer.autoShutdownOverheat;
+      store.set('printers', printers);
+    }
+    
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Control Tuya device (turn on/off/get status)
+ */
+ipcMain.handle('tuya-control-device', async (event, printerId, action) => {
+  const connection = tuyaConnections.get(printerId);
+  
+  if (!connection) {
+    return { success: false, error: 'Device not linked' };
+  }
+  
+  try {
+    let result;
+    
+    switch (action) {
+      case 'turn_on':
+        result = await connection.adapter.turnOn(connection.deviceId);
+        break;
+      case 'turn_off':
+        result = await connection.adapter.turnOff(connection.deviceId);
+        break;
+      case 'get_status':
+        result = await connection.adapter.getDeviceStatus(connection.deviceId);
+        break;
+      case 'toggle':
+        // Сначала получаем статус
+        const isOn = await connection.adapter.isDeviceOn(connection.deviceId);
+        if (isOn === null) {
+          return { success: false, error: 'Failed to get device status' };
+        }
+        // Переключаем
+        result = isOn ? 
+          await connection.adapter.turnOff(connection.deviceId) : 
+          await connection.adapter.turnOn(connection.deviceId);
+        break;
+      default:
+        return { success: false, error: 'Unknown action' };
+    }
+    
+    return result;
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Get energy statistics from Tuya device
+ */
+ipcMain.handle('tuya-get-energy-stats', async (event, printerId) => {
+  const connection = tuyaConnections.get(printerId);
+  
+  if (!connection) {
+    return { success: false, error: 'Device not linked' };
+  }
+  
+  try {
+    const stats = await connection.adapter.getEnergyStats(connection.deviceId);
+    return stats;
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Get current Tuya device status for printer
+ */
+ipcMain.handle('tuya-get-device-status', async (event, printerId) => {
+  const connection = tuyaConnections.get(printerId);
+  
+  if (!connection) {
+    return { success: false, linked: false };
+  }
+  
+  try {
+    const isOn = await connection.adapter.isDeviceOn(connection.deviceId);
+    return { 
+      success: true, 
+      linked: true,
+      deviceId: connection.deviceId,
+      isOn: isOn 
+    };
+  } catch (error) {
+    return { success: false, error: error.message, linked: true };
+  }
+});
+
+// ===== HOME ASSISTANT IPC HANDLERS =====
+
+/**
+ * Setup Home Assistant connection
+ */
+ipcMain.handle('setup-homeassistant', async (event, config) => {
+  try {
+    const adapter = new HomeAssistantAdapter({
+      baseUrl: config.baseUrl,
+      token: config.token,
+      debug: true
+    });
+    
+    const isConnected = await adapter.testConnection();
+    
+    if (isConnected) {
+      globalHomeAssistantAdapter = adapter;
+      
+      // Сохранить конфигурацию (зашифровать token)
+      store.set('homeassistantConfig', {
+        baseUrl: config.baseUrl,
+        token: encrypt(config.token)
+      });
+      
+      return { success: true, message: 'Connected to Home Assistant' };
+    } else {
+      return { success: false, error: 'Connection test failed' };
+    }
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Get list of Home Assistant switches
+ */
+ipcMain.handle('ha-get-switches', async () => {
+  if (!globalHomeAssistantAdapter) {
+    return { success: false, error: 'Home Assistant not configured' };
+  }
+  
+  try {
+    const switches = await globalHomeAssistantAdapter.getSwitches();
+    return { success: true, devices: switches };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Control Home Assistant switch
+ */
+ipcMain.handle('ha-control-switch', async (event, printerId, action) => {
+  const printers = store.get('printers', []);
+  const printer = printers.find(p => p.id === printerId);
+  
+  if (!printer || !printer.haEntityId) {
+    return { success: false, error: 'Device not linked' };
+  }
+  
+  if (!globalHomeAssistantAdapter) {
+    return { success: false, error: 'Home Assistant not configured' };
+  }
+  
+  try {
+    let result;
+    
+    switch (action) {
+      case 'turn_on':
+        result = await globalHomeAssistantAdapter.turnOn(printer.haEntityId);
+        break;
+      case 'turn_off':
+        result = await globalHomeAssistantAdapter.turnOff(printer.haEntityId);
+        break;
+      case 'toggle':
+        const isOn = await globalHomeAssistantAdapter.isDeviceOn(printer.haEntityId);
+        result = isOn ? 
+          await globalHomeAssistantAdapter.turnOff(printer.haEntityId) : 
+          await globalHomeAssistantAdapter.turnOn(printer.haEntityId);
+        break;
+      default:
+        return { success: false, error: 'Unknown action' };
+    }
+    
+    return { success: true, result };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Get Home Assistant switch status
+ */
+ipcMain.handle('ha-get-switch-status', async (event, printerId) => {
+  const printers = store.get('printers', []);
+  const printer = printers.find(p => p.id === printerId);
+  
+  if (!printer || !printer.haEntityId) {
+    return { success: false, linked: false };
+  }
+  
+  if (!globalHomeAssistantAdapter) {
+    return { success: false, error: 'Home Assistant not configured' };
+  }
+  
+  try {
+    const isOn = await globalHomeAssistantAdapter.isDeviceOn(printer.haEntityId);
+    return { 
+      success: true, 
+      linked: true,
+      entityId: printer.haEntityId,
+      isOn: isOn 
+    };
+  } catch (error) {
+    return { success: false, error: error.message, linked: true };
+  }
+});
+
+/**
+ * Link Home Assistant entity to printer
+ */
+ipcMain.handle('ha-link-device', async (event, printerId, entityId, settings) => {
+  try {
+    // Сохранить в настройках принтера
+    const printers = store.get('printers', []);
+    const printer = printers.find(p => p.id === printerId);
+    if (printer) {
+      printer.haEntityId = entityId;
+      printer.autoShutdownEnabled = settings.autoShutdownEnabled || false;
+      printer.autoShutdownDelay = settings.autoShutdownDelay || 5;
+      printer.autoShutdownError = settings.autoShutdownError || false;
+      printer.autoShutdownOverheat = settings.autoShutdownOverheat || false;
+      store.set('printers', printers);
+    }
+    
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Unlink Home Assistant entity from printer
+ */
+ipcMain.handle('ha-unlink-device', async (event, printerId) => {
+  try {
+    // Удалить из настроек принтера
+    const printers = store.get('printers', []);
+    const printer = printers.find(p => p.id === printerId);
+    if (printer) {
+      delete printer.haEntityId;
+      delete printer.autoShutdownEnabled;
+      delete printer.autoShutdownDelay;
+      delete printer.autoShutdownError;
+      delete printer.autoShutdownOverheat;
+      store.set('printers', printers);
+    }
+    
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// ===== TUYA AUTOMATION FUNCTIONS =====
+
+// Map для хранения таймеров отключения
+const shutdownTimers = new Map();
+
+/**
+ * Обработка завершения печати - автоматическое отключение
+ * @param {string} printerId - ID принтера
+ * @param {string} printerName - Имя принтера
+ */
+async function handlePrintComplete(printerId, printerName) {
+  // Получить настройки принтера
+  const printers = store.get('printers', []);
+  const printer = printers.find(p => p.id === printerId);
+  
+  if (!printer || !printer.autoShutdownEnabled) {
+    console.log(`[SmartPlug] Auto-shutdown not enabled for printer ${printerId}`);
+    return;
+  }
+  
+  // Проверить, есть ли подключение (Tuya или HA)
+  const tuyaConnection = tuyaConnections.get(printerId);
+  const hasHA = printer.haEntityId && globalHomeAssistantAdapter;
+  
+  if (!tuyaConnection && !hasHA) {
+    console.log(`[SmartPlug] No connection for printer ${printerId}`);
+    return;
+  }
+  
+  const delay = (printer.autoShutdownDelay || 5) * 60 * 1000; // минуты в мс
+  const plugType = tuyaConnection ? 'Tuya' : 'Home Assistant';
+  
+  console.log(`[SmartPlug] ⏲️ Scheduling shutdown for printer ${printerName} (${printerId}) via ${plugType} in ${delay/60000} minutes`);
+  
+  // Отменить предыдущий таймер, если есть
+  if (shutdownTimers.has(printerId)) {
+    clearTimeout(shutdownTimers.get(printerId));
+  }
+  
+  // Установить новый таймер
+  const timer = setTimeout(async () => {
+    try {
+      console.log(`[SmartPlug] 🔌 Executing auto-shutdown for printer ${printerName} (${printerId})`);
+      
+      let result;
+      
+      // Выбираем правильный адаптер
+      if (tuyaConnection) {
+        result = await tuyaConnection.adapter.turnOff(tuyaConnection.deviceId);
+      } else if (hasHA) {
+        result = await globalHomeAssistantAdapter.turnOff(printer.haEntityId);
+      }
+      
+      if (result && result.success) {
+        console.log(`[SmartPlug] ✅ Printer ${printerName} (${printerId}) powered off automatically via ${plugType}`);
+        
+        // Отправить уведомление в renderer
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('printer-powered-off', {
+            printerId: printerId,
+            printerName: printerName,
+            reason: 'auto_shutdown_after_complete'
+          });
+        }
+      } else {
+        console.error(`[SmartPlug] ❌ Failed to auto-shutdown printer ${printerId}: ${result?.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error(`[SmartPlug] ❌ Exception during auto-shutdown for ${printerId}:`, error);
+    } finally {
+      shutdownTimers.delete(printerId);
+    }
+  }, delay);
+  
+  shutdownTimers.set(printerId, timer);
+}
+
+/**
+ * Обработка ошибки печати - автоматическое отключение
+ * @param {string} printerId - ID принтера
+ * @param {string} printerName - Имя принтера
+ */
+async function handlePrintError(printerId, printerName) {
+  // Получить настройки принтера
+  const printers = store.get('printers', []);
+  const printer = printers.find(p => p.id === printerId);
+  
+  if (!printer || !printer.autoShutdownError) {
+    console.log(`[SmartPlug] Auto-shutdown on error not enabled for printer ${printerId}`);
+    return;
+  }
+  
+  const tuyaConnection = tuyaConnections.get(printerId);
+  const hasHA = printer.haEntityId && globalHomeAssistantAdapter;
+  
+  if (!tuyaConnection && !hasHA) return;
+  
+  const plugType = tuyaConnection ? 'Tuya' : 'Home Assistant';
+  console.log(`[SmartPlug] ⚠️ Print error detected for ${printerName} (${printerId}), executing auto-shutdown via ${plugType}`);
+  
+  try {
+    let result;
+    
+    if (tuyaConnection) {
+      result = await tuyaConnection.adapter.turnOff(tuyaConnection.deviceId);
+    } else if (hasHA) {
+      result = await globalHomeAssistantAdapter.turnOff(printer.haEntityId);
+    }
+    
+    if (result && result.success) {
+      console.log(`[SmartPlug] ✅ Printer ${printerName} powered off after error via ${plugType}`);
+      
+      // Отправить уведомление
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('printer-powered-off', {
+          printerId: printerId,
+          printerName: printerName,
+          reason: 'auto_shutdown_after_error'
+        });
+      }
+    }
+  } catch (error) {
+    console.error(`[SmartPlug] Failed to auto-shutdown printer ${printerId} after error:`, error);
+  }
+}
+
+/**
+ * Защита от перегрева - аварийное отключение
+ * @param {string} printerId - ID принтера
+ * @param {string} printerName - Имя принтера
+ * @param {number} temperature - Температура MCU
+ */
+async function handleOverheat(printerId, printerName, temperature) {
+  // Получить настройки принтера
+  const printers = store.get('printers', []);
+  const printer = printers.find(p => p.id === printerId);
+  
+  if (!printer || !printer.autoShutdownOverheat) {
+    console.log(`[SmartPlug] Overheat protection not enabled for printer ${printerId}`);
+    return;
+  }
+  
+  const tuyaConnection = tuyaConnections.get(printerId);
+  const hasHA = printer.haEntityId && globalHomeAssistantAdapter;
+  
+  if (!tuyaConnection && !hasHA) return;
+  
+  // Критический порог
+  const CRITICAL_TEMP = 70;
+  
+  if (temperature > CRITICAL_TEMP) {
+    const plugType = tuyaConnection ? 'Tuya' : 'Home Assistant';
+    console.error(`[SmartPlug] 🔥 CRITICAL: Printer ${printerName} (${printerId}) overheating! (${temperature}°C)`);
+    
+    try {
+      // Немедленно выключить питание
+      let result;
+      
+      if (tuyaConnection) {
+        result = await tuyaConnection.adapter.turnOff(tuyaConnection.deviceId);
+      } else if (hasHA) {
+        result = await globalHomeAssistantAdapter.turnOff(printer.haEntityId);
+      }
+      
+      if (result && result.success) {
+        console.log(`[SmartPlug] ✅ Emergency shutdown: Printer ${printerName} powered off via ${plugType}`);
+        
+        // Отправить критическое уведомление
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('printer-emergency-shutdown', {
+            printerId: printerId,
+            printerName: printerName,
+            temperature: temperature,
+            reason: 'overheat'
+          });
+        }
+      } else {
+        console.error(`[SmartPlug] ❌ Failed to emergency shutdown: ${result?.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error(`[SmartPlug] Exception during emergency shutdown for ${printerId}:`, error);
+    }
+  }
+}
+
+/**
+ * Отменить запланированное отключение
+ * @param {string} printerId - ID принтера
+ */
+function cancelScheduledShutdown(printerId) {
+  if (shutdownTimers.has(printerId)) {
+    clearTimeout(shutdownTimers.get(printerId));
+    shutdownTimers.delete(printerId);
+    console.log(`[Tuya] ⏹️ Cancelled scheduled shutdown for printer ${printerId}`);
+  }
+}
+
+// Экспортируем функции для использования в других частях кода
+// (Например, при обработке статуса принтера)
+global.tuyaHandlePrintComplete = handlePrintComplete;
+global.tuyaHandlePrintError = handlePrintError;
+global.tuyaHandleOverheat = handleOverheat;
+global.tuyaCancelShutdown = cancelScheduledShutdown;
+
 // Menu events
 ipcMain.on('menu-add-printer', () => {
   if (mainWindow) {
@@ -2318,6 +2893,49 @@ app.whenReady().then(async () => {
       console.log(`[WebServer] ✅ Автозапуск на порту ${webServerPort}`);
     } catch (error) {
       console.error('[WebServer] Ошибка автозапуска:', error);
+    }
+  }
+
+  // Инициализация Tuya адаптера
+  const tuyaConfig = store.get('tuyaConfig');
+  if (tuyaConfig && tuyaConfig.accessId && tuyaConfig.accessSecret) {
+    try {
+      globalTuyaAdapter = new TuyaAdapter({
+        baseUrl: tuyaConfig.baseUrl || 'https://openapi.tuyaeu.com',
+        accessKey: tuyaConfig.accessId,
+        secretKey: decrypt(tuyaConfig.accessSecret),
+        debug: process.argv.includes('--dev')
+      });
+      
+      const isConnected = await globalTuyaAdapter.testConnection();
+      if (isConnected) {
+        console.log('[Tuya] ✅ Tuya Cloud API connected');
+      } else {
+        console.log('[Tuya] ❌ Tuya Cloud API connection failed');
+      }
+    } catch (error) {
+      console.error('[Tuya] Автоподключение ошибка:', error);
+    }
+  }
+
+  // Инициализация Home Assistant адаптера
+  const haConfig = store.get('homeassistantConfig');
+  if (haConfig && haConfig.baseUrl && haConfig.token) {
+    try {
+      globalHomeAssistantAdapter = new HomeAssistantAdapter({
+        baseUrl: haConfig.baseUrl,
+        token: decrypt(haConfig.token),
+        debug: process.argv.includes('--dev')
+      });
+      
+      const isConnected = await globalHomeAssistantAdapter.testConnection();
+      if (isConnected) {
+        console.log('[HomeAssistant] ✅ Home Assistant API connected');
+      } else {
+        console.log('[HomeAssistant] ❌ Home Assistant API connection failed');
+      }
+    } catch (error) {
+      console.error('[HomeAssistant] Автоподключение ошибка:', error);
     }
   }
 

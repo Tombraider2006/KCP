@@ -127,7 +127,9 @@ let telegramConfig = {
         printerOnline: false,
         inefficiency: true,
         inefficiencyReason: true,
-        programStart: true
+        programStart: true,
+        powerOff: true,              // Уведомления об автоотключении питания
+        emergencyShutdown: true      // Уведомления об аварийном отключении
     }
 };
 
@@ -748,7 +750,7 @@ function addPrinter() {
     addConsoleMessage(`✅ ${t('printer_added')} ${name} (${connInfo})`, 'info');
 }
 
-function editPrinter(printerId, event) {
+async function editPrinter(printerId, event) {
     if (event) event.stopPropagation();
     const printer = printers.find(p => p.id === printerId);
     if (!printer) return;
@@ -786,13 +788,62 @@ function editPrinter(printerId, event) {
         if (serialNumberInput) serialNumberInput.value = printer.serialNumber || '';
     }
     
+    // Загружаем настройки умных розеток
+    const plugTypeSelect = document.getElementById('editPlugType');
+    
+    // Определяем тип подключения
+    if (printer.tuyaDeviceId) {
+        plugTypeSelect.value = 'tuya';
+    } else if (printer.haEntityId) {
+        plugTypeSelect.value = 'homeassistant';
+    } else {
+        plugTypeSelect.value = '';
+    }
+    
+    // Показываем правильные поля и загружаем устройства
+    await togglePlugDeviceFields();
+    
+    // Восстанавливаем выбранное устройство после загрузки списка
+    if (printer.tuyaDeviceId) {
+        const tuyaDeviceSelect = document.getElementById('editTuyaDevice');
+        if (tuyaDeviceSelect) {
+            tuyaDeviceSelect.value = printer.tuyaDeviceId;
+        }
+    } else if (printer.haEntityId) {
+        const haEntitySelect = document.getElementById('editHAEntity');
+        if (haEntitySelect) {
+            haEntitySelect.value = printer.haEntityId;
+        }
+    }
+    
+    // Загружаем настройки автоматизации
+    const autoShutdownEnabledInput = document.getElementById('editAutoShutdownEnabled');
+    const autoShutdownDelayInput = document.getElementById('editAutoShutdownDelay');
+    const autoShutdownErrorInput = document.getElementById('editAutoShutdownError');
+    const autoShutdownOverheatInput = document.getElementById('editAutoShutdownOverheat');
+    
+    if (autoShutdownEnabledInput) autoShutdownEnabledInput.checked = printer.autoShutdownEnabled === true;
+    if (autoShutdownDelayInput) autoShutdownDelayInput.value = printer.autoShutdownDelay || 5;
+    if (autoShutdownErrorInput) autoShutdownErrorInput.checked = printer.autoShutdownError === true;
+    if (autoShutdownOverheatInput) autoShutdownOverheatInput.checked = printer.autoShutdownOverheat === true;
+    
+    // Добавляем обработчики изменения select
+    const tuyaDeviceSelect = document.getElementById('editTuyaDevice');
+    const haEntitySelect = document.getElementById('editHAEntity');
+    if (tuyaDeviceSelect) {
+        tuyaDeviceSelect.onchange = toggleTuyaAutomationSection;
+    }
+    if (haEntitySelect) {
+        haEntitySelect.onchange = toggleHAAutomationSection;
+    }
+    
     if (modal) modal.style.display = 'block';
     
     // Переинициализируем кнопки показа/скрытия для модального окна редактирования
     setupToggleVisibilityButtons();
 }
 
-function savePrinterChanges() {
+async function savePrinterChanges() {
     const idInput = document.getElementById('editPrinterId');
     if (!idInput) return;
     
@@ -823,6 +874,81 @@ function savePrinterChanges() {
             const serialNumberInput = document.getElementById('editSerialNumber');
             if (accessCodeInput) printer.accessCode = accessCodeInput.value.trim();
             if (serialNumberInput) printer.serialNumber = serialNumberInput.value.trim();
+        }
+        
+        // Обновляем настройки умных розеток
+        const plugTypeSelect = document.getElementById('editPlugType');
+        const plugType = plugTypeSelect ? plugTypeSelect.value : '';
+        
+        // Настройки автоматизации (общие для Tuya и HA)
+        const settings = {
+            autoShutdownEnabled: document.getElementById('editAutoShutdownEnabled')?.checked || false,
+            autoShutdownDelay: parseInt(document.getElementById('editAutoShutdownDelay')?.value) || 5,
+            autoShutdownError: document.getElementById('editAutoShutdownError')?.checked || false,
+            autoShutdownOverheat: document.getElementById('editAutoShutdownOverheat')?.checked || false
+        };
+        
+        if (plugType === 'tuya') {
+            // Работаем с Tuya
+            const tuyaDeviceSelect = document.getElementById('editTuyaDevice');
+            const selectedDevice = tuyaDeviceSelect ? tuyaDeviceSelect.value : '';
+            
+            // Отвязываем Home Assistant если был
+            if (printer.haEntityId) {
+                delete printer.haEntityId;
+            }
+            
+            if (selectedDevice) {
+                // Привязываем Tuya устройство
+                await window.electronAPI.tuyaLinkDevice(printerId, selectedDevice, settings);
+                printer.tuyaDeviceId = selectedDevice;
+            } else if (printer.tuyaDeviceId) {
+                // Отвязываем Tuya устройство
+                await window.electronAPI.tuyaUnlinkDevice(printerId);
+                delete printer.tuyaDeviceId;
+            }
+        } else if (plugType === 'homeassistant') {
+            // Работаем с Home Assistant
+            const haEntitySelect = document.getElementById('editHAEntity');
+            const selectedEntity = haEntitySelect ? haEntitySelect.value : '';
+            
+            // Отвязываем Tuya если был
+            if (printer.tuyaDeviceId) {
+                await window.electronAPI.tuyaUnlinkDevice(printerId);
+                delete printer.tuyaDeviceId;
+            }
+            
+            if (selectedEntity) {
+                // Привязываем Home Assistant entity
+                await window.electronAPI.haLinkDevice(printerId, selectedEntity, settings);
+                printer.haEntityId = selectedEntity;
+                printer.autoShutdownEnabled = settings.autoShutdownEnabled;
+                printer.autoShutdownDelay = settings.autoShutdownDelay;
+                printer.autoShutdownError = settings.autoShutdownError;
+                printer.autoShutdownOverheat = settings.autoShutdownOverheat;
+            } else if (printer.haEntityId) {
+                // Отвязываем Home Assistant entity
+                await window.electronAPI.haUnlinkDevice(printerId);
+                delete printer.haEntityId;
+                delete printer.autoShutdownEnabled;
+                delete printer.autoShutdownDelay;
+                delete printer.autoShutdownError;
+                delete printer.autoShutdownOverheat;
+            }
+        } else {
+            // Не выбран тип - отвязываем всё
+            if (printer.tuyaDeviceId) {
+                await window.electronAPI.tuyaUnlinkDevice(printerId);
+                delete printer.tuyaDeviceId;
+            }
+            if (printer.haEntityId) {
+                await window.electronAPI.haUnlinkDevice(printerId);
+                delete printer.haEntityId;
+                delete printer.autoShutdownEnabled;
+                delete printer.autoShutdownDelay;
+                delete printer.autoShutdownError;
+                delete printer.autoShutdownOverheat;
+            }
         }
         
         // Закрываем существующие подключения если тип изменился
@@ -2913,6 +3039,11 @@ function updatePrintersDisplay() {
                 ` : ''}
             </div>
             <div class="printer-actions" onclick="event.stopPropagation()">
+                ${(printer.tuyaDeviceId || printer.haEntityId) ? `
+                <button class="btn btn-tuya btn-small power-btn power-off" data-printer-id="${printer.id}" onclick="togglePrinterPower('${printer.id}')" title="${t('tuya_power_control') || 'Power Control'}">
+                    <span class="power-icon">🔌</span>
+                </button>
+                ` : ''}
                 <button class="btn btn-secondary btn-small" onclick="editPrinter('${printer.id}', event)">
                     ${t('edit')}
                 </button>
@@ -2933,6 +3064,13 @@ function updatePrintersDisplay() {
     }).join('');
     
     updatePrintersCounter();
+    
+    // Обновить статус питания для принтеров с подключенными розетками
+    printers.forEach(printer => {
+        if (printer.tuyaDeviceId || printer.haEntityId) {
+            updatePrinterPowerStatus(printer.id);
+        }
+    });
 }
 
 // 5.4. Analytics UI
@@ -4602,6 +4740,26 @@ async function savePrintersToStorage() {
             }
         }
         
+        // Smart Plugs settings - сохраняем настройки умных розеток
+        if (p.tuyaDeviceId) {
+            data.tuyaDeviceId = p.tuyaDeviceId;
+        }
+        if (p.haEntityId) {
+            data.haEntityId = p.haEntityId;
+        }
+        if (p.autoShutdownEnabled !== undefined) {
+            data.autoShutdownEnabled = p.autoShutdownEnabled;
+        }
+        if (p.autoShutdownDelay !== undefined) {
+            data.autoShutdownDelay = p.autoShutdownDelay;
+        }
+        if (p.autoShutdownError !== undefined) {
+            data.autoShutdownError = p.autoShutdownError;
+        }
+        if (p.autoShutdownOverheat !== undefined) {
+            data.autoShutdownOverheat = p.autoShutdownOverheat;
+        }
+        
         return data;
     }));
     
@@ -4911,8 +5069,33 @@ async function loadTelegramSettings() {
     const inefficiencyInput = document.getElementById('notifyInefficiency');
     const inefficiencyReasonInput = document.getElementById('notifyInefficiencyReason');
     const programStartInput = document.getElementById('notifyProgramStart');
+    const powerOffInput = document.getElementById('notifyPowerOff');
+    const emergencyShutdownInput = document.getElementById('notifyEmergencyShutdown');
     
-    if (tokenInput) tokenInput.value = telegramConfig.botToken || '';
+    // Показываем токен бота точками если сохранен
+    if (tokenInput) {
+        if (telegramConfig.botToken) {
+            tokenInput.value = telegramConfig.botToken;
+            tokenInput.dataset.hasSaved = 'true';
+            tokenInput.type = 'password';
+            
+            // При фокусе показываем текст
+            tokenInput.addEventListener('focus', function() {
+                this.type = 'text';
+                this.select();
+            }, { once: true });
+            
+            // При потере фокуса снова скрываем
+            tokenInput.addEventListener('blur', function() {
+                if (this.value && this.dataset.hasSaved === 'true') {
+                    this.type = 'password';
+                }
+            });
+        } else {
+            tokenInput.value = '';
+        }
+    }
+    
     if (chatIdInput) chatIdInput.value = telegramConfig.chatId || '';
     if (enabledInput) enabledInput.checked = telegramConfig.enabled;
     if (completeInput) completeInput.checked = telegramConfig.notifications.printComplete;
@@ -4924,6 +5107,8 @@ async function loadTelegramSettings() {
     if (inefficiencyInput) inefficiencyInput.checked = telegramConfig.notifications.inefficiency !== false;
     if (inefficiencyReasonInput) inefficiencyReasonInput.checked = telegramConfig.notifications.inefficiencyReason !== false;
     if (programStartInput) programStartInput.checked = telegramConfig.notifications.programStart !== false;
+    if (powerOffInput) powerOffInput.checked = telegramConfig.notifications.powerOff !== false;
+    if (emergencyShutdownInput) emergencyShutdownInput.checked = telegramConfig.notifications.emergencyShutdown !== false;
     
     updateTelegramStatusDisplay();
     
@@ -4944,8 +5129,13 @@ async function saveTelegramSettings() {
     const inefficiencyInput = document.getElementById('notifyInefficiency');
     const inefficiencyReasonInput = document.getElementById('notifyInefficiencyReason');
     const programStartInput = document.getElementById('notifyProgramStart');
+    const powerOffInput = document.getElementById('notifyPowerOff');
+    const emergencyShutdownInput = document.getElementById('notifyEmergencyShutdown');
     
-    if (tokenInput) telegramConfig.botToken = tokenInput.value.trim();
+    if (tokenInput) {
+        telegramConfig.botToken = tokenInput.value.trim();
+        tokenInput.dataset.hasSaved = 'true';
+    }
     if (chatIdInput) telegramConfig.chatId = chatIdInput.value.trim();
     if (enabledInput) telegramConfig.enabled = enabledInput.checked;
     if (completeInput) telegramConfig.notifications.printComplete = completeInput.checked;
@@ -4957,6 +5147,8 @@ async function saveTelegramSettings() {
     if (inefficiencyInput) telegramConfig.notifications.inefficiency = inefficiencyInput.checked;
     if (inefficiencyReasonInput) telegramConfig.notifications.inefficiencyReason = inefficiencyReasonInput.checked;
     if (programStartInput) telegramConfig.notifications.programStart = programStartInput.checked;
+    if (powerOffInput) telegramConfig.notifications.powerOff = powerOffInput.checked;
+    if (emergencyShutdownInput) telegramConfig.notifications.emergencyShutdown = emergencyShutdownInput.checked;
     
     if (window.electronAPI && window.electronAPI.storeSet) {
         await window.electronAPI.storeSet('telegramConfig', telegramConfig);
@@ -6228,3 +6420,710 @@ if (savedTheme === 'light') {
         if (icon) icon.textContent = '☀️';
     }, 100);
 }
+
+// ============================================================================
+// SMART PLUGS INTEGRATION (TUYA & HOME ASSISTANT)
+// ============================================================================
+
+/**
+ * Открыть модальное окно настройки умных розеток
+ */
+async function openSmartPlugsModal() {
+    const modal = document.getElementById('smartPlugsModal');
+    modal.style.display = 'block';
+    
+    // Обновить переводы
+    updateInterfaceLanguage();
+    
+    // Загрузить сохраненные настройки Tuya
+    const tuyaConfig = await window.electronAPI.storeGet('tuyaConfig');
+    if (tuyaConfig) {
+        document.getElementById('tuyaRegion').value = tuyaConfig.baseUrl || 'https://openapi.tuyaeu.com';
+        document.getElementById('tuyaAccessId').value = tuyaConfig.accessId || '';
+        
+        // Если secret сохранен - расшифровываем и показываем точками
+        if (tuyaConfig.accessSecret) {
+            const secretInput = document.getElementById('tuyaAccessSecret');
+            // Расшифровываем secret для проверки соединения
+            const decryptedSecret = await window.electronAPI.decrypt(tuyaConfig.accessSecret);
+            secretInput.value = decryptedSecret;
+            secretInput.dataset.hasSaved = 'true';
+            
+            // Показываем как точки (password-like)
+            secretInput.type = 'password';
+            
+            // При фокусе - показываем текст для редактирования
+            secretInput.addEventListener('focus', function() {
+                this.type = 'text';
+                this.select(); // Выделяем весь текст для удобства замены
+            }, { once: true });
+            
+            // При потере фокуса - снова скрываем
+            secretInput.addEventListener('blur', function() {
+                if (this.value && this.dataset.hasSaved === 'true') {
+                    this.type = 'password';
+                }
+            });
+        }
+    }
+    
+    // Загрузить сохраненные настройки Home Assistant
+    const haConfig = await window.electronAPI.storeGet('homeassistantConfig');
+    if (haConfig) {
+        document.getElementById('haBaseUrl').value = haConfig.baseUrl || '';
+        
+        // Если token сохранен - показываем плейсхолдер и расшифрованный токен
+        if (haConfig.token) {
+            const tokenInput = document.getElementById('haToken');
+            // Расшифровываем токен для проверки соединения
+            const decryptedToken = await window.electronAPI.decrypt(haConfig.token);
+            tokenInput.value = decryptedToken;
+            tokenInput.dataset.hasSaved = 'true';
+            
+            // Делаем поле password-like (показываем звездочки)
+            tokenInput.style.webkitTextSecurity = 'disc';
+            tokenInput.style.MozTextSecurity = 'disc';
+            
+            // При фокусе - показываем текст для редактирования
+            tokenInput.addEventListener('focus', function() {
+                this.style.webkitTextSecurity = 'none';
+                this.style.MozTextSecurity = 'none';
+            }, { once: true });
+        }
+    }
+    
+    // По умолчанию показываем Tuya
+    selectPlugType('tuya');
+}
+
+/**
+ * Закрыть модальное окно настройки умных розеток
+ */
+function closeSmartPlugsModal() {
+    const modal = document.getElementById('smartPlugsModal');
+    modal.style.display = 'none';
+    showTuyaStatus('', '');
+    showHAStatus('', '');
+}
+
+/**
+ * Открыть помощь по настройке умных розеток
+ */
+function openSmartPlugsHelp() {
+    // Определяем текущий выбранный тип
+    const selectedType = document.querySelector('input[name="plugType"]:checked')?.value || 'tuya';
+    
+    // Определяем язык
+    const isRussian = currentLang === 'ru' || BROWSER_LANGUAGE === 'ru';
+    
+    // Формируем ссылку на GitHub документацию
+    let githubUrl;
+    if (selectedType === 'tuya') {
+        githubUrl = isRussian 
+            ? 'https://github.com/Tombraider2006/KCP/blob/main/docs/TUYA_USER_GUIDE.md'
+            : 'https://github.com/Tombraider2006/KCP/blob/main/docs/TUYA_USER_GUIDE.md';
+    } else {
+        githubUrl = isRussian
+            ? 'https://github.com/Tombraider2006/KCP/blob/main/docs/HOME_ASSISTANT_USER_GUIDE.md'
+            : 'https://github.com/Tombraider2006/KCP/blob/main/docs/HOME_ASSISTANT_USER_GUIDE.md';
+    }
+    
+    // Открываем ссылку
+    window.electronAPI.openExternalLink(githubUrl);
+}
+
+// ===== МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ ВЫКЛЮЧЕНИЯ ПИТАНИЯ =====
+
+let pendingPowerOffPrinterId = null;
+
+function openPowerOffConfirmModal(printerId) {
+    pendingPowerOffPrinterId = printerId;
+    const printer = printers.find(p => p.id === printerId);
+    if (!printer) return;
+    
+    // Обновляем переводы
+    updateInterfaceLanguage();
+    
+    // Устанавливаем имя принтера
+    const printerNameElement = document.getElementById('powerOffPrinterName');
+    if (printerNameElement) {
+        printerNameElement.textContent = printer.name;
+    }
+    
+    // Показываем модальное окно
+    const modal = document.getElementById('powerOffConfirmModal');
+    if (modal) {
+        modal.style.display = 'block';
+    }
+}
+
+function closePowerOffConfirmModal() {
+    pendingPowerOffPrinterId = null;
+    const modal = document.getElementById('powerOffConfirmModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+async function confirmPowerOff() {
+    if (!pendingPowerOffPrinterId) return;
+    
+    const printerId = pendingPowerOffPrinterId;
+    const printer = printers.find(p => p.id === printerId);
+    
+    closePowerOffConfirmModal();
+    
+    if (!printer) return;
+    
+    try {
+        let result;
+        
+        // Выключаем розетку
+        if (printer.tuyaDeviceId) {
+            result = await window.electronAPI.tuyaControlDevice(printerId, 'turn_off');
+        } else if (printer.haEntityId) {
+            result = await window.electronAPI.haControlSwitch(printerId, 'turn_off');
+        }
+        
+        if (result && result.success) {
+            setTimeout(() => {
+                updatePrinterPowerStatus(printerId);
+            }, 500);
+        } else {
+            alert(`${t('power_control_error') || 'Power control error'}: ${result ? result.error : 'Unknown error'}`);
+        }
+    } catch (error) {
+        alert(`${t('error') || 'Error'}: ${error.message}`);
+    }
+}
+
+/**
+ * Выбрать тип подключения (Tuya или Home Assistant)
+ */
+function selectPlugType(type) {
+    // Обновить radio buttons
+    const radios = document.querySelectorAll('input[name="plugType"]');
+    radios.forEach(radio => {
+        radio.checked = radio.value === type;
+    });
+    
+    // Показать/скрыть секции
+    const tuyaSection = document.getElementById('tuyaConfigSection');
+    const haSection = document.getElementById('homeassistantConfigSection');
+    
+    if (type === 'tuya') {
+        tuyaSection.style.display = 'block';
+        haSection.style.display = 'none';
+    } else if (type === 'homeassistant') {
+        tuyaSection.style.display = 'none';
+        haSection.style.display = 'block';
+    }
+}
+
+/**
+ * Показать статус сообщение в модальном окне Tuya
+ */
+function showTuyaStatus(message, type) {
+    const statusEl = document.getElementById('tuyaStatus');
+    statusEl.textContent = message;
+    statusEl.className = 'status-message';
+    if (type) {
+        statusEl.classList.add(`status-${type}`);
+    }
+    if (message) {
+        statusEl.style.display = 'block';
+    } else {
+        statusEl.style.display = 'none';
+    }
+}
+
+/**
+ * Показать статус сообщение для Home Assistant
+ */
+function showHAStatus(message, type) {
+    const statusEl = document.getElementById('haStatus');
+    statusEl.textContent = message;
+    statusEl.className = 'status-message';
+    if (type) {
+        statusEl.classList.add(`status-${type}`);
+    }
+    if (message) {
+        statusEl.style.display = 'block';
+    } else {
+        statusEl.style.display = 'none';
+    }
+}
+
+/**
+ * Проверить соединение с Tuya Cloud API
+ */
+async function testTuyaConnection() {
+    const baseUrl = document.getElementById('tuyaRegion').value;
+    const accessId = document.getElementById('tuyaAccessId').value;
+    const secretInput = document.getElementById('tuyaAccessSecret');
+    let accessSecret = secretInput.value;
+    
+    // Если поле пустое, но есть сохраненный - используем сохраненный
+    if (!accessSecret && secretInput.dataset.hasSaved === 'true') {
+        const tuyaConfig = await window.electronAPI.storeGet('tuyaConfig');
+        if (tuyaConfig && tuyaConfig.accessSecret) {
+            accessSecret = await window.electronAPI.decrypt(tuyaConfig.accessSecret);
+        }
+    }
+    
+    if (!accessId || !accessSecret) {
+        showTuyaStatus('❌ ' + (t('fill_all_fields') || 'Заполните все поля'), 'error');
+        return;
+    }
+    
+    showTuyaStatus('🔄 ' + (t('testing_connection') || 'Проверка соединения...'), 'info');
+    
+    try {
+        const result = await window.electronAPI.setupTuya({
+            baseUrl,
+            accessId,
+            accessSecret
+        });
+        
+        if (result.success) {
+            showTuyaStatus('✅ ' + (t('connection_success') || 'Соединение установлено!'), 'success');
+        } else {
+            showTuyaStatus(`❌ ${t('error') || 'Ошибка'}: ${result.error}`, 'error');
+        }
+    } catch (error) {
+        showTuyaStatus(`❌ ${t('error') || 'Ошибка'}: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Сохранить настройки Tuya
+ */
+async function saveTuyaConfig() {
+    const baseUrl = document.getElementById('tuyaRegion').value;
+    const accessId = document.getElementById('tuyaAccessId').value;
+    const secretInput = document.getElementById('tuyaAccessSecret');
+    let accessSecret = secretInput.value;
+    
+    // Если поле пустое, но есть сохраненный - используем сохраненный
+    if (!accessSecret && secretInput.dataset.hasSaved === 'true') {
+        const tuyaConfig = await window.electronAPI.storeGet('tuyaConfig');
+        if (tuyaConfig && tuyaConfig.accessSecret) {
+            accessSecret = await window.electronAPI.decrypt(tuyaConfig.accessSecret);
+        }
+    }
+    
+    if (!accessId || !accessSecret) {
+        showTuyaStatus('❌ ' + (t('fill_all_fields') || 'Заполните все поля'), 'error');
+        return;
+    }
+    
+    showTuyaStatus('💾 ' + (t('saving') || 'Сохранение...'), 'info');
+    
+    try {
+        const result = await window.electronAPI.setupTuya({
+            baseUrl,
+            accessId,
+            accessSecret
+        });
+        
+        if (result.success) {
+            showTuyaStatus('✅ ' + (t('settings_saved') || 'Настройки сохранены!'), 'success');
+            
+            // Обновляем placeholder для следующего открытия
+            secretInput.dataset.hasSaved = 'true';
+            secretInput.type = 'password';
+            
+            setTimeout(() => {
+                closeSmartPlugsModal();
+            }, 2000);
+        } else {
+            showTuyaStatus(`❌ ${t('error') || 'Ошибка'}: ${result.error}`, 'error');
+        }
+    } catch (error) {
+        showTuyaStatus(`❌ ${t('error') || 'Ошибка'}: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Обновить список устройств Tuya в окне редактирования
+ */
+async function refreshTuyaDevicesInEdit() {
+    const select = document.getElementById('editTuyaDevice');
+    const loadingText = t('loading') || 'Loading...';
+    const notFoundText = t('tuya_devices_not_found') || 'No devices found';
+    const errorText = t('error') || 'Error';
+    
+    select.innerHTML = `<option value="">${loadingText}</option>`;
+    
+    try {
+        const result = await window.electronAPI.tuyaGetDevices();
+        
+        if (result.success) {
+            select.innerHTML = `<option value="">${t('tuya_not_connected') || 'Not connected'}</option>`;
+            
+            if (result.devices && result.devices.length > 0) {
+                result.devices.forEach(device => {
+                    const option = document.createElement('option');
+                    option.value = device.id;
+                    option.textContent = `${device.name} (${device.product_name || 'Smart Plug'})`;
+                    select.appendChild(option);
+                });
+            } else {
+                select.innerHTML = `<option value="">${notFoundText}</option>`;
+            }
+        } else {
+            select.innerHTML = `<option value="">${errorText}</option>`;
+            console.error('Failed to load Tuya devices:', result.error);
+        }
+    } catch (error) {
+        select.innerHTML = `<option value="">${errorText}</option>`;
+        console.error('Error loading Tuya devices:', error);
+    }
+}
+
+/**
+ * Обновить список entities Home Assistant в окне редактирования
+ */
+async function refreshHAEntitiesInEdit() {
+    const select = document.getElementById('editHAEntity');
+    const loadingText = t('loading') || 'Loading...';
+    const notFoundText = t('ha_devices_not_found') || 'No devices found';
+    const errorText = t('error') || 'Error';
+    
+    select.innerHTML = `<option value="">${loadingText}</option>`;
+    
+    try {
+        const result = await window.electronAPI.haGetSwitches();
+        
+        if (result.success) {
+            select.innerHTML = `<option value="">${t('ha_not_connected') || 'Not connected'}</option>`;
+            
+            if (result.devices && result.devices.length > 0) {
+                result.devices.forEach(device => {
+                    const option = document.createElement('option');
+                    option.value = device.id;
+                    option.textContent = `${device.name} (${device.id})`;
+                    select.appendChild(option);
+                });
+            } else {
+                select.innerHTML = `<option value="">${notFoundText}</option>`;
+            }
+        } else {
+            select.innerHTML = `<option value="">${errorText}</option>`;
+            console.error('Failed to load HA entities:', result.error);
+        }
+    } catch (error) {
+        select.innerHTML = `<option value="">${errorText}</option>`;
+        console.error('Error loading HA entities:', error);
+    }
+}
+
+/**
+ * Переключить поля устройств в зависимости от выбранного типа
+ */
+async function togglePlugDeviceFields() {
+    const plugType = document.getElementById('editPlugType').value;
+    const tuyaGroup = document.getElementById('editTuyaDeviceGroup');
+    const haGroup = document.getElementById('editHADeviceGroup');
+    const automationSection = document.getElementById('editTuyaAutomation');
+    
+    if (plugType === 'tuya') {
+        tuyaGroup.style.display = 'block';
+        haGroup.style.display = 'none';
+        // Автоматически загружаем список Tuya устройств
+        await refreshTuyaDevicesInEdit();
+        // Проверяем, выбрано ли устройство
+        toggleTuyaAutomationSection();
+    } else if (plugType === 'homeassistant') {
+        tuyaGroup.style.display = 'none';
+        haGroup.style.display = 'block';
+        // Автоматически загружаем список Home Assistant entities
+        await refreshHAEntitiesInEdit();
+        // Проверяем, выбрано ли устройство
+        toggleHAAutomationSection();
+    } else {
+        tuyaGroup.style.display = 'none';
+        haGroup.style.display = 'none';
+        automationSection.style.display = 'none';
+    }
+}
+
+/**
+ * Переключить видимость секции автоматизации Tuya
+ */
+function toggleTuyaAutomationSection() {
+    const select = document.getElementById('editTuyaDevice');
+    const automationSection = document.getElementById('editTuyaAutomation');
+    
+    if (select && automationSection) {
+        if (select.value) {
+            automationSection.style.display = 'block';
+        } else {
+            automationSection.style.display = 'none';
+        }
+    }
+}
+
+/**
+ * Переключить видимость секции автоматизации Home Assistant
+ */
+function toggleHAAutomationSection() {
+    const select = document.getElementById('editHAEntity');
+    const automationSection = document.getElementById('editTuyaAutomation');
+    
+    if (select && automationSection) {
+        if (select.value) {
+            automationSection.style.display = 'block';
+        } else {
+            automationSection.style.display = 'none';
+        }
+    }
+}
+
+/**
+ * Проверить соединение с Home Assistant
+ */
+async function testHomeAssistantConnection() {
+    const baseUrl = document.getElementById('haBaseUrl').value;
+    const token = document.getElementById('haToken').value;
+    
+    if (!baseUrl || !token) {
+        showHAStatus('❌ ' + (t('fill_all_fields') || 'Fill all fields'), 'error');
+        return;
+    }
+    
+    showHAStatus('🔄 ' + (t('testing_connection') || 'Testing connection...'), 'info');
+    
+    try {
+        const result = await window.electronAPI.setupHomeAssistant({
+            baseUrl,
+            token
+        });
+        
+        if (result.success) {
+            showHAStatus('✅ ' + (t('connection_success') || 'Connection established!'), 'success');
+        } else {
+            showHAStatus(`❌ ${t('error') || 'Error'}: ${result.error}`, 'error');
+        }
+    } catch (error) {
+        showHAStatus(`❌ ${t('error') || 'Error'}: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Сохранить настройки Home Assistant
+ */
+async function saveHomeAssistantConfig() {
+    const baseUrl = document.getElementById('haBaseUrl').value;
+    const tokenInput = document.getElementById('haToken');
+    let token = tokenInput.value;
+    
+    // Если поле пустое, но есть сохраненный - используем сохраненный
+    if (!token && tokenInput.dataset.hasSaved === 'true') {
+        const haConfig = await window.electronAPI.storeGet('homeassistantConfig');
+        if (haConfig && haConfig.token) {
+            token = await window.electronAPI.decrypt(haConfig.token);
+        }
+    }
+    
+    if (!baseUrl || !token) {
+        showHAStatus('❌ ' + (t('fill_all_fields') || 'Заполните все поля'), 'error');
+        return;
+    }
+    
+    showHAStatus('💾 ' + (t('saving') || 'Сохранение...'), 'info');
+    
+    try {
+        const result = await window.electronAPI.setupHomeAssistant({
+            baseUrl,
+            token
+        });
+        
+        if (result.success) {
+            showHAStatus('✅ ' + (t('settings_saved') || 'Настройки сохранены!'), 'success');
+            
+            // Обновляем placeholder для следующего открытия
+            tokenInput.dataset.hasSaved = 'true';
+            tokenInput.style.webkitTextSecurity = 'disc';
+            tokenInput.style.MozTextSecurity = 'disc';
+        } else {
+            showHAStatus(`❌ ${t('error') || 'Ошибка'}: ${result.error}`, 'error');
+        }
+    } catch (error) {
+        showHAStatus(`❌ ${t('error') || 'Ошибка'}: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Переключить питание принтера (работает с Tuya и Home Assistant)
+ */
+async function togglePrinterPower(printerId) {
+    const printer = printers.find(p => p.id === printerId);
+    if (!printer) return;
+    
+    // Проверяем, есть ли подключенная розетка
+    if (!printer.tuyaDeviceId && !printer.haEntityId) {
+        alert(t('plug_not_configured') || 'Smart plug not configured');
+        return;
+    }
+    
+    try {
+        // Сначала проверяем текущее состояние розетки
+        let currentStatus;
+        if (printer.tuyaDeviceId) {
+            currentStatus = await window.electronAPI.tuyaGetDeviceStatus(printerId);
+        } else if (printer.haEntityId) {
+            currentStatus = await window.electronAPI.haGetSwitchStatus(printerId);
+        }
+        
+        // Проверяем, удалось ли получить статус
+        if (currentStatus && currentStatus.success === false) {
+            // Если устройство не связано или произошла ошибка
+            if (currentStatus.linked === false) {
+                alert(t('plug_not_configured') || 'Smart plug not configured');
+            } else if (currentStatus.error) {
+                alert(`${t('power_control_error') || 'Power control error'}: ${currentStatus.error}`);
+            } else {
+                alert(t('power_control_error') || 'Power control error');
+            }
+            return;
+        }
+        
+        // Если розетка включена, показываем модальное окно подтверждения
+        if (currentStatus && currentStatus.success && currentStatus.isOn) {
+            openPowerOffConfirmModal(printerId);
+            return;
+        }
+        
+        // Если розетка выключена, включаем её без подтверждения
+        let result;
+        if (printer.tuyaDeviceId) {
+            result = await window.electronAPI.tuyaControlDevice(printerId, 'turn_on');
+        } else if (printer.haEntityId) {
+            result = await window.electronAPI.haControlSwitch(printerId, 'turn_on');
+        }
+        
+        if (result && result.success) {
+            setTimeout(() => {
+                updatePrinterPowerStatus(printerId);
+            }, 500);
+        } else {
+            alert(`${t('power_control_error') || 'Power control error'}: ${result ? result.error : 'Unknown error'}`);
+        }
+    } catch (error) {
+        alert(`${t('error') || 'Error'}: ${error.message}`);
+    }
+}
+
+/**
+ * Обновить статус питания принтера в UI (работает с Tuya и Home Assistant)
+ */
+async function updatePrinterPowerStatus(printerId) {
+    const printer = printers.find(p => p.id === printerId);
+    if (!printer) return;
+    
+    try {
+        let result;
+        
+        // Определяем тип подключения
+        if (printer.tuyaDeviceId) {
+            result = await window.electronAPI.tuyaGetDeviceStatus(printerId);
+        } else if (printer.haEntityId) {
+            result = await window.electronAPI.haGetSwitchStatus(printerId);
+        } else {
+            return; // Розетка не подключена
+        }
+        
+        if (result.success && result.linked) {
+            const powerBtn = document.querySelector(`[data-printer-id="${printerId}"].power-btn`);
+            if (powerBtn) {
+                const isOn = result.isOn;
+                powerBtn.classList.remove('power-on', 'power-off');
+                powerBtn.classList.add(isOn ? 'power-on' : 'power-off');
+                
+                // Обновляем иконку в зависимости от состояния
+                const iconSpan = powerBtn.querySelector('.power-icon');
+                if (iconSpan) {
+                    iconSpan.textContent = isOn ? '⚡' : '🔌';
+                }
+                
+                // Обновляем title
+                powerBtn.title = isOn ? (t('turn_off_power') || 'Turn off power') : (t('turn_on_power') || 'Turn on power');
+            }
+        }
+    } catch (error) {
+        console.error('Error updating power status:', error);
+    }
+}
+
+/**
+ * Открыть внешнюю ссылку
+ */
+function openExternalUrl(url) {
+    window.electronAPI.openExternalLink(url);
+}
+
+// Слушатели событий для автоматического управления питанием
+window.electronAPI.onPrinterPoweredOff((data) => {
+    console.log('[SmartPlug] Printer powered off:', data);
+    
+    // Обновить UI
+    updatePrinterPowerStatus(data.printerId);
+    
+    // Отправить уведомление в Telegram (если включено)
+    const printer = printers.find(p => p.id === data.printerId);
+    if (printer && telegramConfig.enabled && telegramConfig.notifications.powerOff) {
+        let reasonText = '';
+        let eventText = '';
+        
+        switch(data.reason) {
+            case 'auto_shutdown_after_complete':
+                reasonText = t('power_off_reason_complete') || 'Автоматическое отключение после завершения печати';
+                eventText = '🔌 ' + (t('power_off_auto') || 'Автоотключение');
+                break;
+            case 'auto_shutdown_after_error':
+                reasonText = t('power_off_reason_error') || 'Автоматическое отключение из-за ошибки печати';
+                eventText = '⚠️ ' + (t('power_off_error') || 'Отключение при ошибке');
+                break;
+            default:
+                reasonText = data.reason;
+                eventText = '🔌 ' + (t('power_off') || 'Отключение питания');
+        }
+        
+        sendTelegramNotification({
+            printerName: data.printerName || printer.name,
+            printerIP: printer.ip,
+            event: eventText,
+            message: reasonText
+        });
+    }
+});
+
+window.electronAPI.onPrinterEmergencyShutdown((data) => {
+    console.log('[SmartPlug] Emergency shutdown:', data);
+    
+    // Обновить UI
+    updatePrinterPowerStatus(data.printerId);
+    
+    // Показать критическое предупреждение
+    alert(`🔥 АВАРИЙНОЕ ОТКЛЮЧЕНИЕ!\n\nПринтер: ${data.printerName}\nПричина: ${data.reason === 'overheat' ? 'Перегрев' : data.reason}\nТемпература MCU: ${data.temperature}°C\n\nПитание было автоматически отключено для безопасности!`);
+    
+    // Отправить КРИТИЧЕСКОЕ уведомление в Telegram (если включено)
+    const printer = printers.find(p => p.id === data.printerId);
+    if (printer && telegramConfig.enabled && telegramConfig.notifications.emergencyShutdown) {
+        const criticalMessage = 
+            `🔥🚨 *КРИТИЧЕСКОЕ СОБЫТИЕ!*\n\n` +
+            `⚡ *Аварийное отключение питания*\n` +
+            `🌡️ *Температура MCU:* ${data.temperature}°C (критично!)\n` +
+            `⚠️ *Причина:* ${data.reason === 'overheat' ? 'Перегрев платы управления' : data.reason}\n\n` +
+            `🛡️ Питание было автоматически отключено для предотвращения повреждений.\n` +
+            `🔧 Требуется проверка оборудования!`;
+        
+        sendTelegramNotification({
+            printerName: data.printerName || printer.name,
+            printerIP: printer.ip,
+            event: '🔥 АВАРИЙНОЕ ОТКЛЮЧЕНИЕ',
+            message: criticalMessage
+        });
+    }
+});

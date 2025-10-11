@@ -1752,6 +1752,11 @@ body::after {
     border-left: 4px solid rgba(100, 180, 240, 0.4) !important;
 }
 
+/* Темный текст на всех кнопках в карточках принтеров в светлой теме */
+:root[data-theme="light"] .printer-card .btn {
+    color: #1e3a5f !important;
+}
+
 /* Ready - яркий жёлтый фон (standby, готов к печати) */
 :root[data-theme="light"] .printer-card.ready {
     border-left: 4px solid #ff9800 !important;
@@ -1857,4 +1862,360 @@ body::after {
         radial-gradient(ellipse 550px 400px at 28% 65%, rgba(80, 140, 190, 0.11) 0%, transparent 50%);
     pointer-events: none;
     z-index: 0;
+}
+
+/* ============================================================================
+   TUYA SMART PLUG STYLES
+   ============================================================================ */
+
+/* Кнопка Tuya в header */
+.btn-tuya {
+    background: rgba(255, 153, 0, 0.2) !important;
+    color: #ffa726 !important;
+    border-color: rgba(255, 153, 0, 0.5) !important;
+}
+
+.btn-tuya:hover {
+    background: rgba(255, 153, 0, 0.3) !important;
+    border-color: rgba(255, 153, 0, 0.7) !important;
+}
+
+/* Кнопка настройки розетки */
+.btn-plug {
+    background: rgba(0, 200, 83, 0.2) !important;
+    color: #4caf50 !important;
+    border-color: rgba(0, 200, 83, 0.5) !important;
+}
+
+.btn-plug:hover {
+    background: rgba(0, 200, 83, 0.3) !important;
+    border-color: rgba(0, 200, 83, 0.7) !important;
+}
+
+/* Кнопка управления питанием */
+.power-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 12px !important;
+    border-radius: 6px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid;
+    min-width: auto !important;
+}
+
+.power-btn.power-on {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.3), rgba(69, 160, 73, 0.3)) !important;
+    color: #4caf50 !important;
+    border-color: rgba(76, 175, 80, 0.6) !important;
+}
+
+.power-btn.power-on:hover {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.5), rgba(69, 160, 73, 0.5)) !important;
+    border-color: rgba(76, 175, 80, 0.8) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+.power-btn.power-off {
+    background: linear-gradient(135deg, rgba(200, 200, 200, 0.3), rgba(180, 180, 180, 0.3)) !important;
+    color: #666 !important;
+    border-color: rgba(200, 200, 200, 0.6) !important;
+}
+
+.power-btn.power-off:hover {
+    background: linear-gradient(135deg, rgba(220, 220, 220, 0.5), rgba(200, 200, 200, 0.5)) !important;
+    border-color: rgba(200, 200, 200, 0.8) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(180, 180, 180, 0.4);
+}
+
+.power-icon {
+    font-size: 18px;
+    animation: pulse 2s infinite;
+    line-height: 1;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.power-text {
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+/* Info box в модальных окнах */
+.info-box {
+    background: rgba(33, 150, 243, 0.1);
+    border-left: 4px solid #2196f3;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+}
+
+.info-box h4 {
+    margin-top: 0;
+    color: #2196f3;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.info-box ol {
+    margin: 10px 0;
+    padding-left: 20px;
+    font-size: 13px;
+}
+
+.info-box li {
+    margin: 5px 0;
+    line-height: 1.6;
+}
+
+.info-box a {
+    color: #4dabf7;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.info-box a:hover {
+    text-decoration: underline;
+}
+
+/* Статус сообщения */
+.status-message {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-top: 15px;
+    font-weight: 500;
+    font-size: 13px;
+    display: none;
+    border: 1px solid;
+}
+
+.status-message.status-info {
+    background: rgba(33, 150, 243, 0.15);
+    border-color: rgba(33, 150, 243, 0.4);
+    color: #4dabf7;
+}
+
+.status-message.status-success {
+    background: rgba(76, 175, 80, 0.15);
+    border-color: rgba(76, 175, 80, 0.4);
+    color: #66bb6a;
+}
+
+.status-message.status-error {
+    background: rgba(244, 67, 54, 0.15);
+    border-color: rgba(244, 67, 54, 0.4);
+    color: #ef5350;
+}
+
+.status-message.status-warn {
+    background: rgba(255, 152, 0, 0.15);
+    border-color: rgba(255, 152, 0, 0.4);
+    color: #ffa726;
+}
+
+/* Checkbox labels */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 0;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+/* Sub settings */
+.sub-setting {
+    margin: 10px 0 10px 26px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    border-left: 3px solid rgba(33, 150, 243, 0.4);
+}
+
+.sub-setting label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 13px;
+    color: var(--text-color);
+    opacity: 0.9;
+}
+
+.sub-setting input[type="number"] {
+    width: 100%;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: var(--text-color);
+    font-size: 14px;
+}
+
+/* Small button */
+.btn-small {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    min-width: auto !important;
+}
+
+/* Светлая тема adjustments */
+:root[data-theme="light"] .info-box {
+    background: rgba(33, 150, 243, 0.08);
+    border-left-color: #1976d2;
+}
+
+:root[data-theme="light"] .info-box h4 {
+    color: #1565c0;
+}
+
+:root[data-theme="light"] .sub-setting {
+    background: rgba(0, 0, 0, 0.05);
+    border-left-color: rgba(33, 150, 243, 0.5);
+}
+
+:root[data-theme="light"] .sub-setting input[type="number"] {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Smart Plugs Type Selector */
+.plugs-type-selector {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.plug-type-card {
+    cursor: pointer;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.plug-type-card:hover {
+    border-color: rgba(33, 150, 243, 0.5);
+    background: rgba(33, 150, 243, 0.1);
+    transform: translateY(-2px);
+}
+
+.plug-type-card input[type="radio"] {
+    display: none;
+}
+
+.plug-type-card input[type="radio"]:checked + .card-content {
+    border-color: #2196f3;
+}
+
+.plug-type-card input[type="radio"]:checked ~ .card-content,
+.plug-type-card:has(input[type="radio"]:checked) {
+    border-color: #2196f3;
+    background: rgba(33, 150, 243, 0.15);
+}
+
+.card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.card-icon {
+    font-size: 32px;
+    text-align: center;
+}
+
+.card-title {
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+    color: var(--text-color);
+}
+
+.card-description {
+    font-size: 13px;
+    text-align: center;
+    opacity: 0.8;
+    min-height: 36px;
+}
+
+.card-features {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+.card-features span {
+    display: block;
+}
+
+/* Plug Config Sections */
+.plug-config-section {
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.plug-config-section h4 {
+    margin-bottom: 15px;
+    font-size: 16px;
+    color: #2196f3;
+}
+
+.plug-config-section h5 {
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+/* Светлая тема для карточек */
+:root[data-theme="light"] .plug-type-card {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+:root[data-theme="light"] .plug-type-card:hover {
+    background: rgba(33, 150, 243, 0.08);
+    border-color: rgba(33, 150, 243, 0.4);
+}
+
+:root[data-theme="light"] .plug-type-card:has(input[type="radio"]:checked) {
+    background: rgba(33, 150, 243, 0.12);
+    border-color: #1976d2;
+}
+
+:root[data-theme="light"] .plug-config-section {
+    border-top-color: rgba(0, 0, 0, 0.1);
+}
+
+:root[data-theme="light"] .plug-config-section h4 {
+    color: #1565c0;
+}
+
+/* Textarea with masked text support */
+textarea[style*="webkitTextSecurity"] {
+    letter-spacing: 2px;
+}
+
+/* Placeholder для сохраненных credentials */
+input[data-has-saved="true"]:not(:focus),
+textarea[data-has-saved="true"]:not(:focus) {
+    color: var(--text-color);
+    opacity: 0.8;
 }
