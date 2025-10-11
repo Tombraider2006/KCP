@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag version (e.g., v1.5.0)'
-        required: true
-        default: 'v1.5.0'
+        description: 'Tag version (e.g., v1.5.31) or leave empty for latest main'
+        required: false
+        default: ''
 
 jobs:
   build:
@@ -31,7 +31,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.tag }}
+          ref: ${{ github.event.inputs.tag || 'main' }}
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -89,10 +89,24 @@ jobs:
           echo "=== Files prepared for release ==="
           ls -lh ./release-files || echo "No files found"
       
+      - name: Get latest tag
+        id: get_tag
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Checkout for tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
       - name: Upload files to release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.event.inputs.tag }}
+          tag_name: ${{ steps.get_tag.outputs.tag }}
           files: ./release-files/*
           draft: false
           prerelease: false
