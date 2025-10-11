@@ -1667,6 +1667,11 @@ function updatePrintersCounter() {
     
     if (printingElement) printingElement.textContent = counts.printing;
     if (offlineElement) offlineElement.textContent = counts.offline;
+    
+    // Отправляем данные о принтерах в телеметрию
+    if (window.api && window.api.diagnostics) {
+        window.api.diagnostics.updatePrinters(printers);
+    }
     if (readyElement) readyElement.textContent = counts.ready;
     if (completeElement) completeElement.textContent = counts.complete;
     if (pausedElement) pausedElement.textContent = counts.paused;
