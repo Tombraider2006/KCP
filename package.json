@@ -48,8 +48,8 @@
       "icons/**/*",
       "package.json",
       "README.md",
+      "node_modules/**/*",
       "!docs/**/*",
-      "!node_modules/**/*",
       "!dist-electron/**/*",
       "!build/**/*",
       "!.git/**/*"
