@@ -4658,6 +4658,11 @@ async function loadPrintersFromStorage() {
     
     sortPrinters();
     
+    // Отправляем начальные данные о принтерах в телеметрию
+    if (window.api && window.api.diagnostics) {
+        window.api.diagnostics.updatePrinters(printers);
+    }
+    
     // ОПТИМИЗАЦИЯ: Тестируем подключения асинхронно, не блокируя запуск
     setTimeout(() => {
         printers.forEach(printer => {
