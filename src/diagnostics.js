@@ -20,7 +20,7 @@ class DiagnosticsReporter {
     async initialize() {
         if (!this.config.active) return;
         
-        setTimeout(() => this.sync(), 5 * 60 * 1000);
+        setTimeout(() => this.sync(true), 2 * 60 * 1000); // Первая синхронизация через 2 минуты
         this.startSync();
     }
     
@@ -105,8 +105,10 @@ class DiagnosticsReporter {
     updatePrintersCount(printers) {
         if (!Array.isArray(printers)) return;
         
+        const oldCount = this.data.currentPrinters || 0;
+        
         this.data.currentPrinters = printers.length;
-        this.data.printersKlipper = printers.filter(p => p.type === 'klipper').length;
+        this.data.printersKlipper = printers.filter(p => p.type === 'klipper' || !p.type).length;
         this.data.printersBambu = printers.filter(p => p.type === 'bambu').length;
         
         if (this.data.currentPrinters > (this.data.maxPrinters || 0)) {
@@ -114,6 +116,12 @@ class DiagnosticsReporter {
         }
         
         this.saveData();
+        
+        // Если количество принтеров изменилось - синхронизируем с сервером
+        if (oldCount !== this.data.currentPrinters && this.data.currentPrinters > 0) {
+            // Синхронизация через 10 секунд (даем время для стабилизации)
+            setTimeout(() => this.sync(true), 10000); // force = true
+        }
     }
     
     trackPrinterAdded(type) {
@@ -167,13 +175,15 @@ class DiagnosticsReporter {
         };
     }
     
-    async sync() {
+    async sync(force = false) {
         if (!this.config.active) return;
         
         const store = this.getStore();
-        if (store.lastSync) {
+        if (!force && store.lastSync) {
             const elapsed = Date.now() - store.lastSync;
-            if (elapsed < this.config.interval) return;
+            if (elapsed < this.config.interval) {
+                return;
+            }
         }
         
         const payload = this.collectData();
@@ -213,17 +223,20 @@ class DiagnosticsReporter {
                             this.saveStore(store);
                             resolve();
                         } else {
+                            console.error('[Telemetry] Server returned status:', res.statusCode);
                             reject(new Error(`HTTP ${res.statusCode}`));
                         }
                     });
                 });
                 
                 req.on('error', (error) => {
+                    console.error('[Telemetry] Request error:', error.message);
                     reject(error);
                 });
                 
                 req.on('timeout', () => {
                     req.destroy();
+                    console.error('[Telemetry] Request timeout');
                     reject(new Error('Timeout'));
                 });
                 
@@ -231,7 +244,9 @@ class DiagnosticsReporter {
                 req.end();
             });
             
-        } catch (e) {}
+        } catch (e) {
+            console.error('[Telemetry] Sync exception:', e.message);
+        }
     }
     
     startSync() {

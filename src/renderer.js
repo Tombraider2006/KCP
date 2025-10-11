@@ -6704,6 +6704,51 @@ function downloadUpdate() {
     }
 }
 
+// ===== ТЕСТИРОВАНИЕ ТЕЛЕМЕТРИИ =====
+
+/**
+ * Тестовая функция для отправки телеметрии
+ * Вызовите в консоли: testTelemetrySend()
+ */
+async function testTelemetrySend() {
+    try {
+        // Обновляем данные о принтерах
+        if (window.electronAPI && window.electronAPI.diagnostics) {
+            const printersData = {
+                count: printers.length,
+                klipper: printers.filter(p => p.type === 'klipper' || !p.type).length,
+                bambu: printers.filter(p => p.type === 'bambu').length,
+                list: printers.map(p => ({ name: p.name, type: p.type || 'klipper' }))
+            };
+            
+            addConsoleMessage(`📊 Printers: ${printersData.count} (Klipper: ${printersData.klipper}, Bambu: ${printersData.bambu})`, 'info');
+            console.log('🖨️ Printers data:', printersData);
+            
+            await window.electronAPI.diagnostics.updatePrinters(printers);
+            addConsoleMessage('💾 Local data updated', 'info');
+            
+            // Принудительная отправка на сервер
+            addConsoleMessage('🌐 Sending to server...', 'info');
+            const result = await window.electronAPI.diagnostics.forceSync();
+            
+            if (result && result.success) {
+                addConsoleMessage(`✅ Sent to server! Check: http://tomich.fun:3000`, 'success');
+                console.log('✅ Server confirmed receipt. Refresh dashboard in 5 seconds.');
+            } else {
+                addConsoleMessage('⚠️ Sync completed (check server)', 'warning');
+            }
+        } else {
+            addConsoleMessage('❌ Telemetry API not available', 'error');
+        }
+    } catch (error) {
+        addConsoleMessage(`❌ Error: ${error.message}`, 'error');
+        console.error('Telemetry error:', error);
+    }
+}
+
+// Делаем функцию доступной глобально для тестирования
+window.testTelemetrySend = testTelemetrySend;
+
 /**
  * Ручная проверка обновлений
  */

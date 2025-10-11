@@ -2720,6 +2720,11 @@ ipcMain.handle('diagnostics-track-export', (event, format) => {
   reporter.trackExport(format);
 });
 
+ipcMain.handle('diagnostics-force-sync', async () => {
+  await reporter.sync(true); // force = true
+  return { success: true };
+});
+
 // ===== WEB SERVER MANAGEMENT =====
 
 /**

@@ -36,6 +36,7 @@ const TRANSLATIONS = {
         'printer_name': 'Название принтера:',
         'printer_type': 'Тип принтера:',
         'printer_ip': 'IP адрес:',
+        'ip_address': 'IP адрес:',
         'klipper_moonraker': 'Klipper (Moonraker)',
         'bambu_lab': 'Bambu Lab',
         'web_interface_port_optional': 'Порт веб-интерфейса (опционально)',
@@ -554,6 +555,7 @@ const TRANSLATIONS = {
         'power_control_error': 'Ошибка управления питанием',
         'turn_on_power': 'Включить питание',
         'turn_off_power': 'Выключить питание',
+        'tuya_power_control': 'Управление питанием',
         
         // Telegram Smart Plugs Notifications
         'telegram_power_events': 'События умных розеток:',
@@ -596,6 +598,7 @@ const TRANSLATIONS = {
         'printer_name': 'Printer name:',
         'printer_type': 'Printer type:',
         'printer_ip': 'IP address:',
+        'ip_address': 'IP address:',
         'klipper_moonraker': 'Klipper (Moonraker)',
         'bambu_lab': 'Bambu Lab',
         'web_interface_port_optional': 'Web interface port (optional)',
@@ -1114,6 +1117,7 @@ const TRANSLATIONS = {
         'power_control_error': 'Power control error',
         'turn_on_power': 'Turn on power',
         'turn_off_power': 'Turn off power',
+        'tuya_power_control': 'Power Control',
         
         // Telegram Smart Plugs Notifications
         'telegram_power_events': 'Smart Plug Events:',
