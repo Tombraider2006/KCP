@@ -475,6 +475,19 @@ const TRANSLATIONS = {
         'power_off_confirm_warning': '⚠️ Это немедленно отключит питание принтера. Убедитесь, что печать завершена или приостановлена.',
         'power_off_confirm_btn': 'Выключить',
         
+        // Update Checker
+        'update_available_title': 'Доступна новая версия',
+        'update_new_version': 'Доступна новая версия приложения!',
+        'update_current': 'Текущая версия:',
+        'update_latest': 'Новая версия:',
+        'update_recommendation': 'Рекомендуем обновиться для получения новых функций и улучшений.',
+        'update_later': 'Позже',
+        'update_download': 'Скачать обновление',
+        'update_available_console': 'Доступна новая версия',
+        'checking_updates': 'Проверка обновлений...',
+        'no_updates': 'Вы используете последнюю версию',
+        'update_check_error': 'Ошибка проверки обновлений',
+        
         // Smart Plugs
         'smart_plugs': 'Розетки',
         'smart_plugs_config': 'Настройка умных розеток',
@@ -1018,6 +1031,19 @@ const TRANSLATIONS = {
         'power_off_confirm_message': 'Are you sure you want to turn off the printer?',
         'power_off_confirm_warning': '⚠️ This will cut power to the printer immediately. Make sure the print is complete or paused.',
         'power_off_confirm_btn': 'Turn Off',
+        
+        // Update Checker
+        'update_available_title': 'New Version Available',
+        'update_new_version': 'A new version of the application is available!',
+        'update_current': 'Current version:',
+        'update_latest': 'Latest version:',
+        'update_recommendation': 'We recommend updating to get the latest features and improvements.',
+        'update_later': 'Later',
+        'update_download': 'Download Update',
+        'update_available_console': 'New version available',
+        'checking_updates': 'Checking for updates...',
+        'no_updates': 'You are running the latest version',
+        'update_check_error': 'Error checking for updates',
         
         // Smart Plugs
         'smart_plugs': 'Smart Plugs',

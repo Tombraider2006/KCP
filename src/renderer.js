@@ -6597,6 +6597,86 @@ async function confirmPowerOff() {
     }
 }
 
+// ===== UPDATE CHECKER =====
+
+let updateInfo = null;
+
+/**
+ * Обработчик события о доступном обновлении
+ */
+if (window.electronAPI && window.electronAPI.onUpdateAvailable) {
+    window.electronAPI.onUpdateAvailable((info) => {
+        updateInfo = info;
+        showUpdateNotification(info);
+    });
+}
+
+/**
+ * Показать уведомление об обновлении
+ */
+function showUpdateNotification(info) {
+    if (!info || !info.hasUpdate) return;
+    
+    // Обновляем переводы
+    updateInterfaceLanguage();
+    
+    // Заполняем информацию о версиях
+    const currentVersionEl = document.getElementById('updateCurrentVersion');
+    const latestVersionEl = document.getElementById('updateLatestVersion');
+    
+    if (currentVersionEl) currentVersionEl.textContent = info.currentVersion;
+    if (latestVersionEl) latestVersionEl.textContent = info.latestVersion;
+    
+    // Показываем модальное окно
+    const modal = document.getElementById('updateAvailableModal');
+    if (modal) {
+        modal.style.display = 'block';
+    }
+    
+    // Логируем в консоль
+    addConsoleMessage(`🎉 ${t('update_available_console') || 'New version available'}: ${info.latestVersion}`, 'success');
+}
+
+/**
+ * Закрыть модальное окно обновления
+ */
+function closeUpdateModal() {
+    const modal = document.getElementById('updateAvailableModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+/**
+ * Скачать обновление
+ */
+function downloadUpdate() {
+    if (updateInfo && updateInfo.releaseUrl) {
+        window.electronAPI.openReleasePage(updateInfo.releaseUrl);
+        closeUpdateModal();
+    }
+}
+
+/**
+ * Ручная проверка обновлений
+ */
+async function manualCheckForUpdates() {
+    addConsoleMessage('🔍 ' + (t('checking_updates') || 'Checking for updates...'), 'info');
+    
+    try {
+        const info = await window.electronAPI.checkForUpdates();
+        
+        if (info.hasUpdate) {
+            updateInfo = info;
+            showUpdateNotification(info);
+        } else {
+            addConsoleMessage('✅ ' + (t('no_updates') || 'You are running the latest version') + ': ' + info.currentVersion, 'success');
+        }
+    } catch (error) {
+        addConsoleMessage('❌ ' + (t('update_check_error') || 'Error checking for updates') + ': ' + error.message, 'error');
+    }
+}
+
 /**
  * Выбрать тип подключения (Tuya или Home Assistant)
  */

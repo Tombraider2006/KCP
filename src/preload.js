@@ -86,5 +86,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onPrinterPoweredOff: (callback) => ipcRenderer.on('printer-powered-off', (event, ...args) => callback(...args)),
   onPrinterEmergencyShutdown: (callback) => ipcRenderer.on('printer-emergency-shutdown', (event, ...args) => callback(...args)),
   removePowerOffListener: () => ipcRenderer.removeAllListeners('printer-powered-off'),
-  removeEmergencyShutdownListener: () => ipcRenderer.removeAllListeners('printer-emergency-shutdown')
+  removeEmergencyShutdownListener: () => ipcRenderer.removeAllListeners('printer-emergency-shutdown'),
+  
+  // Update Checker
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  openReleasePage: (url) => ipcRenderer.invoke('open-release-page', url),
+  onUpdateAvailable: (callback) => ipcRenderer.on('update-available', (event, ...args) => callback(...args)),
+  removeUpdateListener: () => ipcRenderer.removeAllListeners('update-available')
 });

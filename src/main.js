@@ -4,6 +4,7 @@ const Store = require('electron-store');
 const { version: APP_VERSION } = require('../package.json');
 const { encrypt, decrypt } = require('./encryption');
 const DiagnosticsReporter = require('./diagnostics');
+const https = require('https');
 // bambu-js will be imported dynamically as ES module
 
 const store = new Store();
@@ -2876,6 +2877,110 @@ ipcMain.handle('update-printer-data', (event, printerId, data) => {
   }
 });
 
+// ===== UPDATE CHECKER =====
+
+/**
+ * Проверка наличия обновлений через GitHub API
+ */
+async function checkForUpdates() {
+  return new Promise((resolve) => {
+    const options = {
+      hostname: 'api.github.com',
+      path: '/repos/Tombraider2006/KCP/releases/latest',
+      method: 'GET',
+      headers: {
+        'User-Agent': '3D-Printer-Control-Panel'
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+
+      res.on('end', () => {
+        try {
+          if (res.statusCode === 200) {
+            const release = JSON.parse(data);
+            const latestVersion = release.tag_name.replace(/^v/, ''); // Убираем 'v' если есть
+            const currentVersion = APP_VERSION;
+
+            // Сравниваем версии
+            if (compareVersions(latestVersion, currentVersion) > 0) {
+              resolve({
+                hasUpdate: true,
+                latestVersion: latestVersion,
+                currentVersion: currentVersion,
+                releaseUrl: release.html_url,
+                releaseNotes: release.body,
+                releaseName: release.name,
+                publishedAt: release.published_at
+              });
+            } else {
+              resolve({ hasUpdate: false, currentVersion: currentVersion });
+            }
+          } else {
+            console.log('[UpdateChecker] GitHub API returned status:', res.statusCode);
+            resolve({ hasUpdate: false, currentVersion: APP_VERSION });
+          }
+        } catch (error) {
+          console.error('[UpdateChecker] Error parsing response:', error);
+          resolve({ hasUpdate: false, currentVersion: APP_VERSION });
+        }
+      });
+    });
+
+    req.on('error', (error) => {
+      console.error('[UpdateChecker] Request error:', error);
+      resolve({ hasUpdate: false, currentVersion: APP_VERSION });
+    });
+
+    req.setTimeout(10000, () => {
+      req.destroy();
+      console.log('[UpdateChecker] Request timeout');
+      resolve({ hasUpdate: false, currentVersion: APP_VERSION });
+    });
+
+    req.end();
+  });
+}
+
+/**
+ * Сравнение версий (semver)
+ * @returns {number} 1 если v1 > v2, -1 если v1 < v2, 0 если равны
+ */
+function compareVersions(v1, v2) {
+  const parts1 = v1.split('.').map(Number);
+  const parts2 = v2.split('.').map(Number);
+
+  for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+    const p1 = parts1[i] || 0;
+    const p2 = parts2[i] || 0;
+
+    if (p1 > p2) return 1;
+    if (p1 < p2) return -1;
+  }
+
+  return 0;
+}
+
+/**
+ * IPC handler для проверки обновлений
+ */
+ipcMain.handle('check-for-updates', async () => {
+  const updateInfo = await checkForUpdates();
+  return updateInfo;
+});
+
+/**
+ * IPC handler для открытия страницы релиза
+ */
+ipcMain.handle('open-release-page', async (event, url) => {
+  shell.openExternal(url);
+});
+
 // App events
 app.whenReady().then(async () => {
   await reporter.initialize();
@@ -2938,6 +3043,17 @@ app.whenReady().then(async () => {
       console.error('[HomeAssistant] Автоподключение ошибка:', error);
     }
   }
+
+  // Проверка обновлений через 5 секунд после запуска
+  setTimeout(async () => {
+    const updateInfo = await checkForUpdates();
+    if (updateInfo.hasUpdate && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update-available', updateInfo);
+      console.log(`[UpdateChecker] ✅ New version available: ${updateInfo.latestVersion}`);
+    } else {
+      console.log(`[UpdateChecker] ✅ Running latest version: ${APP_VERSION}`);
+    }
+  }, 5000);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

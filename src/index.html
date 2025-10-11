@@ -25,6 +25,9 @@
                     <span class="counter theme-toggle" onclick="toggleTheme()" title="Toggle Theme" style="cursor: pointer;">
                         <span id="themeIcon">🌙</span>
                     </span>
+                    <span class="counter" onclick="manualCheckForUpdates()" title="Check for Updates" style="cursor: pointer;">
+                        🔔
+                    </span>
                 </div>
             </div>
             <div class="controls">
@@ -899,6 +902,46 @@
                 <button class="btn" onclick="closeSmartPlugsModal()">
                     <span data-i18n="close">Close</span>
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Available Modal -->
+    <div id="updateAvailableModal" class="modal">
+        <div class="modal-content" style="max-width: 550px;">
+            <div class="modal-header">
+                <h2>🎉 <span data-i18n="update_available_title">New Version Available</span></h2>
+                <span class="close" onclick="closeUpdateModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="info-box" style="background: rgba(76, 175, 80, 0.1); border-left: 3px solid #4caf50;">
+                    <p style="margin: 0 0 15px 0; font-size: 16px;">
+                        <strong><span data-i18n="update_new_version">A new version is available!</span></strong>
+                    </p>
+                    <div style="display: flex; gap: 20px; margin-bottom: 15px;">
+                        <div>
+                            <span data-i18n="update_current">Current version:</span>
+                            <strong id="updateCurrentVersion"></strong>
+                        </div>
+                        <div>
+                            <span data-i18n="update_latest">Latest version:</span>
+                            <strong id="updateLatestVersion" style="color: #4caf50;"></strong>
+                        </div>
+                    </div>
+                    <p style="margin: 10px 0 0 0; font-size: 14px; color: #888;">
+                        <span data-i18n="update_recommendation">We recommend updating to get the latest features and improvements.</span>
+                    </p>
+                </div>
+                <div id="updateReleaseNotes" style="margin-top: 15px; max-height: 200px; overflow-y: auto; padding: 10px; background: rgba(0,0,0,0.1); border-radius: 6px; font-size: 13px; display: none;">
+                </div>
+                <div class="button-group" style="margin-top: 20px;">
+                    <button class="btn btn-secondary" onclick="closeUpdateModal()">
+                        <span data-i18n="update_later">Later</span>
+                    </button>
+                    <button class="btn btn-primary" onclick="downloadUpdate()" style="background: #4caf50;">
+                        📥 <span data-i18n="update_download">Download Update</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
