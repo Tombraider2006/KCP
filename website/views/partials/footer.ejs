@@ -1,0 +1,21 @@
+<!-- Footer -->
+<footer class="footer">
+    <div class="footer-content">
+        <div class="footer-links">
+            <a href="/">Главная</a>
+            <a href="/downloads">Скачать</a>
+            <a href="/news">Новости</a>
+            <a href="https://t.me/Tom_Tomich" target="_blank">Telegram</a>
+            <% if (typeof showLicense !== 'undefined' && showLicense) { %>
+            <a href="/license">Лицензия</a>
+            <% } %>
+        </div>
+        <div class="footer-copyright">
+            <p>&copy; <%= new Date().getFullYear() %> 3D Printer Control Panel by Tom Tomich</p>
+            <% if (typeof showCommercialNote !== 'undefined' && showCommercialNote) { %>
+            <p>Некоммерческая лицензия. Для коммерческого использования приобретите лицензию.</p>
+            <% } %>
+        </div>
+    </div>
+</footer>
+

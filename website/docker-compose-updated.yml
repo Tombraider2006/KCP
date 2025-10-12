@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  website:
+    image: node:18-alpine
+    container_name: 3dpc-website
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - /app/node_modules
+      - /var/run/docker.sock:/var/run/docker.sock  # Access to Docker socket for restart
+    command: sh -c "apk add --no-cache docker-cli && npm install --production && npm start"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+    extra_hosts:
+      - "host.docker.internal:172.17.0.1"
+    networks:
+      - n8n_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.website.rule=Host(`tomich.fun`) || Host(`www.tomich.fun`)"
+      - "traefik.http.routers.website.entrypoints=websecure"
+      - "traefik.http.routers.website.tls=true"
+      - "traefik.http.routers.website.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.website.loadbalancer.server.port=8080"
+      # HTTP -> HTTPS redirect
+      - "traefik.http.routers.website-http.rule=Host(`tomich.fun`) || Host(`www.tomich.fun`)"
+      - "traefik.http.routers.website-http.entrypoints=web"
+      - "traefik.http.routers.website-http.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+
+networks:
+  n8n_network:
+    external: true
+    name: n8n-compose-file_default
+

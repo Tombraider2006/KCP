@@ -1261,8 +1261,6 @@ async function checkForUpdates(isRussian) {
   const https = require('https');
   
   const currentVersion = APP_VERSION;
-  const repoOwner = 'Tombraider2006';
-  const repoName = 'KCP';
   
   try {
     // Показываем диалог "Проверка..."
@@ -1272,11 +1270,11 @@ async function checkForUpdates(isRussian) {
     
     console.log(checkingMessage);
     
-    // Делаем запрос к GitHub API
+    // Делаем запрос к API сайта (вместо GitHub API)
     const latestRelease = await new Promise((resolve, reject) => {
       const options = {
-        hostname: 'api.github.com',
-        path: `/repos/${repoOwner}/${repoName}/releases/latest`,
+        hostname: 'tomich.fun',
+        path: '/api/latest-version',
         method: 'GET',
         headers: {
           'User-Agent': '3D-Printer-Control-Panel'
@@ -1293,7 +1291,14 @@ async function checkForUpdates(isRussian) {
         res.on('end', () => {
           if (res.statusCode === 200) {
             try {
-              resolve(JSON.parse(data));
+              const info = JSON.parse(data);
+              // Преобразуем формат ответа к ожидаемому
+              resolve({
+                tag_name: 'v' + info.version,
+                name: info.name,
+                body: info.notes,
+                html_url: info.download_url || 'https://tomich.fun/downloads'
+              });
             } catch (e) {
               reject(new Error('Failed to parse response'));
             }
@@ -1340,7 +1345,7 @@ async function checkForUpdates(isRussian) {
       });
       
       if (result.response === 0) {
-        shell.openExternal(`https://github.com/${repoOwner}/${repoName}/releases/latest`);
+        shell.openExternal('https://tomich.fun/downloads');
       }
     } else {
       dialog.showMessageBox(mainWindow, {
@@ -1358,8 +1363,8 @@ async function checkForUpdates(isRussian) {
       type: 'error',
       title: isRussian ? 'Ошибка' : 'Error',
       message: isRussian
-        ? 'Не удалось проверить обновления'
-        : 'Failed to check for updates',
+        ? 'Не удалось проверить обновления.\n\nВы можете проверить обновления вручную:\nhttps://tomich.fun/downloads'
+        : 'Failed to check for updates.\n\nYou can check manually at:\nhttps://tomich.fun/downloads',
       detail: error.message,
       buttons: ['OK']
     });
@@ -2901,13 +2906,13 @@ ipcMain.handle('update-printer-data', (event, printerId, data) => {
 // ===== UPDATE CHECKER =====
 
 /**
- * Проверка наличия обновлений через GitHub API
+ * Проверка наличия обновлений через API сайта (вместо GitHub API)
  */
 async function checkForUpdates() {
   return new Promise((resolve) => {
     const options = {
-      hostname: 'api.github.com',
-      path: '/repos/Tombraider2006/KCP/releases/latest',
+      hostname: 'tomich.fun',
+      path: '/api/latest-version',
       method: 'GET',
       headers: {
         'User-Agent': '3D-Printer-Control-Panel'
@@ -2924,8 +2929,8 @@ async function checkForUpdates() {
       res.on('end', () => {
         try {
           if (res.statusCode === 200) {
-            const release = JSON.parse(data);
-            const latestVersion = release.tag_name.replace(/^v/, ''); // Убираем 'v' если есть
+            const info = JSON.parse(data);
+            const latestVersion = info.version; // Уже без 'v'
             const currentVersion = APP_VERSION;
 
             // Сравниваем версии
@@ -2934,16 +2939,16 @@ async function checkForUpdates() {
                 hasUpdate: true,
                 latestVersion: latestVersion,
                 currentVersion: currentVersion,
-                releaseUrl: release.html_url,
-                releaseNotes: release.body,
-                releaseName: release.name,
-                publishedAt: release.published_at
+                releaseUrl: info.download_url || 'https://tomich.fun/downloads',
+                releaseNotes: info.notes,
+                releaseName: info.name,
+                publishedAt: info.published_at
               });
             } else {
               resolve({ hasUpdate: false, currentVersion: currentVersion });
             }
           } else {
-            console.log('[UpdateChecker] GitHub API returned status:', res.statusCode);
+            console.log('[UpdateChecker] API returned status:', res.statusCode);
             resolve({ hasUpdate: false, currentVersion: APP_VERSION });
           }
         } catch (error) {

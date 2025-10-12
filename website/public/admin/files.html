@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Файлы - Админ-панель</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="admin-page">
+    <header class="admin-header">
+        <div class="admin-header-content">
+            <div class="admin-logo">🔧 Админ-панель</div>
+            <nav class="admin-nav">
+                <ul>
+                    <li><a href="/admin/dashboard">📊 Дашборд</a></li>
+                    <li><a href="/admin/news">📰 Новости</a></li>
+                    <li><a href="/admin/telemetry.html">📊 Телеметрия</a></li>
+                    <li><a href="/admin/files.html" class="active">📁 Файлы</a></li>
+                    <li><a href="/admin/settings">⚙️ Настройки</a></li>
+                    <li><a href="/admin/logout">🚪 Выход</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="admin-container">
+        <div class="admin-card">
+            <h2>📁 Загрузка файлов</h2>
+            
+            <div id="alert-container"></div>
+            
+            <div class="form-group">
+                <label class="form-label">Тип файлов</label>
+                <select id="fileType" class="form-input">
+                    <option value="images">📷 Изображения (PNG, JPG)</option>
+                    <option value="html">📄 HTML файлы</option>
+                    <option value="any">📎 Любые файлы</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Папка назначения</label>
+                <select id="folder" class="form-input">
+                    <option value="screenshots">📷 Скриншоты (/screenshots/)</option>
+                    <option value="images">🖼️ Изображения (/images/)</option>
+                    <option value="">📄 Public root (/public/)</option>
+                    <option value="admin">🔒 Admin (/admin/)</option>
+                    <option value="css">🎨 CSS (/css/)</option>
+                    <option value="js">⚙️ JavaScript (/js/)</option>
+                    <option value="uploads">📎 Загрузки (/uploads/)</option>
+                </select>
+                <span class="form-hint">Для HTML выберите "Public root" или "Admin"</span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Выберите файлы</label>
+                <input type="file" id="fileInput" multiple class="form-input" accept="image/*">
+                <span class="form-hint">Можно выбрать несколько файлов одновременно</span>
+            </div>
+            
+            <script>
+                function updateFileInput() {
+                    const fileType = document.getElementById('fileType').value;
+                    const fileInput = document.getElementById('fileInput');
+                    
+                    if (fileType === 'images') {
+                        fileInput.accept = 'image/*';
+                    } else if (fileType === 'html') {
+                        fileInput.accept = '.html,.htm';
+                    } else {
+                        fileInput.accept = '*';
+                    }
+                }
+            </script>
+
+            <div class="btn-group">
+                <button id="uploadBtn" class="btn-admin btn-admin-success">
+                    📤 Загрузить файлы
+                </button>
+                <button id="restartBtn" class="btn-admin" style="background: rgba(255, 193, 7, 0.2); border-color: #ffd54f; color: #ffd54f;">
+                    🔄 Перезагрузить сервер
+                </button>
+            </div>
+
+            <div id="upload-progress" style="display: none; margin-top: 20px;">
+                <div style="background: rgba(0, 212, 255, 0.1); padding: 15px; border-radius: 8px;">
+                    <div id="progress-text">Загрузка...</div>
+                    <div style="width: 100%; height: 20px; background: rgba(0, 0, 0, 0.3); border-radius: 10px; margin-top: 10px; overflow: hidden;">
+                        <div id="progress-bar" style="height: 100%; background: linear-gradient(90deg, #00d4ff, #5dff8f); width: 0%; transition: width 0.3s;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-card" style="margin-top: 30px;">
+            <h2>📋 Загруженные файлы</h2>
+            <div id="files-list">
+                <p style="text-align: center; color: #7ea8c8; padding: 20px;">Загрузка списка файлов...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check authentication
+        fetch('/api/auth/me')
+            .then(res => {
+                if (!res.ok) {
+                    window.location.href = '/admin/login.html';
+                }
+            });
+
+        // Upload files
+        async function uploadFiles() {
+            const fileInput = document.getElementById('fileInput');
+            const folder = document.getElementById('folder').value;
+            const files = fileInput.files;
+
+            if (files.length === 0) {
+                showAlert('error', 'Выберите файлы для загрузки');
+                return;
+            }
+
+            const progressDiv = document.getElementById('upload-progress');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            
+            progressDiv.style.display = 'block';
+            
+            let uploaded = 0;
+            const total = files.length;
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('folder', folder);
+
+                try {
+                    progressText.textContent = `Загрузка ${i + 1} из ${total}: ${file.name}`;
+                    
+                    const response = await fetch('/api/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) throw new Error('Upload failed');
+                    
+                    uploaded++;
+                    const progress = (uploaded / total) * 100;
+                    progressBar.style.width = progress + '%';
+
+                } catch (error) {
+                    console.error('Error uploading file:', error);
+                    showAlert('error', `Ошибка загрузки ${file.name}`);
+                }
+            }
+
+            progressText.textContent = `✅ Загружено ${uploaded} из ${total} файлов`;
+            
+            if (uploaded === total) {
+                showAlert('success', `Успешно загружено ${uploaded} файлов`);
+                setTimeout(() => {
+                    progressDiv.style.display = 'none';
+                    fileInput.value = '';
+                    loadFilesList();
+                }, 2000);
+            }
+        }
+
+        // Load files list
+        async function loadFilesList() {
+            try {
+                const response = await fetch('/api/files');
+                if (!response.ok) throw new Error('Failed to load files');
+                
+                const files = await response.json();
+                const container = document.getElementById('files-list');
+                
+                if (files.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #7ea8c8; padding: 20px;">Нет загруженных файлов</p>';
+                    return;
+                }
+
+                let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">';
+                
+                files.forEach(file => {
+                    html += `
+                        <div style="background: rgba(0, 212, 255, 0.05); border: 1px solid rgba(0, 212, 255, 0.2); border-radius: 8px; padding: 15px; text-align: center;">
+                            ${file.type === 'image' ? `<img src="${file.path}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; margin-bottom: 10px;">` : ''}
+                            <div style="font-size: 0.9em; color: #7ea8c8; word-break: break-all;">${file.name}</div>
+                            <div style="font-size: 0.8em; color: #5dff8f; margin-top: 5px;">${file.folder}</div>
+                            <button class="delete-file-btn" data-file-path="${file.path}" style="margin-top: 10px; padding: 5px 10px; background: rgba(255, 107, 107, 0.2); border: 1px solid #ff6b6b; color: #ff6b6b; border-radius: 4px; cursor: pointer; font-size: 0.85em;">🗑️ Удалить</button>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                container.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error loading files:', error);
+                document.getElementById('files-list').innerHTML = '<p style="text-align: center; color: #ff6b6b; padding: 20px;">Ошибка загрузки списка файлов</p>';
+            }
+        }
+
+        // Delete file
+        async function deleteFile(path) {
+            if (!confirm('Удалить этот файл?')) return;
+            
+            try {
+                const response = await fetch('/api/files', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ path })
+                });
+
+                if (!response.ok) throw new Error('Delete failed');
+                
+                showAlert('success', 'Файл удалён');
+                loadFilesList();
+                
+            } catch (error) {
+                console.error('Error deleting file:', error);
+                showAlert('error', 'Ошибка удаления файла');
+            }
+        }
+
+        // Show alert
+        function showAlert(type, message) {
+            const alertContainer = document.getElementById('alert-container');
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
+            const icon = type === 'success' ? '✅' : '❌';
+            
+            alertContainer.innerHTML = `
+                <div class="alert ${alertClass}">
+                    ${icon} ${message}
+                </div>
+            `;
+            
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 5000);
+        }
+
+        // Restart Docker
+        async function restartDocker() {
+            if (!confirm('Перезагрузить Docker контейнер? Сайт будет недоступен 5-10 секунд.')) return;
+            
+            try {
+                const response = await fetch('/api/restart-docker', {
+                    method: 'POST'
+                });
+                
+                if (!response.ok) throw new Error('Restart failed');
+                
+                const result = await response.json();
+                showAlert('success', '🔄 Docker перезагружается... Обновите страницу через 10 секунд.');
+                
+            } catch (error) {
+                console.error('Error restarting Docker:', error);
+                showAlert('error', 'Ошибка перезагрузки Docker');
+            }
+        }
+
+        // Event listeners
+        document.getElementById('fileType').addEventListener('change', updateFileInput);
+        document.getElementById('uploadBtn').addEventListener('click', uploadFiles);
+        document.getElementById('restartBtn').addEventListener('click', restartDocker);
+        
+        // Delegated event listener for delete buttons (since they're added dynamically)
+        document.getElementById('files-list').addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-file-btn') || e.target.closest('.delete-file-btn')) {
+                const btn = e.target.classList.contains('delete-file-btn') ? e.target : e.target.closest('.delete-file-btn');
+                const filePath = btn.getAttribute('data-file-path');
+                if (filePath) {
+                    deleteFile(filePath);
+                }
+            }
+        });
+
+        // Load files on page load
+        loadFilesList();
+    </script>
+</body>
+</html>
+

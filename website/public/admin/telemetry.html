@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Telemetry - Admin Panel</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/admin.css">
+    <style>
+        .telemetry-frame {
+            width: 100%;
+            height: calc(100vh - 100px);
+            border: none;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-header">
+        <h1>📊 Telemetry Dashboard</h1>
+        <div class="admin-nav">
+                <a href="/admin/dashboard.html">📊 Dashboard</a>
+                <a href="/admin/news-editor.html">📰 News</a>
+                <a href="/admin/telemetry.html" class="active">📊 Telemetry</a>
+                <a href="/admin/files.html">📁 Files</a>
+                <a href="/admin/settings.html">⚙️ Settings</a>
+                <a href="/" target="_blank">🌐 View Site</a>
+                <a href="#" onclick="logout()">🚪 Logout</a>
+        </div>
+    </div>
+
+    <div class="admin-container" style="padding: 20px;">
+        <iframe 
+            class="telemetry-frame"
+            src="https://telemetry.tomich.fun?token=telemetry-secret-2024">
+        </iframe>
+    </div>
+
+    <script>
+        // Check authentication
+        fetch('/api/auth/me')
+            .then(res => {
+                if (!res.ok) {
+                    window.location.href = '/admin/login.html';
+                }
+            });
+
+        function logout() {
+            fetch('/api/auth/logout', { method: 'POST' })
+                .then(() => {
+                    window.location.href = '/admin/login.html';
+                });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Редактор новостей - Админ-панель</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/admin.css">
+    
+    <!-- TinyMCE -->
+    <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+</head>
+<body class="admin-page">
+    <header class="admin-header">
+        <div class="admin-header-content">
+            <div class="admin-logo">🔧 Админ-панель</div>
+            <nav class="admin-nav">
+                <ul>
+                    <li><a href="/admin/dashboard">📊 Дашборд</a></li>
+                    <li><a href="/admin/news" class="active">📰 Новости</a></li>
+                    <li><a href="/admin/telemetry.html">📊 Телеметрия</a></li>
+                    <li><a href="/admin/files.html">📁 Файлы</a></li>
+                    <li><a href="/admin/settings">⚙️ Настройки</a></li>
+                    <li><a href="/admin/logout">🚪 Выход</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="admin-container">
+        <div class="admin-card">
+            <h2 id="page-title">📝 Новая новость</h2>
+            
+            <div id="alert-container"></div>
+            
+            <form id="news-form">
+                <input type="hidden" id="news-id" name="id">
+                
+                <div class="form-group">
+                    <label class="form-label" for="title">Заголовок *</label>
+                    <input 
+                        type="text" 
+                        id="title" 
+                        name="title" 
+                        class="form-input" 
+                        required
+                        placeholder="Введите заголовок новости"
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="slug">URL (slug) *</label>
+                    <input 
+                        type="text" 
+                        id="slug" 
+                        name="slug" 
+                        class="form-input" 
+                        required
+                        placeholder="url-dlya-novosti"
+                        pattern="[a-z0-9-]+"
+                    >
+                    <span class="form-hint">
+                        Только латинские буквы, цифры и дефисы. Пример: new-version-released
+                    </span>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="excerpt">Краткое описание</label>
+                    <textarea 
+                        id="excerpt" 
+                        name="excerpt" 
+                        class="form-textarea"
+                        placeholder="Краткое описание для отображения в списке новостей"
+                        rows="3"
+                    ></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="content">Содержание *</label>
+                    <textarea 
+                        id="content" 
+                        name="content" 
+                        required
+                    ></textarea>
+                </div>
+                
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" id="published" name="published">
+                    <label for="published">Опубликовать сразу</label>
+                </div>
+                
+                <div class="btn-group" style="margin-top: 30px;">
+                    <button type="submit" class="btn-admin btn-admin-success">
+                        💾 Сохранить
+                    </button>
+                    <button type="button" class="btn-admin btn-admin-primary" onclick="previewNews()">
+                        👁️ Предпросмотр
+                    </button>
+                    <button type="button" class="btn-admin btn-admin-danger" onclick="deleteNews()" id="delete-btn" style="display: none;">
+                        🗑️ Удалить
+                    </button>
+                    <a href="/admin/dashboard" class="btn-admin btn-admin-secondary">
+                        ← Отмена
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- All News List -->
+        <div class="admin-card">
+            <h2>📰 Все новости</h2>
+            <div class="btn-group" style="margin-bottom: 20px;">
+                <a href="/admin/news/new" class="btn-admin btn-admin-success">
+                    ➕ Создать новость
+                </a>
+            </div>
+            <div id="news-list">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Загрузка новостей...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let editor;
+        let currentNewsId = null;
+        
+        // Initialize TinyMCE
+        tinymce.init({
+            selector: '#content',
+            height: 500,
+            menubar: true,
+            plugins: [
+                'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+                'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                'insertdatetime', 'media', 'table', 'help', 'wordcount'
+            ],
+            toolbar: 'undo redo | blocks | ' +
+                'bold italic forecolor | alignleft aligncenter ' +
+                'alignright alignjustify | bullist numlist outdent indent | ' +
+                'removeformat | help',
+            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif; font-size: 16px; line-height: 1.6; color: #e0e6ed; background: #0a1628; }',
+            skin: 'oxide-dark',
+            content_css: 'dark',
+            setup: function(ed) {
+                editor = ed;
+            }
+        });
+        
+        // Auto-generate slug from title
+        document.getElementById('title').addEventListener('input', function(e) {
+            const slugInput = document.getElementById('slug');
+            if (!slugInput.value || currentNewsId === null) {
+                const slug = e.target.value
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-+|-+$/g, '');
+                slugInput.value = slug;
+            }
+        });
+        
+        // Check if editing existing news
+        const pathParts = window.location.pathname.split('/');
+        if (pathParts[pathParts.length - 2] === 'edit') {
+            currentNewsId = pathParts[pathParts.length - 1];
+            loadNewsForEdit(currentNewsId);
+        }
+        
+        // Load news for editing
+        async function loadNewsForEdit(id) {
+            try {
+                const response = await fetch(`/api/news/${id}`);
+                if (!response.ok) throw new Error('Failed to load news');
+                
+                const news = await response.json();
+                
+                document.getElementById('page-title').textContent = '✏️ Редактировать новость';
+                document.getElementById('news-id').value = news.id;
+                document.getElementById('title').value = news.title;
+                document.getElementById('slug').value = news.slug;
+                document.getElementById('excerpt').value = news.excerpt || '';
+                document.getElementById('published').checked = news.published === 1;
+                document.getElementById('delete-btn').style.display = 'inline-block';
+                
+                // Wait for TinyMCE to initialize
+                const checkEditor = setInterval(() => {
+                    if (editor) {
+                        editor.setContent(news.content);
+                        clearInterval(checkEditor);
+                    }
+                }, 100);
+                
+            } catch (error) {
+                console.error('Error loading news:', error);
+                showAlert('error', 'Ошибка загрузки новости');
+            }
+        }
+        
+        // Submit form
+        document.getElementById('news-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                title: document.getElementById('title').value,
+                slug: document.getElementById('slug').value,
+                excerpt: document.getElementById('excerpt').value,
+                content: editor.getContent(),
+                published: document.getElementById('published').checked
+            };
+            
+            try {
+                const url = currentNewsId ? `/api/news/${currentNewsId}` : '/api/news';
+                const method = currentNewsId ? 'PUT' : 'POST';
+                
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showAlert('success', currentNewsId ? 'Новость обновлена!' : 'Новость создана!');
+                    
+                    if (!currentNewsId) {
+                        setTimeout(() => {
+                            window.location.href = `/admin/news/edit/${data.id}`;
+                        }, 1500);
+                    } else {
+                        loadNewsList();
+                    }
+                } else {
+                    showAlert('error', data.error || 'Ошибка сохранения');
+                }
+            } catch (error) {
+                console.error('Error saving news:', error);
+                showAlert('error', 'Ошибка подключения к серверу');
+            }
+        });
+        
+        // Delete news
+        async function deleteNews() {
+            if (!currentNewsId) return;
+            
+            if (!confirm('Вы уверены, что хотите удалить эту новость?')) return;
+            
+            try {
+                const response = await fetch(`/api/news/${currentNewsId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    showAlert('success', 'Новость удалена!');
+                    setTimeout(() => {
+                        window.location.href = '/admin/news/new';
+                    }, 1500);
+                } else {
+                    showAlert('error', 'Ошибка удаления');
+                }
+            } catch (error) {
+                console.error('Error deleting news:', error);
+                showAlert('error', 'Ошибка подключения к серверу');
+            }
+        }
+        
+        // Preview news
+        function previewNews() {
+            const title = document.getElementById('title').value;
+            const content = editor.getContent();
+            
+            const previewWindow = window.open('', 'Preview', 'width=800,height=600');
+            previewWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Предпросмотр - ${title}</title>
+                    <link rel="stylesheet" href="/css/style.css">
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="card">
+                            <h1>${title}</h1>
+                            <div class="news-content">
+                                ${content}
+                            </div>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `);
+            previewWindow.document.close();
+        }
+        
+        // Show alert
+        function showAlert(type, message) {
+            const alertContainer = document.getElementById('alert-container');
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
+            const icon = type === 'success' ? '✅' : '❌';
+            
+            alertContainer.innerHTML = `
+                <div class="alert ${alertClass}">
+                    ${icon} ${message}
+                </div>
+            `;
+            
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 5000);
+        }
+        
+        // Load news list
+        async function loadNewsList() {
+            try {
+                const response = await fetch('/api/news');
+                const news = await response.json();
+                
+                const listContainer = document.getElementById('news-list');
+                
+                if (news.length === 0) {
+                    listContainer.innerHTML = '<p style="color: var(--admin-text-secondary); text-align: center; padding: 40px;">Новостей пока нет</p>';
+                    return;
+                }
+                
+                listContainer.innerHTML = news.map(item => {
+                    const date = new Date(item.created_at).toLocaleDateString('ru-RU');
+                    const badge = item.published 
+                        ? '<span class="badge badge-published">Опубликовано</span>'
+                        : '<span class="badge badge-draft">Черновик</span>';
+                    
+                    return `
+                        <div class="news-list-item">
+                            <div>
+                                <div class="news-list-title">${item.title}${badge}</div>
+                                <div class="news-list-meta">📅 ${date} | Slug: ${item.slug}</div>
+                            </div>
+                            <div class="news-list-actions">
+                                <a href="/admin/news/edit/${item.id}" class="btn-admin btn-admin-primary" style="padding: 8px 16px; font-size: 0.9em;">
+                                    ✏️ Редактировать
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Error loading news list:', error);
+            }
+        }
+        
+        // Load news list on page load
+        document.addEventListener('DOMContentLoaded', loadNewsList);
+    </script>
+</body>
+</html>
+

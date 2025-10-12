@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Настройки - Админ-панель</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="admin-page">
+    <header class="admin-header">
+        <div class="admin-header-content">
+            <div class="admin-logo">🔧 Админ-панель</div>
+            <nav class="admin-nav">
+                <ul>
+                    <li><a href="/admin/dashboard">📊 Дашборд</a></li>
+                    <li><a href="/admin/news">📰 Новости</a></li>
+                    <li><a href="/admin/telemetry.html">📊 Телеметрия</a></li>
+                    <li><a href="/admin/files.html">📁 Файлы</a></li>
+                    <li><a href="/admin/settings" class="active">⚙️ Настройки</a></li>
+                    <li><a href="/admin/logout">🚪 Выход</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="admin-container">
+        <div class="admin-card">
+            <h2>⚙️ Настройки сайта</h2>
+            
+            <div id="alert-container"></div>
+            
+            <form id="settings-form">
+                <div class="form-group">
+                    <label class="form-label" for="site_name">Название сайта</label>
+                    <input 
+                        type="text" 
+                        id="site_name" 
+                        name="site_name" 
+                        class="form-input" 
+                        placeholder="3D Printer Control Panel"
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="site_description">Описание сайта</label>
+                    <textarea 
+                        id="site_description" 
+                        name="site_description" 
+                        class="form-input" 
+                        rows="3"
+                        placeholder="Официальный сайт проекта 3D Printer Control Panel"
+                    ></textarea>
+                    <span class="form-hint">
+                        Краткое описание проекта (используется в meta-тегах)
+                    </span>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="github_repo">GitHub репозиторий</label>
+                    <input 
+                        type="text" 
+                        id="github_repo" 
+                        name="github_repo" 
+                        class="form-input" 
+                        placeholder="username/repository"
+                    >
+                    <span class="form-hint">
+                        Формат: username/repository (например: Tombraider2006/KCP)
+                    </span>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="github_token">GitHub Personal Access Token</label>
+                    <input 
+                        type="password" 
+                        id="github_token" 
+                        name="github_token" 
+                        class="form-input" 
+                        placeholder="ghp_xxxxxxxxxxxx"
+                    >
+                    <span class="form-hint">
+                        Необходим для доступа к релизам приватного репозитория. 
+                        <a href="https://github.com/settings/tokens" target="_blank" style="color: var(--admin-primary);">
+                            Создать токен →
+                        </a>
+                    </span>
+                </div>
+                
+                <div class="btn-group">
+                    <button type="submit" class="btn-admin btn-admin-success">
+                        💾 Сохранить настройки
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="admin-card">
+            <h2>ℹ️ Инструкция по настройке GitHub Token</h2>
+            <div style="background: rgba(0, 212, 255, 0.1); padding: 20px; border-radius: 8px; border-left: 4px solid var(--admin-primary);">
+                <h3 style="color: var(--admin-primary); margin-bottom: 15px;">🔑 Как получить GitHub Personal Access Token?</h3>
+                <ol style="margin-left: 20px; line-height: 2;">
+                    <li>Перейдите на <a href="https://github.com/settings/tokens" target="_blank" style="color: var(--admin-primary);">GitHub Settings → Developer settings → Personal access tokens</a></li>
+                    <li>Нажмите "Generate new token" → "Generate new token (classic)"</li>
+                    <li>Укажите название токена, например: "3D Printer Website"</li>
+                    <li>Выберите срок действия (рекомендуется "No expiration" для продакшена)</li>
+                    <li>Отметьте права доступа:
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li><strong>repo</strong> - для приватных репозиториев</li>
+                            <li><strong>public_repo</strong> - для публичных репозиториев (достаточно этого)</li>
+                        </ul>
+                    </li>
+                    <li>Нажмите "Generate token" внизу страницы</li>
+                    <li>Скопируйте токен (он будет показан только один раз!)</li>
+                    <li>Вставьте токен в поле выше и сохраните</li>
+                </ol>
+                
+                <div style="background: rgba(255, 193, 7, 0.2); padding: 15px; border-radius: 6px; margin-top: 20px; border-left: 3px solid var(--admin-warning);">
+                    <strong>⚠️ Важно:</strong>
+                    <ul style="margin: 10px 0 0 20px;">
+                        <li>Храните токен в безопасности!</li>
+                        <li>Не делитесь токеном с другими</li>
+                        <li>Если токен скомпрометирован - немедленно удалите его и создайте новый</li>
+                        <li>Для публичных репозиториев токен не обязателен</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load current settings
+        async function loadSettings() {
+            try {
+                const response = await fetch('/api/settings');
+                if (!response.ok) throw new Error('Failed to load settings');
+                
+                const settings = await response.json();
+                
+                document.getElementById('site_name').value = settings.site_name || '';
+                document.getElementById('site_description').value = settings.site_description || '';
+                document.getElementById('github_repo').value = settings.github_repo || '';
+                document.getElementById('github_token').value = settings.github_token ? '••••••••••••••••' : '';
+                
+            } catch (error) {
+                console.error('Error loading settings:', error);
+                showAlert('error', 'Ошибка загрузки настроек');
+            }
+        }
+        
+        // Save settings
+        document.getElementById('settings-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const settings = {
+                site_name: document.getElementById('site_name').value,
+                site_description: document.getElementById('site_description').value,
+                github_repo: document.getElementById('github_repo').value,
+                github_token: document.getElementById('github_token').value
+            };
+            
+            // Don't send masked token
+            if (settings.github_token === '••••••••••••••••') {
+                delete settings.github_token;
+            }
+            
+            try {
+                // Save each setting
+                for (const [key, value] of Object.entries(settings)) {
+                    const response = await fetch('/api/settings', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ key, value })
+                    });
+                    
+                    if (!response.ok) throw new Error(`Failed to save ${key}`);
+                }
+                
+                showAlert('success', 'Настройки сохранены!');
+                setTimeout(() => loadSettings(), 1500);
+                
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                showAlert('error', 'Ошибка сохранения настроек');
+            }
+        });
+        
+        // Show alert
+        function showAlert(type, message) {
+            const alertContainer = document.getElementById('alert-container');
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
+            const icon = type === 'success' ? '✅' : '❌';
+            
+            alertContainer.innerHTML = `
+                <div class="alert ${alertClass}">
+                    ${icon} ${message}
+                </div>
+            `;
+            
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 5000);
+        }
+        
+        // Load settings on page load
+        document.addEventListener('DOMContentLoaded', loadSettings);
+    </script>
+</body>
+</html>
+

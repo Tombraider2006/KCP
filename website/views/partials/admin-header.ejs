@@ -1,0 +1,17 @@
+<!-- Admin Header -->
+<header class="admin-header">
+    <div class="admin-header-content">
+        <div class="admin-logo">🔧 Админ-панель</div>
+        <nav class="admin-nav">
+            <ul>
+                <li><a href="/admin/dashboard" class="<%= currentPage === 'dashboard' ? 'active' : '' %>">📊 Дашборд</a></li>
+                <li><a href="/admin/news" class="<%= currentPage === 'news-admin' ? 'active' : '' %>">📰 Новости</a></li>
+                <li><a href="/admin/telemetry" class="<%= currentPage === 'telemetry' ? 'active' : '' %>">📊 Телеметрия</a></li>
+                <li><a href="/admin/files" class="<%= currentPage === 'files' ? 'active' : '' %>">📁 Файлы</a></li>
+                <li><a href="/admin/settings" class="<%= currentPage === 'settings' ? 'active' : '' %>">⚙️ Настройки</a></li>
+                <li><a href="/admin/logout">🚪 Выход</a></li>
+            </ul>
+        </nav>
+    </div>
+</header>
+

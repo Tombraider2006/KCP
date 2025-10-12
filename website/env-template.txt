@@ -1,0 +1,30 @@
+# Server Configuration
+# ВАЖНО: Порт 3000 занят telemetry сервером! Используйте другой порт.
+PORT=8080
+NODE_ENV=production
+
+# Session Secret (IMPORTANT: Change this to a random string!)
+SESSION_SECRET=your-super-secret-session-key-change-this
+
+# Admin Credentials (IMPORTANT: Change these!)
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=change-this-password
+
+# GitHub Configuration
+GITHUB_TOKEN=your-github-personal-access-token
+GITHUB_OWNER=Tombraider2006
+GITHUB_REPO=KCP
+
+# Website Configuration
+SITE_URL=https://tomich.fun
+SITE_NAME=3D Printer Control Panel
+
+# Database Configuration
+# ВАЖНО: База данных называется website.db чтобы не конфликтовать с telemetry.db
+DATABASE_PATH=./website.db
+
+# AI Assistant Access (optional)
+AI_ACCESS_TOKEN=secure-token-for-ai-access
+
+
+
