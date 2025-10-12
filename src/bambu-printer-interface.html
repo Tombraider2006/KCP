@@ -517,6 +517,32 @@
                         <div class="file-name" id="fileName">No file</div>
                     </div>
                 </div>
+
+                <!-- Print Details Card -->
+                <div class="card">
+                    <div class="card-title">
+                        <span class="card-icon">📊</span>
+                        <span>Print Details</span>
+                    </div>
+                    <div>
+                        <div class="info-item">
+                            <span class="info-label">⏱️ Remaining Time:</span>
+                            <span class="info-value" id="remainingTime">--</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">📐 Current Layer:</span>
+                            <span class="info-value" id="layerInfo">--</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">⚡ Print Speed:</span>
+                            <span class="info-value" id="printSpeed">--</span>
+                        </div>
+                        <div class="info-item" id="amsStatusItem" style="display: none;">
+                            <span class="info-label">🎨 AMS Status:</span>
+                            <span class="info-value" id="amsStatus">--</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Temperatures -->
@@ -696,6 +722,48 @@
             // Update file name
             const fileName = data.fileName || 'No file';
             document.getElementById('fileName').textContent = fileName;
+
+            // Update print details
+            if (data.print) {
+                // Remaining time
+                if (data.print.remaining_time !== undefined && data.print.remaining_time > 0) {
+                    const hours = Math.floor(data.print.remaining_time / 60);
+                    const minutes = data.print.remaining_time % 60;
+                    document.getElementById('remainingTime').textContent = hours > 0 
+                        ? `${hours}h ${minutes}m` 
+                        : `${minutes}m`;
+                } else {
+                    document.getElementById('remainingTime').textContent = '--';
+                }
+
+                // Layer info
+                if (data.print.layer_num !== undefined && data.print.total_layer_num !== undefined) {
+                    document.getElementById('layerInfo').textContent = 
+                        `${data.print.layer_num} / ${data.print.total_layer_num}`;
+                } else {
+                    document.getElementById('layerInfo').textContent = '--';
+                }
+
+                // Print speed
+                if (data.print.speed_magnitude !== undefined) {
+                    document.getElementById('printSpeed').textContent = `${data.print.speed_magnitude}%`;
+                } else {
+                    document.getElementById('printSpeed').textContent = '--';
+                }
+            }
+
+            // Update AMS status
+            if (data.ams && data.ams.ams && data.ams.ams.length > 0) {
+                const amsStatusItem = document.getElementById('amsStatusItem');
+                amsStatusItem.style.display = 'flex';
+                
+                const amsCount = data.ams.ams.length;
+                const currentTray = data.ams.tray_now || '--';
+                document.getElementById('amsStatus').textContent = 
+                    `${amsCount} unit(s), Active: Tray ${currentTray}`;
+            } else {
+                document.getElementById('amsStatusItem').style.display = 'none';
+            }
 
             // Update temperatures
             if (data.temps) {

@@ -342,6 +342,32 @@ class BambuLabAdapter extends PrinterAdapter {
             this.printerData.print.progress = data.print.mc_percent;
         }
 
+        // Оставшееся время (в минутах)
+        if (data.print && data.print.mc_remaining_time !== undefined) {
+            this.printerData.print.remaining_time = data.print.mc_remaining_time;
+        }
+
+        // Текущий слой и общее количество
+        if (data.print && data.print.layer_num !== undefined) {
+            this.printerData.print.layer_num = data.print.layer_num;
+        }
+        if (data.print && data.print.total_layer_num !== undefined) {
+            this.printerData.print.total_layer_num = data.print.total_layer_num;
+        }
+
+        // Скорость печати
+        if (data.print && data.print.spd_mag !== undefined) {
+            this.printerData.print.speed_magnitude = data.print.spd_mag;
+        }
+
+        // AMS статус
+        if (data.print && data.print.ams !== undefined) {
+            this.printerData.ams = data.print.ams;
+        }
+        if (data.print && data.print.ams_status !== undefined) {
+            this.printerData.ams_status = data.print.ams_status;
+        }
+
         // Имя файла
         if (data.print && data.print.subtask_name !== undefined) {
             this.printerData.print.filename = data.print.subtask_name;
